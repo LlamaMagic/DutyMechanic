@@ -11,6 +11,7 @@ using ff14bot.Managers;
 using ff14bot.NeoProfiles;
 using ff14bot.Settings;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TreeSharp;
@@ -30,6 +31,11 @@ public class DutyMechanicPlugin : BotPlugin
 
     /// <inheritdoc/>
     public override string Name => Translations.PROJECT_NAME;
+
+    /// <summary>
+    /// List of plugins we disable to prevent conflicts.
+    /// </summary>
+    protected List<string> ConflictingPluginsToDisable => ["RBTrust", "Trust"];
 
     /// <inheritdoc/>
     public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
@@ -134,12 +140,28 @@ public class DutyMechanicPlugin : BotPlugin
         }
         */
 
+        DisableConflictingPlugins();
+
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
 
         // LoggingHelpers.LogAllSpellCasts();
         LoggingHelpers.LogZoneChanges();
 
         return await dungeonManager.RunAsync();
+    }
+
+    protected void DisableConflictingPlugins()
+    {
+        foreach (var pluginName in ConflictingPluginsToDisable)
+        {
+            PluginContainer? enabledPlugin = PluginManager.Plugins.FirstOrDefault(p => p.Plugin.Name == pluginName && p.Enabled);
+
+            if (enabledPlugin != null)
+            {
+                Logger.Warning($"Disabling {pluginName} plugin to prevent conflicts. Consider uninstalling the {pluginName} plugin.", "QolFreeCompanyActions");
+                enabledPlugin.Enabled = false;
+            }
+        }
     }
 
     private async Task<bool> TryRespawnPlayerAsync()

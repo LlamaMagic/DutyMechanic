@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
-    <LangVersion>10</LangVersion>
+    <LangVersion>default</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
