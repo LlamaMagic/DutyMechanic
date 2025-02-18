@@ -26,7 +26,7 @@ public class DutyMechanicPlugin : BotPlugin
     private DungeonManager dungeonManager;
 
     /// <inheritdoc/>
-    public override string Author => "DW, Manta, Athalon";
+    public override string Author => "DW, Manta, Athlon";
 
     /// <inheritdoc/>
     public override string Name => Translations.PROJECT_NAME;
