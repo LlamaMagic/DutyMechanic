@@ -18,7 +18,7 @@ using TreeSharp;
 namespace DutyMechanic;
 
 /// <summary>
-/// Main RebornBuddy plugin class for RB Trust.
+/// Main RebornBuddy plugin class for Duty Mechanic.
 /// </summary>
 public class DutyMechanicPlugin : BotPlugin
 {
@@ -32,7 +32,11 @@ public class DutyMechanicPlugin : BotPlugin
     public override string Name => Translations.PROJECT_NAME;
 
     /// <inheritdoc/>
-    public override Version Version => new(7, 1, 13112024);
+    public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
+
+    /// <inheritdoc/>
+    /// Using Major/Minor as Current Global Game version, Build = date.
+    public override Version Version => new(7, 15, 02182025);
 
     /// <inheritdoc/>
     public override bool WantButton => false;
@@ -86,13 +90,13 @@ public class DutyMechanicPlugin : BotPlugin
 
     private void AddHooks()
     {
-        Logger.Information("Adding Trust Hook");
+        Logger.Information("Adding DutyMechanic Hook");
         TreeHooks.Instance.AddHook("TreeStart", root);
     }
 
     private void RemoveHooks()
     {
-        Logger.Information("Removing Trust Hook");
+        Logger.Information("Removing DutyMechanic Hook");
         TreeHooks.Instance.RemoveHook("TreeStart", root);
     }
 

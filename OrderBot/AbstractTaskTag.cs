@@ -14,7 +14,7 @@ public abstract class AbstractTaskTag : ProfileBehavior
     public override bool IsDone => isDone;
 
     /// <inheritdoc/>
-    public override Composite CreateBehavior()
+    protected override Composite CreateBehavior()
     {
         return new PrioritySelector(
             new Decorator(
@@ -25,7 +25,7 @@ public abstract class AbstractTaskTag : ProfileBehavior
     }
 
     /// <inheritdoc/>
-    public override void OnResetCachedDone()
+    protected override void OnResetCachedDone()
     {
         isDone = false;
     }

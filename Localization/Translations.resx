@@ -139,7 +139,7 @@
     <value>Dungeon logic for Duty Support and Trust dungeons.</value>
   </data>
   <data name="PROJECT_NAME" xml:space="preserve">
-    <value>DutyMechanic</value>
+    <value>Duty Mechanic</value>
   </data>
   <data name="PROJECT_URL" xml:space="preserve">
     <value>https://github.com/LlamaMagic/RBtrust</value>
@@ -150,7 +150,7 @@
   <data name="SUBZONE_CHANGED_CLEARING_AVOIDS" xml:space="preserve">
     <value>Sub-zone changed to {0}. Clearing previous avoid definitions.</value>
   </data>
-  <data name="TRUST_PLUGIN_MISSING" xml:space="preserve">
-    <value>This profile requires the "Trust" plugin to be installed and enabled.  Check your Plugins tab.</value>
+  <data name="DUTYMECHANIC_PLUGIN_MISSING" xml:space="preserve">
+    <value>This profile requires the "DutyMechanic" plugin to be installed and enabled.  Check your Plugins tab.</value>
   </data>
 </root>
