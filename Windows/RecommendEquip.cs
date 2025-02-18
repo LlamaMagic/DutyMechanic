@@ -5,7 +5,7 @@ using GreyMagic;
 using System;
 using System.Threading.Tasks;
 
-namespace Trust.Windows;
+namespace DutyMechanic.Windows;
 
 /// <summary>
 /// "Recommended Gear" in character sheet.

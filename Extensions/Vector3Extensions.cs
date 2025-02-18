@@ -1,6 +1,6 @@
 ﻿using Clio.Utilities;
 
-namespace Trust.Extensions;
+namespace DutyMechanic.Extensions;
 
 /// <summary>
 /// Extension methods for <see cref="Vector3"/>.

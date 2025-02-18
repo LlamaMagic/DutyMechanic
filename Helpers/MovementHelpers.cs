@@ -1,5 +1,6 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Navigation;
@@ -9,9 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Miscellaneous functions related to movement.

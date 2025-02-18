@@ -1,4 +1,7 @@
 ﻿using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Navigation;
@@ -9,12 +12,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
-using Trust.Logging;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 85: Vanaspati dungeon logic.

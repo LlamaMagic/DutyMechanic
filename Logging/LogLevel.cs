@@ -1,4 +1,4 @@
-﻿namespace Trust.Logging;
+﻿namespace DutyMechanic.Logging;
 
 /// <summary>
 /// Logging severity levels.  Used to filter logging.

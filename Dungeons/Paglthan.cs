@@ -1,5 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
@@ -10,10 +12,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Helpers;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 80.6: Paglth'an dungeon logic.

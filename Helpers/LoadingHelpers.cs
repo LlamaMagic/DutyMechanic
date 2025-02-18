@@ -8,7 +8,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Miscellaneous functions related to loading, cutscenes, and other waiting situations.

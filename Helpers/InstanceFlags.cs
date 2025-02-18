@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Meanings of individual bits in InstanceFlags.

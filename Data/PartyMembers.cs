@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Trust.Data;
+namespace DutyMechanic.Data;
 
 /// <summary>
 /// Groupings of NPC party members by role.

@@ -1,5 +1,7 @@
 using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -9,11 +11,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 79: Mt. Gulg dungeon logic.

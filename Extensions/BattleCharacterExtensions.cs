@@ -1,15 +1,15 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Navigation;
 using ff14bot.Objects;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Logging;
 
-namespace Trust.Extensions;
+namespace DutyMechanic.Extensions;
 
 /// <summary>
 /// Extension methods for <see cref="BattleCharacter"/>.

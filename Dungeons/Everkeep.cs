@@ -1,5 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
@@ -10,12 +12,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
-using Trust.Logging;
+using DutyMechanic.Extensions;
+using DutyMechanic.Logging;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 99: Everkeep trial logic.

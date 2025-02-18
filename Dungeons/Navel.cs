@@ -1,13 +1,13 @@
 using Buddy.Coroutines;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot.Managers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
-using Trust.Logging;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 34: The Navel dungeon logic.

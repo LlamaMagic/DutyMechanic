@@ -1,11 +1,11 @@
-﻿using ff14bot.Managers;
+﻿using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using ff14bot.Managers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 50.4: Snowcloak dungeon logic.

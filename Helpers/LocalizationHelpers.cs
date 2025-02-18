@@ -1,7 +1,7 @@
 ﻿using ff14bot.Enums;
 using GreyMagic;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Miscellaneous functions related to localization and language.

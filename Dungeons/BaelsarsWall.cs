@@ -1,4 +1,6 @@
 ﻿using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -6,10 +8,8 @@ using ff14bot.Pathing.Avoidance;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Helpers;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 60.5: Baelsar's Wall dungeon logic.

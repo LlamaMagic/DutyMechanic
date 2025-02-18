@@ -1,4 +1,9 @@
 ﻿using Buddy.Coroutines;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using DutyMechanic.Localization;
+using DutyMechanic.Logging;
+using DutyMechanic.Managers;
 using ff14bot;
 using ff14bot.AClasses;
 using ff14bot.Behavior;
@@ -9,24 +14,19 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using TreeSharp;
-using Trust.Data;
-using Trust.Helpers;
-using Trust.Localization;
-using Trust.Logging;
-using Trust.Managers;
 
-namespace Trust;
+namespace DutyMechanic;
 
 /// <summary>
 /// Main RebornBuddy plugin class for RB Trust.
 /// </summary>
-public class TrustPlugin : BotPlugin
+public class DutyMechanicPlugin : BotPlugin
 {
     private Composite root;
     private DungeonManager dungeonManager;
 
     /// <inheritdoc/>
-    public override string Author => "athlon";
+    public override string Author => "DW, Manta, Athalon";
 
     /// <inheritdoc/>
     public override string Name => Translations.PROJECT_NAME;

@@ -1,4 +1,4 @@
-﻿namespace Trust.Data;
+﻿namespace DutyMechanic.Data;
 
 /// <summary>
 /// Static map of dungeon names to Trust IDs. See DawnContent table in game client.

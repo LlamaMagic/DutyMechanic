@@ -4,7 +4,7 @@ using ff14bot.Managers;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Localization;
+using DutyMechanic.Localization;
 
 namespace ff14bot.NeoProfiles.Tags;
 

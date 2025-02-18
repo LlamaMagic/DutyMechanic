@@ -1,12 +1,12 @@
-﻿using ff14bot;
+﻿using DutyMechanic.Data;
+using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 32: Brayflox's Longstop dungeon logic.

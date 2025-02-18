@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using DutyMechanic.Data;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 17: Copperbell Mines dungeon logic.

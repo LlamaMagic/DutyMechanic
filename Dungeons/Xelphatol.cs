@@ -1,15 +1,15 @@
 ﻿using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 60.4: Xelphatol dungeon logic.

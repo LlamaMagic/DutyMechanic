@@ -1,7 +1,7 @@
 ﻿using ff14bot.Enums;
 using System.Collections.Generic;
 
-namespace Trust.Data;
+namespace DutyMechanic.Data;
 
 /// <summary>
 /// Groupings of <see cref="ClassJobType"/>s into their roles.

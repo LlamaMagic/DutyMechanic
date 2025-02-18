@@ -1,8 +1,8 @@
-﻿using System;
+﻿using DutyMechanic.Localization;
+using System;
 using System.Windows.Media;
-using Trust.Localization;
 
-namespace Trust.Logging;
+namespace DutyMechanic.Logging;
 
 /// <summary>
 /// Custom logger that writes to bot logs + console and general terminal.

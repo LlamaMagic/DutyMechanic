@@ -139,7 +139,7 @@
     <value>Dungeon logic for Duty Support and Trust dungeons.</value>
   </data>
   <data name="PROJECT_NAME" xml:space="preserve">
-    <value>Trust</value>
+    <value>DutyMechanic</value>
   </data>
   <data name="PROJECT_URL" xml:space="preserve">
     <value>https://github.com/LlamaMagic/RBtrust</value>

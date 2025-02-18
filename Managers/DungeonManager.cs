@@ -1,12 +1,12 @@
-﻿using ff14bot.Managers;
+﻿using DutyMechanic.Data;
+using DutyMechanic.Dungeons;
+using DutyMechanic.Helpers;
+using ff14bot.Managers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Dungeons;
-using Trust.Helpers;
 
-namespace Trust.Managers;
+namespace DutyMechanic.Managers;
 
 /// <summary>
 /// Maintains list of available dungeons and exposes dungeon logic handlers.

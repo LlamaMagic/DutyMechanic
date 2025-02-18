@@ -6,8 +6,8 @@ using ff14bot.Navigation;
 using ff14bot.Objects;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Logging;
-using Trust.Windows;
+using DutyMechanic.Logging;
+using DutyMechanic.Windows;
 
 namespace ff14bot.NeoProfiles.Tags;
 

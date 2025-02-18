@@ -2,7 +2,7 @@
 using ff14bot.Managers;
 using System.Threading.Tasks;
 
-namespace Trust.Windows;
+namespace DutyMechanic.Windows;
 
 /// <summary>
 /// Convenience wrapper for Duty Finder and Queue windows.

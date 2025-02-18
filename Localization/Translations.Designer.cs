@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Trust.Localization {
+namespace DutyMechanic.Localization {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +23,15 @@ namespace Trust.Localization {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Translations {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Translations() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Trust.Localization {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,7 +59,7 @@ namespace Trust.Localization {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Certain jobs may have difficulty with some bosses..
         /// </summary>
@@ -68,7 +68,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("JOB_DIFFICULTY_WARNING", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Localization changed to &quot;{0}&quot;..
         /// </summary>
@@ -77,7 +77,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("LOCALIZATION_CHANGED", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Failed to load localization &quot;{0}&quot;: resource file not found..
         /// </summary>
@@ -86,7 +86,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("LOCALIZATION_NOT_FOUND", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Player has died. Reloading current profile after respawn..
         /// </summary>
@@ -95,7 +95,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PLAYER_DIED_RELOADING_PROFILE", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Player failed to respawn after {0:N0}ms. Is there a special death mechanic?.
         /// </summary>
@@ -104,7 +104,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PLAYER_FAILED_TO_RESPAWN", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to https://discord.gg/bmgCq39.
         /// </summary>
@@ -113,7 +113,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PROJECT_CHAT_URL", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Dungeon logic for Duty Support and Trust dungeons..
         /// </summary>
@@ -122,7 +122,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PROJECT_DESCRIPTION", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Trust.
         /// </summary>
@@ -131,7 +131,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PROJECT_NAME", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to https://github.com/LlamaMagic/RBtrust.
         /// </summary>
@@ -140,7 +140,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("PROJECT_URL", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Sub-zone changed to {0}. Adding specialized avoid definitions for this area..
         /// </summary>
@@ -149,7 +149,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("SUBZONE_CHANGED_ADDING_AVOIDS", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Sub-zone changed to {0}. Clearing previous avoid definitions..
         /// </summary>
@@ -158,7 +158,7 @@ namespace Trust.Localization {
                 return ResourceManager.GetString("SUBZONE_CHANGED_CLEARING_AVOIDS", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to This profile requires the &quot;Trust&quot; plugin to be installed and enabled.  Check your Plugins tab..
         /// </summary>

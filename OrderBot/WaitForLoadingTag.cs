@@ -1,6 +1,6 @@
 using Clio.XmlEngine;
 using System.Threading.Tasks;
-using Trust.Helpers;
+using DutyMechanic.Helpers;
 
 namespace ff14bot.NeoProfiles.Tags;
 

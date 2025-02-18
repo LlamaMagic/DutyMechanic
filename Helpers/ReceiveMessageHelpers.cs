@@ -1,10 +1,10 @@
-﻿using ff14bot.Managers;
+﻿using DutyMechanic.Logging;
+using ff14bot.Managers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Trust.Logging;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 internal static class ReceiveMessageHelpers
 {

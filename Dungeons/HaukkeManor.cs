@@ -1,13 +1,13 @@
 ﻿using Clio.Utilities;
+using DutyMechanic.Data;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 28: Haukke Manor dungeon logic.

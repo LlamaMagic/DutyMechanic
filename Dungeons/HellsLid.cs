@@ -1,14 +1,14 @@
 using Buddy.Coroutines;
 using Clio.Common;
+using DutyMechanic.Data;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 70.5: Hells' Lid dungeon logic.

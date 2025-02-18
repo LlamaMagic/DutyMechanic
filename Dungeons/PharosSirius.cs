@@ -1,14 +1,14 @@
 ﻿using Buddy.Coroutines;
+using DutyMechanic.Data;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 50: Pharos Sirius dungeon logic.

@@ -1,14 +1,14 @@
-﻿using ff14bot;
+﻿using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Helpers;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 50: The Steps of Faith solo duty logic.

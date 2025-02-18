@@ -1,5 +1,9 @@
 using Clio.Common;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using DutyMechanic.Localization;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Navigation;
@@ -11,13 +15,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Helpers;
-using Trust.Localization;
-using Trust.Logging;
+using DutyMechanic.Extensions;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 83: The Tower of Babil dungeon logic.

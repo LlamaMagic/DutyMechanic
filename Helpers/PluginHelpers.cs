@@ -1,7 +1,7 @@
 ﻿using ff14bot.Managers;
 using System.Linq;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Miscellaneous functions related to RebornBuddy plugins.

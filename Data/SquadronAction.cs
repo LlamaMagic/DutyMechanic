@@ -1,4 +1,4 @@
-﻿namespace Trust.Data;
+﻿namespace DutyMechanic.Data;
 
 /// <summary>
 /// Static map of squadron action names to BgcArmyAction IDs.

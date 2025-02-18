@@ -1,7 +1,7 @@
-﻿using System.Globalization;
-using Trust.Logging;
+﻿using DutyMechanic.Logging;
+using System.Globalization;
 
-namespace Trust.Localization;
+namespace DutyMechanic.Localization;
 
 /// <summary>
 /// Localization helpers.

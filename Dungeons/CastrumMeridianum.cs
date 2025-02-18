@@ -1,13 +1,13 @@
 ﻿using Buddy.Coroutines;
+using DutyMechanic.Data;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 50.1: Castrum Meridianum dungeon logic.

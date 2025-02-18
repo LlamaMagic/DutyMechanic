@@ -1,4 +1,5 @@
 ﻿using Buddy.Coroutines;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -6,9 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Trust.Logging;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 internal static class CombatHelpers
 {

@@ -1,5 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
+using DutyMechanic.Data;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -7,12 +9,10 @@ using LlamaLibrary.Helpers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Trust.Data;
-using Trust.Extensions;
-using Trust.Logging;
+using DutyMechanic.Extensions;
 using ActionType = ff14bot.Enums.ActionType;
 
-namespace Trust.Dungeons;
+namespace DutyMechanic.Dungeons;
 
 /// <summary>
 /// Lv. 50: Copperbell Mines (Hard) dungeon logic.

@@ -1,11 +1,11 @@
-﻿using ff14bot.Managers;
+﻿using DutyMechanic.Logging;
+using ff14bot.Managers;
 using ff14bot.Objects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Trust.Logging;
 
-namespace Trust.Helpers;
+namespace DutyMechanic.Helpers;
 
 /// <summary>
 /// Convenience functions for logging data.

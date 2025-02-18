@@ -1,7 +1,7 @@
 ﻿using ff14bot.Objects;
 using System;
 
-namespace Trust.Extensions;
+namespace DutyMechanic.Extensions;
 
 /// <summary>
 /// Extension methods for <see cref="LocalPlayer"/>.
