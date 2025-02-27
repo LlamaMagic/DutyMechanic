@@ -43,8 +43,8 @@ internal static class ClassJobRoles
         ClassJobType.RedMage,
         ClassJobType.Dancer,
         ClassJobType.Reaper,
-        (ClassJobType)0x29, //Viper
-        (ClassJobType)0x2A, // Pictormancer
+        ClassJobType.Viper,
+        ClassJobType.Pictomancer,
     };
 
     /// <summary>
@@ -52,11 +52,11 @@ internal static class ClassJobRoles
     /// </summary>
     public static readonly HashSet<ClassJobType> Healers = new()
     {
-       ClassJobType.Sage,
-       ClassJobType.Astrologian,
-       ClassJobType.WhiteMage,
-       ClassJobType.Scholar,
-       ClassJobType.Conjurer,
+        ClassJobType.Sage,
+        ClassJobType.Astrologian,
+        ClassJobType.WhiteMage,
+        ClassJobType.Scholar,
+        ClassJobType.Conjurer,
     };
 
     /// <summary>
@@ -78,5 +78,48 @@ internal static class ClassJobRoles
         ClassJobType.Paladin,
         ClassJobType.Warrior,
         ClassJobType.Gunbreaker,
+    };
+
+    internal static readonly Dictionary<ClassJobType, int> LimitBreak3 = new()
+    {
+        // Tank Limit Breaks
+        { ClassJobType.Gladiator, 199 }, // Last Bastion
+        { ClassJobType.Marauder, 4240 }, // Land Waker
+        { ClassJobType.Paladin, 199 }, // Last Bastion
+        { ClassJobType.Gunbreaker, 17105 }, // Gunmetal Soul
+        { ClassJobType.Warrior, 4240 }, // Land Waker
+        { ClassJobType.DarkKnight, 4241 }, // Dark Force
+
+        // Melee DPS Limit Breaks
+        { ClassJobType.Lancer, 4242 }, // Dragonsong Dive
+        { ClassJobType.Pugilist, 202 }, // Final Heaven
+        { ClassJobType.Monk, 202 }, // Final Heaven
+        { ClassJobType.Dragoon, 4242 }, // Dragonsong Dive
+        { ClassJobType.Rogue, 4243 }, // Chimatsuri
+        { ClassJobType.Ninja, 4243 }, // Chimatsuri
+        { ClassJobType.Samurai, 7861 }, // Doom of the Living
+        { ClassJobType.Reaper, 24858 }, // The End
+        { ClassJobType.Viper, 34866 }, // World-swallower
+
+        // Ranged DPS Limit Breaks
+        { ClassJobType.Archer, 4244 }, // Sagittarius Arrow
+        { ClassJobType.Bard, 4244 }, // Sagittarius Arrow
+        { ClassJobType.Machinist, 4245 }, // Satellite Beam
+        { ClassJobType.Dancer, 17106 }, // Crimson Lotus
+
+        // Magic DPS Limit Breaks
+        { ClassJobType.Thaumaturge, 205 }, // Meteor
+        { ClassJobType.BlackMage, 205 }, // Meteor
+        { ClassJobType.Arcanist, 4246 }, // Teraflare
+        { ClassJobType.Summoner, 4246 }, // Teraflare
+        { ClassJobType.RedMage, 7862 }, // Vermilion Scourge
+        { ClassJobType.Pictomancer, 34867 }, // Chromatic Fantasy
+
+        // Healer Limit Breaks
+        { ClassJobType.Sage, 24859 }, // Techne Makre
+        { ClassJobType.Astrologian, 4248 }, // Astral Stasis
+        { ClassJobType.WhiteMage, 208 }, // Pulse of Life
+        { ClassJobType.Scholar, 4247 }, // Angel Feathers
+        { ClassJobType.Conjurer, 208 } // Pulse of Life
     };
 }

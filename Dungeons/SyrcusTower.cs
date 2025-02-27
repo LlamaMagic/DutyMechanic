@@ -135,11 +135,7 @@ public class SyrcusTower : AbstractDungeon
         // This will press yes on ReadyCheck
         if (LlamaLibrary.RemoteWindows.NotificationReadyCheck.Instance.IsOpen)
         {
-            if (SelectYesno.IsOpen)
-            {
-                Logger.Information($"Selecting yes to ready check");
-                SelectYesno.Yes();
-            }
+            await UsefulTasks.HandleReadyCheck();
         }
 
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;

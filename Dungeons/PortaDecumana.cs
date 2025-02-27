@@ -24,42 +24,9 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class PortaDecumana : AbstractDungeon
 {
-    private const uint TheUltimaWeaponNpc = 2137;
-    private const int AetheroplasmNpc = 2138;
-
-    private static readonly HashSet<uint> RadiantBlaze = new() { 28991 };
-
-    private static readonly HashSet<uint> HomingRay = new() { 29011, 29012 };
-    private static readonly int HomingRayDuration = 5_000;
-
-    private const uint GeocrushSpell = 28999;
-    private const uint EyeoftheStormSpell = 28980;
-    private const uint VulcanBurstSpell = 29003;
-    private const uint LaserFocusSpell = 29014;
-    private const uint CitadelBusterSpell = 29020;
-    private const uint ExplosionSpell = 29021;
-
-    DateTime EyeoftheStormDuration = DateTime.Now.AddMilliseconds(30);
-
-    private static readonly HashSet<uint> CitadelBuster = new() { 29020 };
-    private static readonly HashSet<uint> LaserFocus = new() { 29013, 29014 };
     private static readonly int CitadelBusterDuration = 5_000;
     private static readonly int LaserFocusDuration = 5_000;
-    private static DateTime citadelBusterTimestamp = DateTime.MinValue;
-
-    private static readonly Vector3 UltimaArenaCenter1 = new(-771.9428f, -400.0628f, -600.3899f);
-    private static readonly Vector3 UltimaArenaCenter2 = new(-703.6115f, -185.6595f, 479.6159f);
-
-    /*
-
-
-(2137) The Ultima Weapon, Dist: 2.79f, Loc: <-713, -185.7316, 480>, IsTargetable: False, Target: None
-  └─ Casting (29012) Homing Ray => (0) Lv. 50 Reaper
-(2137) The Ultima Weapon, Dist: 2.80f, Loc: <-713.0083, -185.7245, 479.9724>, IsTargetable: True, Target: Storm Marauder
-  └─ Casting (29011) Homing Ray => (2137) The Ultima Weapon
-  avoid other players
-
-     */
+    private static readonly int HomingRayDuration = 5_000;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.ThePortaDecumana;
@@ -77,22 +44,22 @@ public class PortaDecumana : AbstractDungeon
 
         // General avoid while in combat to avoid standing on top of people
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && !Core.Player.IsMelee() && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana && !LaserFocus.IsCasting(),
+            condition: () => Core.Player.InCombat && !Core.Player.IsMelee() && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana && !EnemyAction.LaserFocusHash.IsCasting(),
             objectSelector: bc => bc.Type == GameObjectType.Pc,
-            radiusProducer: bc => 1.0f,
+            radiusProducer: bc => 0.5f,
             priority: AvoidancePriority.Low));
 
         // Ultima Titan: GeoCrush
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: bc => bc.CastingSpellId == GeocrushSpell,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.Geocrush,
             radiusProducer: bc => 25.0f,
             priority: AvoidancePriority.High));
 
         // The Ultima Weapon: Eye of the Storm
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: c => c.CastingSpellId == EyeoftheStormSpell,
+            objectSelector: c => c.CastingSpellId == EnemyAction.EyeoftheStorm,
             outerRadius: 90.0f,
             innerRadius: 12f,
             priority: AvoidancePriority.Medium);
@@ -100,7 +67,7 @@ public class PortaDecumana : AbstractDungeon
         // Ultima Ifrit: Vulcan Burst
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: c => c.CastingSpellId == VulcanBurstSpell,
+            objectSelector: c => c.CastingSpellId == EnemyAction.VulcanBurst,
             outerRadius: 40.0f,
             innerRadius: 3.0F,
             priority: AvoidancePriority.Medium);
@@ -109,7 +76,7 @@ public class PortaDecumana : AbstractDungeon
         // Let's avoid standing under the boss if we can help it.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: bc => bc.NpcId == TheUltimaWeaponNpc && bc.CanAttack,
+            objectSelector: bc => bc.NpcId == EnemyNpc.UltimaWeapon && bc.CanAttack,
             radiusProducer: bc => 4.3f,
             priority: AvoidancePriority.Medium));
 
@@ -118,8 +85,8 @@ public class PortaDecumana : AbstractDungeon
         // So i took the easy way out and made it a cone
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: (bc) => bc.CastingSpellId == CitadelBusterSpell,
-            leashPointProducer: () => UltimaArenaCenter2,
+            objectSelector: (bc) => bc.CastingSpellId == EnemyAction.CitadelBuster,
+            leashPointProducer: () => ArenaCenter.UltimaArenaCenter1,
             leashRadius: 40.0f,
             rotationDegrees: 0.0f,
             radius: 40.0f,
@@ -128,7 +95,7 @@ public class PortaDecumana : AbstractDungeon
         // The Ultima Weapon: Explosion
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: bc => bc.CastingSpellId == ExplosionSpell,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.Explosion,
             radiusProducer: bc => 17.4f,
             priority: AvoidancePriority.High));
 
@@ -145,14 +112,14 @@ public class PortaDecumana : AbstractDungeon
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            () => UltimaArenaCenter1,
+            () => ArenaCenter.UltimaArenaCenter1,
             outerRadius: 90.0f,
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            () => UltimaArenaCenter2,
+            () => ArenaCenter.UltimaArenaCenter2,
             outerRadius: 90.0f,
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
@@ -164,17 +131,30 @@ public class PortaDecumana : AbstractDungeon
     public override async Task<bool> RunAsync()
     {
         await FollowDodgeSpells();
-        /*
+
+        // This will press yes on ReadyCheck
+        if (NotificationReadyCheck.Instance.IsOpen)
+        {
+            await UsefulTasks.HandleReadyCheck();
+        }
+
         if (Core.Me.IsDPS() && LimitBreak.Percentage == 3 && (Core.Me.HasTarget && Core.Me.CurrentTarget.IsValid && Core.Me.CurrentTarget.CurrentHealthPercent > 1))
         {
-            Logger.Information($"Using Limit Break on {Core.Me.CurrentTarget.Name}.");
-            if (Core.Me.CurrentJob == ClassJobType.Summoner || Core.Me.CurrentJob == ClassJobType.RedMage || Core.Me.CurrentJob == ClassJobType.BlackMage)
+            var limitBreak = DataManager.GetSpellData((uint)ClassJobRoles.LimitBreak3[Core.Me.CurrentJob]);
+
+            Logger.Information($"Using {limitBreak.Name} on {Core.Me.CurrentTarget.Name}.");
+
+            if (limitBreak.GroundTarget)
             {
-                ActionManager.LimitBreak(Core.Me.CurrentTarget);
+                ActionManager.DoActionLocation(limitBreak.Id, Core.Me.CurrentTarget.Location);
+                await Coroutine.Wait(10000, () => !Core.Me.IsCasting);
+            }
+            else
+            {
+                ActionManager.DoAction(limitBreak.Id, Core.Me.CurrentTarget);
                 await Coroutine.Wait(10000, () => !Core.Me.IsCasting);
             }
         }
-        */
 
         // Stay within casting range of the tank if you're the healer
         if (Core.Me.IsHealer() && Core.Me.IsAlive && !CommonBehaviors.IsLoading &&
@@ -197,18 +177,18 @@ public class PortaDecumana : AbstractDungeon
         // Soak Aetheroplasms if you're not the tank
         if (!Core.Me.IsTank() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene && Core.Me.InCombat)
         {
-            BattleCharacter AetheroplasmSoak = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(AetheroplasmNpc).OrderBy(bc => bc.Distance2D()).FirstOrDefault(bc => bc.IsVisible && bc.CurrentHealth > 0);
+            BattleCharacter aetheroplasmSoak = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Aetheroplasm).OrderBy(bc => bc.Distance2D()).FirstOrDefault(bc => bc.IsVisible && bc.CurrentHealth > 0);
 
-            if (AetheroplasmSoak != null && PartyManager.IsInParty && !CommonBehaviors.IsLoading &&
-                !QuestLogManager.InCutscene && Core.Me.Location.Distance2D(AetheroplasmSoak.Location) > 1)
+            if (aetheroplasmSoak != null && PartyManager.IsInParty && !CommonBehaviors.IsLoading &&
+                !QuestLogManager.InCutscene && Core.Me.Location.Distance2D(aetheroplasmSoak.Location) > 1)
             {
-                await AetheroplasmSoak.Follow(1F, 0, true);
+                await aetheroplasmSoak.Follow(1F, 0, true);
                 await CommonTasks.StopMoving();
                 await Coroutine.Sleep(30);
             }
         }
 
-        if (LaserFocus.IsCasting() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene)
+        if (EnemyAction.LaserFocusHash.IsCasting() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene)
         {
             CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, LaserFocusDuration, $"Stacking for Laser Focus");
 
@@ -221,7 +201,7 @@ public class PortaDecumana : AbstractDungeon
             await Coroutine.Sleep(30);
         }
 
-        if (HomingRay.IsCasting())
+        if (EnemyAction.HomingRay.IsCasting())
         {
             await MovementHelpers.Spread(HomingRayDuration);
         }
@@ -229,5 +209,128 @@ public class PortaDecumana : AbstractDungeon
         await Coroutine.Yield();
 
         return false;
+    }
+
+    internal static class EnemyNpc
+    {
+        /// <summary>    private const int AetheroplasmNpc = 2138;
+        /// First Boss: Ultima Weapon
+        /// </summary>
+        public const uint UltimaWeapon = 2137;
+
+        /// <summary>
+        /// First Boss: Aetheroplasm
+        /// </summary>
+        public const uint Aetheroplasm = 2138;
+    }
+
+    internal static class ArenaCenter
+    {
+        /// <summary>
+        /// First Boss: <see cref="EnemyNpc.UltimaWeapon"/>.
+        /// </summary>
+        public static readonly Vector3 UltimaArenaCenter2 = new(-703.6115f, -185.6595f, 479.6159f);
+
+        /// <summary>
+        /// First Boss: <see cref="EnemyNpc.UltimaWeapon"/>.
+        /// </summary>
+        public static readonly Vector3 UltimaArenaCenter1 = new(-771.9428f, -400.0628f, -600.3899f);
+    }
+
+    internal static class EnemyAction
+    {
+        /// <summary>
+        /// The Ultima Weapon
+        /// Radiant Blaze
+        ///
+        /// </summary>
+        public static readonly HashSet<uint> RadiantBlaze = new() { 28991 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Homing Ray
+        ///
+        /// </summary>
+        public static readonly HashSet<uint> HomingRay = new() { 29011, 29012 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Citadel Buster
+        ///
+        /// </summary>
+        public const uint CitadelBuster = 29020;
+
+        public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Earthen Eternity
+        /// This move is cast on Granite Goals to have them cast Granite Sepulchre
+        /// </summary>
+        public const uint EarthenEternity = 29435;
+
+        /// <summary>
+        /// Granite Goal
+        /// Granite Sepulchre
+        /// This move causes the Granite Goal you're surrounded with to explode causing unavoidable damage.
+        /// </summary>
+        public const uint GraniteSepulchre = 28989;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Headsman's Wind
+        /// This move is casted but doesn't actually ever complete.
+        /// </summary>
+        public const uint HeadsmansWind = 28989;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Laser Focus
+        ///
+        /// </summary>
+        public const uint LaserFocus = 29014;
+
+        public static readonly HashSet<uint> LaserFocusHash = new() { 29013, 29014 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Geocrush
+        ///
+        /// </summary>
+        public const uint Geocrush = 28999;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Eye of the Storm
+        ///
+        /// </summary>
+        public const uint EyeoftheStorm = 28980;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Vulcan Burn
+        ///
+        /// </summary>
+        public const uint VulcanBurst = 29003;
+
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Explosion
+        ///
+        /// </summary>
+        public const uint Explosion = 29021;
+    }
+
+    private static class PlayerAura
+    {
+        /// <summary>
+        /// Overseer Kanilokka
+        /// Aura Name: Temporary Misdirection, Aura Id: 3909
+        /// Causes loss of control of your character
+        /// </summary>
+        public const uint TemporaryMisdirection = 3909;
+
+        public const uint Rampart = 1191;
     }
 }
