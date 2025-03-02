@@ -75,9 +75,9 @@ public class PortaDecumana : AbstractDungeon
         // Boss 1
         // Let's avoid standing under the boss if we can help it.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
+            condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana && !EnemyAction.LaserFocusHash.IsCasting(),
             objectSelector: bc => bc.NpcId == EnemyNpc.UltimaWeapon && bc.CanAttack,
-            radiusProducer: bc => 4.3f,
+            radiusProducer: bc => 4f,
             priority: AvoidancePriority.Medium));
 
         // The Ultima Weapon: Citadel Buster
@@ -94,20 +94,10 @@ public class PortaDecumana : AbstractDungeon
 
         // The Ultima Weapon: Explosion
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
+            condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana && !EnemyAction.AssaultCannon.IsCasting(),
             objectSelector: bc => bc.CastingSpellId == EnemyAction.Explosion,
             radiusProducer: bc => 17.4f,
             priority: AvoidancePriority.High));
-
-        /* The Ultima Weapon: Laser Focus
-         Need to make a way to set the donut around the party member that's being targetted, not the spell caster
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: c => c.CastingSpellId == LaserFocusSpell,
-            outerRadius: 40.0f,
-            innerRadius: 3.0F,
-            priority: AvoidancePriority.Medium);
-            */
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
@@ -196,7 +186,7 @@ public class PortaDecumana : AbstractDungeon
                 .Select(pm => pm.BattleCharacter)
                 .FirstOrDefault(obj => !obj.IsMe && obj.IsAlive);
 
-            await laserFocusTarget.Follow(5f);
+            await laserFocusTarget.Follow(4f, useMesh: true);
             await CommonTasks.StopMoving();
             await Coroutine.Sleep(30);
         }
@@ -241,10 +231,10 @@ public class PortaDecumana : AbstractDungeon
     {
         /// <summary>
         /// The Ultima Weapon
-        /// Radiant Blaze
-        ///
+        /// Assault Cannon
+        /// Magitek Bits come out and do various multilined attacks.
         /// </summary>
-        public static readonly HashSet<uint> RadiantBlaze = new() { 28991 };
+        public static readonly HashSet<uint> AssaultCannon = new() { 29019 };
 
         /// <summary>
         /// The Ultima Weapon
@@ -256,37 +246,17 @@ public class PortaDecumana : AbstractDungeon
         /// <summary>
         /// The Ultima Weapon
         /// Citadel Buster
-        ///
+        /// Straight line AOE
         /// </summary>
         public const uint CitadelBuster = 29020;
 
         public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
 
-        /// <summary>
-        /// The Ultima Weapon
-        /// Earthen Eternity
-        /// This move is cast on Granite Goals to have them cast Granite Sepulchre
-        /// </summary>
-        public const uint EarthenEternity = 29435;
-
-        /// <summary>
-        /// Granite Goal
-        /// Granite Sepulchre
-        /// This move causes the Granite Goal you're surrounded with to explode causing unavoidable damage.
-        /// </summary>
-        public const uint GraniteSepulchre = 28989;
-
-        /// <summary>
-        /// The Ultima Weapon
-        /// Headsman's Wind
-        /// This move is casted but doesn't actually ever complete.
-        /// </summary>
-        public const uint HeadsmansWind = 28989;
 
         /// <summary>
         /// The Ultima Weapon
         /// Laser Focus
-        ///
+        /// Gather to soak ability.
         /// </summary>
         public const uint LaserFocus = 29014;
 
@@ -320,6 +290,71 @@ public class PortaDecumana : AbstractDungeon
         ///
         /// </summary>
         public const uint Explosion = 29021;
+
+        // Below this line are unavoidable moves that but are here for documentation's sake
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Earthen Eternity
+        /// This move is cast on Granite Goals to have them cast Granite Sepulchre
+        /// </summary>
+        public const uint EarthenEternity = 29435;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Granite Interment
+        /// This move causes Granite Goals to form around all players, causing them to be unable to move.
+        /// </summary>
+        public const uint GraniteInterment = 28987;
+
+        /// <summary>
+        /// Granite Goal
+        /// Granite Sepulchre
+        /// This move causes the Granite Goal you're surrounded with to explode causing unavoidable damage.
+        /// </summary>
+        public const uint GraniteSepulchre = 28989;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Headsman's Wind
+        /// This move is casted but doesn't actually ever complete.
+        /// </summary>
+        public const uint HeadsmansWind = 28989;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Earthen Fury (Titan)
+        /// This move is casted but doesn't actually ever complete.
+        /// </summary>
+        public const uint EarthenFury = 28998;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Radiant Blaze
+        /// This move is casted but doesn't actually ever complete. It's stopped by doing enough damage to make Ifirit leave Ultima Weapon.
+        /// </summary>
+        public static readonly HashSet<uint> RadiantBlaze = new() { 28991 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Vortex Barrier (Garuda)
+        /// This move causes a wind shield around Ultima Weapon.
+        /// </summary>
+        public const uint VortexBarrier = 28984;
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Hellfire (Ifrit)
+        /// This move causes a wind shield around Ultima Weapon.
+        /// </summary>
+        public static readonly HashSet<uint> Hellfire = new() { 28978, 29002 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Ultima
+        /// Kill the boss before this move finishes or it's a wipe.
+        /// </summary>
+        public const uint Ultima = 29024;
     }
 
     private static class PlayerAura
