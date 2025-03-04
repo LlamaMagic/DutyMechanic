@@ -128,22 +128,15 @@ public class PortaDecumana : AbstractDungeon
             await UsefulTasks.HandleReadyCheck();
         }
 
+        // Handle Tank Buster
+        if (EnemyAction.HomingLasers.IsCasting())
+        {
+            await CombatHelpers.HandleTankBuster();
+        }
+
         if (Core.Me.IsDPS() && LimitBreak.Percentage == 3 && (Core.Me.HasTarget && Core.Me.CurrentTarget.IsValid && Core.Me.CurrentTarget.CurrentHealthPercent > 1))
         {
-            var limitBreak = DataManager.GetSpellData((uint)ClassJobRoles.LimitBreak3[Core.Me.CurrentJob]);
-
-            Logger.Information($"Using {limitBreak.Name} on {Core.Me.CurrentTarget.Name}.");
-
-            if (limitBreak.GroundTarget)
-            {
-                ActionManager.DoActionLocation(limitBreak.Id, Core.Me.CurrentTarget.Location);
-                await Coroutine.Wait(10000, () => !Core.Me.IsCasting);
-            }
-            else
-            {
-                ActionManager.DoAction(limitBreak.Id, Core.Me.CurrentTarget);
-                await Coroutine.Wait(10000, () => !Core.Me.IsCasting);
-            }
+            await CombatHelpers.UseLB3();
         }
 
         // Stay within casting range of the tank if you're the healer
@@ -229,6 +222,13 @@ public class PortaDecumana : AbstractDungeon
 
     internal static class EnemyAction
     {
+        /// <summary>
+        /// The Ultima Weapon
+        /// Homing Lasers
+        /// Tank Buster
+        /// </summary>
+        public static readonly HashSet<uint> HomingLasers = new() { 29023 };
+
         /// <summary>
         /// The Ultima Weapon
         /// Assault Cannon
@@ -319,7 +319,7 @@ public class PortaDecumana : AbstractDungeon
         /// Headsman's Wind
         /// This move is casted but doesn't actually ever complete.
         /// </summary>
-        public const uint HeadsmansWind = 28989;
+        public const uint HeadsmansWind = 28510;
 
         /// <summary>
         /// The Ultima Weapon
