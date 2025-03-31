@@ -20,7 +20,7 @@ using DutyMechanic.Extensions;
 namespace DutyMechanic.Dungeons;
 
 /// <summary>
-/// Lv. 100: Alexandria dungeon logic.
+/// Lv. 100: Yuweyawata Field Station dungeon logic.
 /// </summary>
 public class YuweyawataFieldStation : AbstractDungeon
 {
