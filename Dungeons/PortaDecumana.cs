@@ -134,6 +134,7 @@ public class PortaDecumana : AbstractDungeon
             await CombatHelpers.HandleTankBuster();
         }
 
+        // Handle LB3
         if (Core.Me.IsDPS() && LimitBreak.Percentage == 3 && (Core.Me.HasTarget && Core.Me.CurrentTarget.IsValid && Core.Me.CurrentTarget.CurrentHealthPercent > 1))
         {
             await CombatHelpers.UseLB3();
