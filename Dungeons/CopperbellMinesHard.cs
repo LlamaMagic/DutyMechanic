@@ -44,7 +44,8 @@ public class CopperbellMinesHard : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static BattleCharacter? HecatoncheirMastermindBC =>
         (BattleCharacter)GameObjectManager.GetObjectByNPCId(HecatoncheirMastermind);
 

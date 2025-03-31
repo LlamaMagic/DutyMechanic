@@ -24,7 +24,8 @@ public class GreatGubalLibrary : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Disclosure };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

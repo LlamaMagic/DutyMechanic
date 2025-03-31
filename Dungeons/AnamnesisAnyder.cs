@@ -103,7 +103,8 @@ public class AnamnesisAnyder : AbstractDungeon
         19322,
         20005,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

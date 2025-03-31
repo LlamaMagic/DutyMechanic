@@ -123,7 +123,8 @@ public class KtisisHyperboreia : AbstractDungeon
         25180,
         25742,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {

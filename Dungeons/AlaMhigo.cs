@@ -29,7 +29,8 @@ public class AlaMhigo : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

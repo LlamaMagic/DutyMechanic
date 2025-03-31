@@ -892,5 +892,20 @@ public enum SubZoneId : uint
     /// </summary>
     TheDustYoke = 5130,
 
+    /// <summary>
+    /// Lv. 100: Underkeep > Sediment Funnel, Gargant
+    /// </summary>
+    SedimentFunnel = 5130,
+
+    /// <summary>
+    /// Lv. 100: Underkeep > Receiving Room, Soldier S0
+    /// </summary>
+    ReceivingRoom = 5173,
+
+    /// <summary>
+    /// Lv. 100: Underkeep > Chamber of Patience, Soldier S0
+    /// </summary>
+    ChamberofPatience = 5174,
+
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

@@ -64,7 +64,8 @@ public class MtGulg : AbstractDungeon
         15614, 15615, 15616, 15617, 15618, 15622, 15623, 15638, 15640, 15641, 15642, 15643, 15644, 15645, 15648, 15649,
         16247, 16248, 16249, 16250, 16521, 16818, 16987, 16988, 16989, 17153, 18025,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {

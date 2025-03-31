@@ -25,7 +25,8 @@ public class GhimlytDark : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekRay, EnemyAction.OilShower, EnemyAction.theOrder, EnemyAction.InvisibleSpell };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

@@ -23,7 +23,8 @@ public class HeroesGauntlet : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WildRampage1, EnemyAction.WildRampage2 };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

@@ -56,7 +56,8 @@ public class SohmAl : AbstractDungeon
     /// Gets spell IDs to follow-dodge while any contained spell is casting.
     /// </summary>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 29272, 3809 };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <summary>
     /// Executes dungeon logic.
     /// </summary>

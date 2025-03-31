@@ -101,7 +101,8 @@ public class TowerOfZot : AbstractDungeon
     {
         25234, 25233, 25250, 24145,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {

@@ -101,7 +101,8 @@ public class Vanaspati : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static bool HasTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).
                 Any(bc => bc.CanAttack && bc.IsTargetable);
 

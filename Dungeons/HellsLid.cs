@@ -41,7 +41,8 @@ public class HellsLid : AbstractDungeon
         10193,
         10194, // Hell of Waste by Genbu
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

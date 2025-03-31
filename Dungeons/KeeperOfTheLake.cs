@@ -61,7 +61,8 @@ public class KeeperOfTheLake : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 29283 };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

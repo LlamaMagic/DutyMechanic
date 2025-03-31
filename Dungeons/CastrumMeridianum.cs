@@ -55,7 +55,8 @@ public class CastrumMeridianum : AbstractDungeon
         28797, 28790, 29356, 28787, 29357,
         29356,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

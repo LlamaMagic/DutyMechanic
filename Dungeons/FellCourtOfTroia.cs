@@ -98,7 +98,8 @@ public class FellCourtOfTroia : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 30024, 30025, 30243, 30253, 30254, 31208 };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

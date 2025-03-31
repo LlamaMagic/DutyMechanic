@@ -77,7 +77,8 @@ public class DohnMheg : AbstractDungeon
     {
         13547, 13952,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

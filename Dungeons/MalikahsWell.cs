@@ -37,7 +37,8 @@ public class MalikahsWell : AbstractDungeon
         EnemyAction.HereticsFork,
         EnemyAction.HereticsFork3,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

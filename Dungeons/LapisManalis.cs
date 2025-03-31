@@ -31,7 +31,8 @@ public class LapisManalis : AbstractDungeon
         EnemyAction.Hydrofall,
         EnemyAction.HydraulicRam,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

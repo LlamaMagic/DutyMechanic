@@ -70,7 +70,8 @@ public class HolminsterSwitch : AbstractDungeon
         15602, 15609, 15814, 15815, 15816, 15817, 15818, 15819, 15820, 15822, 15843, 15845, 15846, 15847, 15848, 15849,
         15886, 16765, 16779, 16780, 16781, 16782, 16850, 16851, 16852, 17232, 17552,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

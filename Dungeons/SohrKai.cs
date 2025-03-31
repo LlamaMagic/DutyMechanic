@@ -26,7 +26,8 @@ public class SohrKai : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
         new() {EnemyAction.Gallop, EnemyAction.AkhMorn, EnemyAction.FrigidDive};
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

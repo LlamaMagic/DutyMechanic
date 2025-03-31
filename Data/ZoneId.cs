@@ -456,5 +456,10 @@ public enum ZoneId : ushort
     /// </summary>
     YuweyawataFieldStation = 1242,
 
+    /// <summary>
+    /// Lv. 100: Underkeep
+    /// </summary>
+    Underkeep = 1266,
+
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

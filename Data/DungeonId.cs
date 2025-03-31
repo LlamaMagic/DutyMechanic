@@ -380,5 +380,10 @@ public enum DungeonId : uint
     /// Lv. 100: Yuweyawata
     /// </summary>
     YuweyawataFieldStation = 1008,
+
+    /// <summary>
+    /// Lv. 100: Underkeep
+    /// </summary>
+    Underkeep = 1027,
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

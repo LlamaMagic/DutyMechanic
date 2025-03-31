@@ -127,6 +127,7 @@ internal class DungeonManager
             { ZoneId.Everkeep, typeof(Everkeep) },
             { ZoneId.Alexandria, typeof(Alexandria) },
             { ZoneId.YuweyawataFieldStation, typeof(YuweyawataFieldStation) },
+            { ZoneId.Underkeep, typeof(Underkeep) },
         };
     }
 

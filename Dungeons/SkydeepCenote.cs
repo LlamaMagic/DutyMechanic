@@ -33,7 +33,8 @@ public class SkydeepCenote : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.RollingCurrent, EnemyAction.RollingCurrent2, EnemyAction.Burst, EnemyAction.DeepThunder };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

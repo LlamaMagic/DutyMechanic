@@ -90,8 +90,17 @@ public class Aitiascope : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
-        25234, 25233, 25250, 24145, 25180, 25742, 25677,
+        25234,
+        25233,
+        25250,
+        24145,
+        25180,
+        25742,
+        25677,
     };
+
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()

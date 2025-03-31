@@ -34,7 +34,8 @@ public class WorqorLarDor : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ruinfall, EnemyAction.ThunderousBreath, EnemyAction.NorthernCross, EnemyAction.FreezingDust };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static GameObject arcaneSphere => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.ArcaneSphere)
         .FirstOrDefault(bc => bc.IsVisible); // +
 

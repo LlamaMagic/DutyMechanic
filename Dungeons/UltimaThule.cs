@@ -35,7 +35,8 @@ public class UltimaThule : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static readonly int ExplopsionDuration = 20_000;
     private static DateTime ExplosionTimestamp = DateTime.MinValue;
 

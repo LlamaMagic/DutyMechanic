@@ -69,6 +69,9 @@ public class Aery : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.HorridBlaze };
 
     /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

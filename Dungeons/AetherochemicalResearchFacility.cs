@@ -27,6 +27,9 @@ public class AetherochemicalResearchFacility : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.EndofDays, EnemyAction.EntropicFlame };
 
     /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -78,7 +81,7 @@ public class AetherochemicalResearchFacility : AbstractDungeon
         // Boss 4: Burning Chains
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.NeurolinkNacelle
-            && Core.Player.HasAura(PartyAuras.BurningChains),
+                                                  && Core.Player.HasAura(PartyAuras.BurningChains),
             objectSelector: bc => bc.HasAura(PartyAuras.BurningChains),
             radiusProducer: bc => 18.0f,
             priority: AvoidancePriority.Medium));
@@ -86,7 +89,7 @@ public class AetherochemicalResearchFacility : AbstractDungeon
         // Boss 4: Dark Whispers
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.NeurolinkNacelle
-            && Core.Player.HasAura(PartyAuras.DarkWhispers),
+                                                  && Core.Player.HasAura(PartyAuras.DarkWhispers),
             objectSelector: bc => bc.GetAuraById(PartyAuras.DarkWhispers)?.TimeLeft < 6.0f,
             radiusProducer: bc => 6.0f,
             priority: AvoidancePriority.Medium));
@@ -279,7 +282,14 @@ public class AetherochemicalResearchFacility : AbstractDungeon
         /// Dark Blizzard III.
         /// Fan of cone AOEs not detected by SideStep. Dummy cast 31914 intentionally excluded.
         /// </summary>
-        public static readonly HashSet<uint> DarkBlizzardIII = new() { 31915, 31916, 31917, 31918, 31919 };
+        public static readonly HashSet<uint> DarkBlizzardIII = new()
+        {
+            31915,
+            31916,
+            31917,
+            31918,
+            31919
+        };
     }
 
     private static class PartyAuras

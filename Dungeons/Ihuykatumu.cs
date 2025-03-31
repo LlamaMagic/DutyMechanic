@@ -47,7 +47,8 @@ public class Ihuykatumu : AbstractDungeon
         EnemyAction.Bury5,
         */
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static GameObject whirlWind => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsVisible); // +
 

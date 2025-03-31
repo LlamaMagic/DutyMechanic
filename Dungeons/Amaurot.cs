@@ -48,7 +48,8 @@ public class Amaurot : AbstractDungeon
         15559, 15560, 15562, 15565, 15566, 15579, 15580, 15581, 15582, 15583, 15585,
         15586, 16785, 16786, 18157, 17996,
     };
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

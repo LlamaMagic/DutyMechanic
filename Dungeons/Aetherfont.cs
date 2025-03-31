@@ -41,6 +41,9 @@ public class Aetherfont : AbstractDungeon
         EnemyAction.StickySpit,
     };
 
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
     private BattleCharacter Whirlwinds => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsTargetable);
 
