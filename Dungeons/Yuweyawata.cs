@@ -43,8 +43,10 @@ public class YuweyawataFieldStation : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.BoulderDance, };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {
         { ClassJobType.Warrior, 43 }, // Holmgang

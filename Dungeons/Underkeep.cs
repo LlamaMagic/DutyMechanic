@@ -16,6 +16,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using DutyMechanic.Extensions;
+using System;
+using System.Windows.Forms.VisualStyles;
 
 namespace DutyMechanic.Dungeons;
 
@@ -24,8 +26,8 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Underkeep : AbstractDungeon
 {
-    private readonly Stopwatch BeastlyRoarTimer = new();
-    private static readonly int BeastlyRoarDuration = 30_000;
+    private readonly Stopwatch CoordinateMarcTimer = new();
+    private static readonly int CoordinateMarcDuration = 23_000;
 
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
@@ -58,6 +60,36 @@ public class Underkeep : AbstractDungeon
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
 
+        // Boss 2: Ordered Fire
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ReceivingRoom,
+            objectSelector: (bc) => bc.CastingSpellId is EnemyAction.OrderedFire,
+            leashPointProducer: () => ArenaCenter.SoldierS0,
+            leashRadius: 40.0f,
+            rotationDegrees: 0.0f,
+            radius: 40.0f,
+            arcDegrees: 5.0f);
+
+        // Boss 3: Concurrent Field
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChamberofPatience,
+            objectSelector: (bc) => bc.CastingSpellId is EnemyAction.ConcurrentField,
+            leashPointProducer: () => ArenaCenter.ValiaPira,
+            leashRadius: 40.0f,
+            rotationDegrees: 0.0f,
+            radius: 40.0f,
+            arcDegrees: 45.0f);
+
+        // Boss 3: Electric Field
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChamberofPatience,
+            objectSelector: (bc) => bc.CastingSpellId is EnemyAction.ElectricField,
+            leashPointProducer: () => ArenaCenter.ValiaPira,
+            leashRadius: 40.0f,
+            rotationDegrees: 0.0f,
+            radius: 40.0f,
+            arcDegrees: 45.0f);
+
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SedimentFunnel,
@@ -68,7 +100,7 @@ public class Underkeep : AbstractDungeon
 
         AvoidanceHelpers.AddAvoidSquareDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ReceivingRoom,
-            innerWidth: 39.0f,
+            innerWidth: 37.0f,
             innerHeight: 29.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
@@ -129,6 +161,25 @@ public class Underkeep : AbstractDungeon
     /// </summary>
     private async Task<bool> ValiaPira()
     {
+        if (EnemyAction.CoordinateMarchHash.IsCasting() || CoordinateMarcTimer.IsRunning)
+        {
+            if (!CoordinateMarcTimer.IsRunning)
+            {
+                CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, CoordinateMarcDuration, "Coordinate March Avoid");
+                CoordinateMarcTimer.Start();
+            }
+
+            if (CoordinateMarcTimer.ElapsedMilliseconds < CoordinateMarcDuration)
+            {
+                await MovementHelpers.GetClosestMelee.FollowTimed(CoordinateMarcTimer, CoordinateMarcDuration, 0.5f, useMesh: true);
+            }
+
+            if (CoordinateMarcTimer.ElapsedMilliseconds >= CoordinateMarcDuration)
+            {
+                CoordinateMarcTimer.Reset();
+            }
+        }
+
         return false;
     }
 
@@ -149,6 +200,17 @@ public class Underkeep : AbstractDungeon
         /// Final Boss: Valia Pira.
         /// </summary>
         public const uint ValiaPira = 13749;
+
+        /// <summary>
+        /// Final Boss: Coordinate Bit.
+        /// </summary>
+        public const uint CoordinateBit = 13965;
+
+        /// <summary>
+        /// Final Boss: Coordinate Turret.
+        /// When <see cref="EnemyNpc.CoordinateBit"/> come into contact with Explody Orb it causes an AoE explosion
+        /// </summary>
+        public const uint CoordinateTurret = 13751;
     }
 
     private static class ArenaCenter
@@ -202,6 +264,13 @@ public class Underkeep : AbstractDungeon
         public const uint ElectricExcess = 43139;
 
         /// <summary>
+        /// Soldier S0
+        /// Ordered Fire
+        /// Small AoE cone on target
+        /// </summary>
+        public const uint OrderedFire = 42573;
+
+        /// <summary>
         /// Valia Pira
         /// Hypercharged Light
         /// Spread
@@ -214,6 +283,29 @@ public class Underkeep : AbstractDungeon
         /// Stack
         /// </summary>
         public const uint DeterrentPulse = 42540;
+
+        /// <summary>
+        /// Valia Pira
+        /// Concurrent Field
+        /// Small cone avoid
+        /// </summary>
+        public const uint ConcurrentField = 42521;
+
+        /// <summary>
+        /// Valia Pira
+        /// Electric Field
+        /// Small cone avoid
+        /// </summary>
+        public const uint ElectricField = 42519;
+
+        /// <summary>
+        /// Valia Pira
+        /// Coordinate March
+        /// Starts the orbs moving
+        /// </summary>
+        public const uint CoordinateMarch = 42513;
+        public static readonly HashSet<uint> CoordinateMarchHash = new() { 42513 };
+
     }
 
     private static class PlayerAura
