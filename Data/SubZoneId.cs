@@ -895,7 +895,7 @@ public enum SubZoneId : uint
     /// <summary>
     /// Lv. 100: Underkeep > Sediment Funnel, Gargant
     /// </summary>
-    SedimentFunnel = 5130,
+    SedimentFunnel = 5170,
 
     /// <summary>
     /// Lv. 100: Underkeep > Receiving Room, Soldier S0
