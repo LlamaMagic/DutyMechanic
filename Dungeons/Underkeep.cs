@@ -49,11 +49,12 @@ public class Underkeep : AbstractDungeon
         AvoidanceManager.AvoidInfos.Clear();
 
         // Boss 1: Sedimentary Debris
+        // Boss 1: Foundational Debris
         // Boss 2: Electric Excess
         // Boss 3: Hypercharged Light
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is (uint)SubZoneId.SedimentFunnel or (uint)SubZoneId.ReceivingRoom or (uint)SubZoneId.ChamberofPatience,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.SedimentaryDebris or EnemyAction.ElectricExcess or EnemyAction.HyperchargedLight && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
+            objectSelector: bc => bc.CastingSpellId is EnemyAction.SedimentaryDebris or EnemyAction.FoundationalDebris or EnemyAction.ElectricExcess or EnemyAction.HyperchargedLight && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
 
@@ -62,7 +63,7 @@ public class Underkeep : AbstractDungeon
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SedimentFunnel,
             () => ArenaCenter.Gargant,
             outerRadius: 90.0f,
-            innerRadius: 10.0f,
+            innerRadius: 14.2f,
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -76,8 +77,8 @@ public class Underkeep : AbstractDungeon
 
         AvoidanceHelpers.AddAvoidSquareDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChamberofPatience,
-            innerWidth: 39.0f,
-            innerHeight: 29.0f,
+            innerWidth: 35.0f,
+            innerHeight: 35.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
             collectionProducer: () => new[] { ArenaCenter.ValiaPira },
@@ -176,6 +177,13 @@ public class Underkeep : AbstractDungeon
         /// Spread
         /// </summary>
         public const uint SedimentaryDebris = 43160;
+
+        /// <summary>
+        /// Gargant
+        /// Foundational Debris
+        /// Spread
+        /// </summary>
+        public const uint FoundationalDebris = 43161;
 
         /// <summary>
         /// Soldier S0
