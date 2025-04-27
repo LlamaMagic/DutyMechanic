@@ -32,6 +32,7 @@ internal class DungeonManager
             { ZoneId.TheBowlOfEmbers, typeof(BowlOfEmbers) },
             { ZoneId.Halatali, typeof(Halatali) },
             { ZoneId.Halatali7_1, typeof(Halatali7_1) },
+            { ZoneId.SunkenTempleofQarn, typeof(SunkenTemplofQarn) },
             { ZoneId.DzemaelDarkhold, typeof(DzemaelDarkhold) },
             { ZoneId.TheThousandMawsOfTotoRak, typeof(ThousandMawsOfTotoRak) },
             { ZoneId.HaukkeManor, typeof(HaukkeManor) },

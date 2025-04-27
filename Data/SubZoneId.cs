@@ -62,6 +62,21 @@ public enum SubZoneId : uint
     LongstopFrontblock = 689,
 
     /// <summary>
+    /// Lv. 35: The Sunken Temple of Qarn > The Oratory of Tatamefu II, Teratotaur
+    /// </summary>
+    TheOratoryofTatamefuII = 815,
+
+    /// <summary>
+    /// Lv. 35: The Sunken Temple of Qarn > The Adytum of Lalafuto IV, Temple Guardian
+    /// </summary>
+    TheAdytumofLalafutoIV = 817,
+
+    /// <summary>
+    /// Lv. 35: The Sunken Temple of Qarn > The Cameral Chamber, Adjudicator
+    /// </summary>
+    TheCameralChamber = 825,
+
+    /// <summary>
     /// Lv. 41: The Stone Vigil > The Barbican, Chudo-Yudo
     /// </summary>
     TheBarbican = 877,

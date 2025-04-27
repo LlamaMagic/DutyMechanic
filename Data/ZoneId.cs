@@ -72,6 +72,11 @@ public enum ZoneId : ushort
     TheNavel = 1046,
 
     /// <summary>
+    /// Lv. 35: The Sunken Temple of Qarn
+    /// </summary>
+    SunkenTempleofQarn = 1267,
+
+    /// <summary>
     /// Lv. 41: The Stone Vigil
     /// </summary>
     TheStoneVigil = 1042,
