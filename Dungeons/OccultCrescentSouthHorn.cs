@@ -60,7 +60,7 @@ public class SouthHorn : AbstractDungeon
     {
         13935, // Crescent Harpuia
         13923, // Crescent Geshunpest
-        // 12345, // Example Name
+        13924, // Crescent Armor
         // 67890, // Another Enemy
     };
 
