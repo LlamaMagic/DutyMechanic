@@ -1,6 +1,7 @@
 ﻿using DutyMechanic.Data;
 using DutyMechanic.Dungeons;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot.Managers;
 using System;
 using System.Collections.Generic;
@@ -118,7 +119,6 @@ internal class DungeonManager
 
             // 7.0 - Dawntrail
             { ZoneId.AFatherFirst, typeof(FatherFirst) },
-
             { ZoneId.Ihuykatumu, typeof(Ihuykatumu) },
             { ZoneId.WorqorZormor, typeof(WorqorZormor) },
             { ZoneId.WorqorLarDor, typeof(WorqorLarDor) },
@@ -128,6 +128,7 @@ internal class DungeonManager
             { ZoneId.Everkeep, typeof(Everkeep) },
             { ZoneId.Alexandria, typeof(Alexandria) },
             { ZoneId.YuweyawataFieldStation, typeof(YuweyawataFieldStation) },
+            { ZoneId.SouthHorn, typeof(SouthHorn) },
             { ZoneId.Underkeep, typeof(Underkeep) },
         };
     }

@@ -123,7 +123,7 @@ public class DutyMechanicPlugin : BotPlugin
 
     private bool CanTrust()
     {
-        if (LoadingHelpers.IsInInstance || WorldManager.ZoneId == (uint)ZoneId.UltimaThule)
+        if (LoadingHelpers.IsInInstance || WorldManager.ZoneId is (ushort)ZoneId.UltimaThule or (ushort)ZoneId.SouthHorn)
         {
             return true;
         }

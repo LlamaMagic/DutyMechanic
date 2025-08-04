@@ -462,6 +462,11 @@ public enum ZoneId : ushort
     YuweyawataFieldStation = 1242,
 
     /// <summary>
+    /// Occult Crescent: South Horn
+    /// </summary>
+    SouthHorn = 1252,
+
+    /// <summary>
     /// Lv. 100: Underkeep
     /// </summary>
     Underkeep = 1266,
