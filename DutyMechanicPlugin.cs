@@ -42,7 +42,7 @@ public class DutyMechanicPlugin : BotPlugin
 
     /// <inheritdoc/>
     /// Using Major/Minor as Current Global Game version, Build = date.
-    public override Version Version => new(7, 15, 02182025);
+    public override Version Version => new(7, 2, 08042025);
 
     /// <inheritdoc/>
     public override bool WantButton => false;
