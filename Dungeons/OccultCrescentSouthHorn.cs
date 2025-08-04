@@ -389,7 +389,7 @@ public class SouthHorn : AbstractDungeon
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
             objectSelector: bc => soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel > Core.Me.ElementalLevel + 1 && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
-            radiusProducer: bc => 10.0f,
+            radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.Low));
 
 
