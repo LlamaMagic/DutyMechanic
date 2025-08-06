@@ -265,6 +265,11 @@ public enum PartyMemberId : uint
     Krile = 4846,
 
     /// <summary>
+    /// Sphene
+    /// </summary>
+    Sphene = 13160,
+
+    /// <summary>
     /// Krile
     /// </summary>
     KrilesAvatar = 13522,

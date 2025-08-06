@@ -62,6 +62,7 @@ internal static class PartyMembers
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
         PartyMemberId.Krile,
+        PartyMemberId.Sphene,
     };
 
     /// <summary>
@@ -105,6 +106,7 @@ internal static class PartyMembers
         PartyMemberId.ResistancePikedancer,
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
+        PartyMemberId.Sphene,
     };
 
     /// <summary>
@@ -183,5 +185,6 @@ internal static class PartyMembers
         PartyMemberId.MolYouth,
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
+        PartyMemberId.Sphene,
     };
 }
