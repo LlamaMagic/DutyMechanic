@@ -922,5 +922,20 @@ public enum SubZoneId : uint
     /// </summary>
     ChamberofPatience = 5174,
 
+    /// <summary>
+    /// Lv. 100: The Meso Terminal > Triage Module, Chirurgeon General
+    /// </summary>
+    TriageModule = 5270,
+
+    /// <summary>
+    /// Lv. 100: The Meso Terminal > Public Forum, Hooded Headsmen
+    /// </summary>
+    PublicForum = 5271,
+
+    /// <summary>
+    /// Lv. 100: The Meso Terminal > Non-volatile Memory, Immortal Remains
+    /// </summary>
+    NonvolatileMemory = 5272,
+
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

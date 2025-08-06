@@ -471,5 +471,10 @@ public enum ZoneId : ushort
     /// </summary>
     Underkeep = 1266,
 
+    /// <summary>
+    /// Lv. 100: The Meso Terminal
+    /// </summary>
+    MesoTerminal = 1292,
+
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

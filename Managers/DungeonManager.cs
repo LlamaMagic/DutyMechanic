@@ -130,6 +130,7 @@ internal class DungeonManager
             { ZoneId.YuweyawataFieldStation, typeof(YuweyawataFieldStation) },
             { ZoneId.SouthHorn, typeof(SouthHorn) },
             { ZoneId.Underkeep, typeof(Underkeep) },
+            { ZoneId.MesoTerminal, typeof(MesoTerminal) },
         };
     }
 
