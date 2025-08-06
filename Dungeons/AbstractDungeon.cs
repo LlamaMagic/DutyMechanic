@@ -18,16 +18,16 @@ namespace DutyMechanic.Dungeons;
 public abstract class AbstractDungeon
 {
     /// <summary>
+    /// Spell IDs for Reprisal and Rampart.
+    /// </summary>
+    private readonly uint reprisal = 7535;
+
+    private readonly uint rampart = 7531;
+
+    /// <summary>
     /// Gets zone ID for this dungeon.
     /// </summary>
     public abstract ZoneId ZoneId { get; }
-
-    /// <summary>
-    /// Spell IDs for Reprisal and Rampart.
-    /// </summary>
-    private static uint reprisal = 7535;
-
-    private static uint rampart = 7531;
 
     /// <summary>
     /// Gets <see cref="DungeonId"/> for this dungeon.
