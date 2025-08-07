@@ -395,5 +395,10 @@ public enum DungeonId : uint
     /// Lv. 100: The Meso Terminal
     /// </summary>
     MesoTerminal = 1028,
+
+    /// <summary>
+    /// Lv. 100: The Ageless Necropolis
+    /// </summary>
+    AgelessNecropolis = 1061,
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

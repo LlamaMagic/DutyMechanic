@@ -131,6 +131,7 @@ internal class DungeonManager
             { ZoneId.SouthHorn, typeof(SouthHorn) },
             { ZoneId.Underkeep, typeof(Underkeep) },
             { ZoneId.MesoTerminal, typeof(MesoTerminal) },
+            { ZoneId.AgelessNecropolis, typeof(AgelessNecropolis) },
         };
     }
 

@@ -476,5 +476,10 @@ public enum ZoneId : ushort
     /// </summary>
     MesoTerminal = 1292,
 
+    /// <summary>
+    /// Lv. 100: The Ageless Necropolis
+    /// </summary>
+    AgelessNecropolis = 1295,
+
 #pragma warning restore SA1629 // Documentation text should end with a period
 }
