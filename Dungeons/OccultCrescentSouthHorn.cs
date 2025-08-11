@@ -317,6 +317,15 @@ public class SouthHorn : AbstractDungeon
             radiusProducer: bc => 20.0f,
             priority: AvoidancePriority.High));
 
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => WorldManager.ZoneId == (uint)ZoneId.SouthHorn && CurrentFateId == FateIds.FatalAllure,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.Mini,
+            leashPointProducer: () => ArenaCenter.APryingEye,
+            leashRadius: 40.0f,
+            rotationDegrees: 0.0f,
+            radius: 20.0f,
+            arcDegrees: 180f);
+
         // Serving Darkness (Fate ID: 1972)
         // Arena Boundary
         AvoidanceHelpers.AddAvoidDonut(
@@ -371,7 +380,7 @@ public class SouthHorn : AbstractDungeon
         // The cirlce is to prevent from traveling too close to the head and still agroing.
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
             canRun: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel > Core.Me.ElementalLevel + 1 && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             leashPointProducer: () => Core.Player.Location,
             leashRadius: 40.0f,
             rotationDegrees: 0.0f,
@@ -381,14 +390,14 @@ public class SouthHorn : AbstractDungeon
 
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel > Core.Me.ElementalLevel + 1 && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             radiusProducer: bc => 3.0f,
             priority: AvoidancePriority.Low));
 
         // Make a large Circular avoid for sound detecting mobs
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel > Core.Me.ElementalLevel + 1 && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.Low));
 
@@ -874,6 +883,14 @@ public class SouthHorn : AbstractDungeon
         /// Self-targeted AoE
         /// </summary>
         public const uint VoidFireIII = 43049;
+
+        /// <summary>
+        /// Fate 1971: Fatal Allure
+        /// Execrator
+        /// Mini
+        /// Self-targeted AoE
+        /// </summary>
+        public const uint Mini = 43046;
 
         /// <summary>
         /// Fate 1971: Serving Darkness
