@@ -391,7 +391,7 @@ public class SouthHorn : AbstractDungeon
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
             objectSelector: bc => !bc.InCombat && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
-            radiusProducer: bc => 3.0f,
+            radiusProducer: bc => 1.5f,
             priority: AvoidancePriority.Low));
 
         // Make a large Circular avoid for sound detecting mobs
