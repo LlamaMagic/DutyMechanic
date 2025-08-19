@@ -88,9 +88,9 @@ public class SouthHorn : AbstractDungeon
         // Rough Waters (Fate ID: 1962) > Nammu > Tideline
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
             canRun: () => WorldManager.ZoneId == (uint)ZoneId.SouthHorn && CurrentFateId == FateIds.RoughWaters,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.Tideline or EnemyAction.Tideline2,
+            objectSelector: bc => bc.CastingSpellId is EnemyAction.Tideline or EnemyAction.Tideline2 && bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds > 100,
             width: 12f,
-            length: 55f,
+            length: 60f,
             xOffset: 0f,
             yOffset: -25f,
             priority: AvoidancePriority.High);
@@ -380,7 +380,7 @@ public class SouthHorn : AbstractDungeon
         // The cirlce is to prevent from traveling too close to the head and still agroing.
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
             canRun: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => !bc.InCombat && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && !bc.IsFate && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             leashPointProducer: () => Core.Player.Location,
             leashRadius: 40.0f,
             rotationDegrees: 0.0f,
@@ -390,14 +390,14 @@ public class SouthHorn : AbstractDungeon
 
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => !bc.InCombat && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && !bc.IsFate && !soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             radiusProducer: bc => 1.5f,
             priority: AvoidancePriority.Low));
 
         // Make a large Circular avoid for sound detecting mobs
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == 1252 && !FateManager.WithinFate,
-            objectSelector: bc => !bc.InCombat && soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
+            objectSelector: bc => !bc.InCombat && !bc.IsFate && soundDetectingEnemyIds.Contains(bc.NpcId) && bc.ElementalLevel >= Core.Me.ElementalLevel && bc.IsVisible && !FateManager.ActiveFates.Any(r => r.Location.Distance2D(bc.Location) <= r.Radius) && bc.CanAttack && Core.Me.Distance(bc.Location) < 50,
             radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.Low));
 
