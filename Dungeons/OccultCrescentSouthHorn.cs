@@ -154,7 +154,7 @@ public class SouthHorn : AbstractDungeon
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => WorldManager.ZoneId == (uint)ZoneId.SouthHorn && CurrentFateId == FateIds.KingOfTheCrescent,
             objectSelector: bc => bc.NpcId == EnemyNpc.GaleSphere && bc.IsVisible,
-            radiusProducer: bc => 9.0f,
+            radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.High));
 
         // The Winged Terror (Fate ID: 1965)
