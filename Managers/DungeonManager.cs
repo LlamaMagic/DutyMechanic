@@ -99,6 +99,9 @@ internal class DungeonManager
             { ZoneId.TheHeroesGauntlet, typeof(HeroesGauntlet) },
             { ZoneId.MatoyasRelict, typeof(MatoyasRelict) },
             { ZoneId.Paglthan, typeof(Paglthan) },
+            { ZoneId.EurekaAnemos, typeof(EurekaAnemos) },
+            { ZoneId.EurekaPagos, typeof(EurekaPagos) },
+            { ZoneId.EurekaPyros, typeof(EurekaPyros) },
 
             // 6.0 - Endwalker
             { ZoneId.TheTowerOfZot, typeof(TowerOfZot) },

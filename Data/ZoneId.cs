@@ -267,6 +267,21 @@ public enum ZoneId : ushort
     TheRoyalMenagerie = 679,
 
     /// <summary>
+    /// Lv. 70: Eureka Anemos
+    /// </summary>
+    EurekaAnemos = 732,
+
+    /// <summary>
+    /// Lv. 70: Eureka Pagos
+    /// </summary>
+    EurekaPyros = 795,
+
+    /// <summary>
+    /// Lv. 70: Eureka Pyros
+    /// </summary>
+    EurekaPagos = 763,
+
+    /// <summary>
     /// Lv. 70.1: Ala Mhigo
     /// </summary>
     AlaMhigo = 1146,
