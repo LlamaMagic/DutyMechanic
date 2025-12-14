@@ -24,9 +24,6 @@ public class AlexanderA1FistoftheFather : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AlexanderA1FistoftheFather;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AlexanderA1FistoftheFather;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

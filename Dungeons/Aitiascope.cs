@@ -85,9 +85,6 @@ public class Aitiascope : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAitiascope;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheAitiascope;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         25234,

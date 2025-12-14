@@ -47,9 +47,6 @@ public class Snowcloak : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Snowcloak;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Snowcloak;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 29586, 29599 };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

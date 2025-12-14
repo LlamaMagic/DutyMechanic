@@ -27,10 +27,6 @@ public class Vanguard : AbstractDungeon
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Vanguard;
 
-    /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Vanguard;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.HeavyBlastCannon, EnemyAction.HomingCannon };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

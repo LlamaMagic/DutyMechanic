@@ -24,9 +24,6 @@ public class AlexanderA2CuffoftheFather : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AlexanderA2CuffoftheFather;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AlexanderA2CuffoftheFather;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

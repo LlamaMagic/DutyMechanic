@@ -23,9 +23,6 @@ public class Halatali7_1 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Halatali7_1;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Fireflow, EnemyAction.Fireflow2, EnemyAction.HydroelectricShock };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

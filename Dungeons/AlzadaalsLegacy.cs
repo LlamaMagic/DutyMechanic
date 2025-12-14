@@ -53,9 +53,6 @@ public class AlzadaalsLegacy : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AlzadaalsLegacy;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AlzadaalsLegacy;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new();
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

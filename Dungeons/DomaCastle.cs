@@ -23,9 +23,6 @@ public class DomaCastle : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.DomaCastle;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.DomaCastle;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekMissiles };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

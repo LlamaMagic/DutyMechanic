@@ -31,9 +31,6 @@ public class HellsLid : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.HellsLid;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         11541,

@@ -38,9 +38,6 @@ public class Underkeep : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Underkeep;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Underkeep;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.DeterrentPulse };
 
     /// <inheritdoc/>

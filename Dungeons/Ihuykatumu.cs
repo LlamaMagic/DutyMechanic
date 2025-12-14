@@ -33,9 +33,6 @@ public class Ihuykatumu : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Ihuykatumu;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Ihuykatumu;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         /*

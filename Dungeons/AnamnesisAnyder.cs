@@ -81,9 +81,6 @@ public class AnamnesisAnyder : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AnamnesisAnyder;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AnamnesisAnyder;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         19293,

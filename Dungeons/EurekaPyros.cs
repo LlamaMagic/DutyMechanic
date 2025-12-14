@@ -33,9 +33,6 @@ public class EurekaPyros : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.EurekaPyros;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
 
     /// <inheritdoc/>

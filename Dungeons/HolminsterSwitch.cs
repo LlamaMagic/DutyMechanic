@@ -62,9 +62,6 @@ public class HolminsterSwitch : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.HolminsterSwitch;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.HolminsterSwitch;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         15602, 15609, 15814, 15815, 15816, 15817, 15818, 15819, 15820, 15822, 15843, 15845, 15846, 15847, 15848, 15849,

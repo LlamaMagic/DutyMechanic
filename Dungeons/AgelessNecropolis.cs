@@ -30,9 +30,6 @@ public class AgelessNecropolis : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AgelessNecropolis;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AgelessNecropolis;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
 
     /// <inheritdoc/>

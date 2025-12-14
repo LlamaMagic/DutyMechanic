@@ -32,9 +32,6 @@ public class Alexandria : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Alexandria;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Alexandria;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Superbolt, EnemyAction.Overexposure, EnemyAction.LightofDevotion };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

@@ -21,9 +21,6 @@ public class GhimlytDark : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheGhimlytDark;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheGhimlytDark;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekRay, EnemyAction.OilShower, EnemyAction.theOrder, EnemyAction.InvisibleSpell };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

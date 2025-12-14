@@ -40,9 +40,6 @@ public class StoneVigil : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheStoneVigil;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheStoneVigil;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

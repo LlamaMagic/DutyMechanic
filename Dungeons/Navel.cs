@@ -25,9 +25,6 @@ public class Navel : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheNavel;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheNavel;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

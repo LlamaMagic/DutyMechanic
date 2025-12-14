@@ -20,9 +20,6 @@ public class Xelphatol : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Xelphatol;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Xelphatol;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ingurgitate,EnemyAction.OnHigh,EnemyAction.HotBlast };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

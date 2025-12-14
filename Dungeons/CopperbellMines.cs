@@ -13,12 +13,11 @@ public class CopperbellMines : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CopperbellMines;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.CopperbellMines;
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

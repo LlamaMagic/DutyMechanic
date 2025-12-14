@@ -21,9 +21,6 @@ public class SohrKai : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SohrKai;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.SohrKai;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
         new() {EnemyAction.Gallop, EnemyAction.AkhMorn, EnemyAction.FrigidDive};
     /// <inheritdoc/>

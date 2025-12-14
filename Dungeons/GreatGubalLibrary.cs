@@ -20,9 +20,6 @@ public class GreatGubalLibrary : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheGreatGubalLibrary;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheGreatGubalLibrary;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Disclosure };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

@@ -13,9 +13,6 @@ public class MatoyasRelict : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MatoyasRelict;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.MatoyasRelict;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

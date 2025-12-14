@@ -20,9 +20,6 @@ public class WanderersPalace : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheWanderersPalace;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

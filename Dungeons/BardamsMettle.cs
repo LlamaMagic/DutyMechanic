@@ -24,9 +24,6 @@ public class BardamsMettle : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.BardamsMettle;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.BardamsMettle;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

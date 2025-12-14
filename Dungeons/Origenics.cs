@@ -36,9 +36,6 @@ public class Origenics : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Origenics;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Origenics;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.CollectiveAgony };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

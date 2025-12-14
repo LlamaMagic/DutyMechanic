@@ -28,9 +28,6 @@ public class ThousandMawsOfTotoRak : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheThousandMawsOfTotoRak;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheThousandMawsOfTotoRak;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

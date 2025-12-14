@@ -56,9 +56,6 @@ public class MtGulg : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MtGulg;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.MtGulg;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         15614, 15615, 15616, 15617, 15618, 15622, 15623, 15638, 15640, 15641, 15642, 15643, 15644, 15645, 15648, 15649,

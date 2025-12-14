@@ -31,9 +31,6 @@ public class Burn : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheBurn;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheBurn;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

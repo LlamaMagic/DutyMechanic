@@ -70,9 +70,6 @@ public class DohnMheg : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.DohnMheg;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.DohnMheg;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         13547, 13952,

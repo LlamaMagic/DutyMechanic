@@ -24,9 +24,6 @@ public class TheRoyalMenagerie : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheRoyalMenagerie;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheRoyalMenagerie;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

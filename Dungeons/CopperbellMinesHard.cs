@@ -40,9 +40,6 @@ public class CopperbellMinesHard : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheCopperbellMinesHard;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

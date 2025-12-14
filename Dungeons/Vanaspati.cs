@@ -97,9 +97,6 @@ public class Vanaspati : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Vanaspati;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Vanaspati;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

@@ -29,8 +29,6 @@ public class LunarSubterrane : AbstractDungeon
 
     public override ZoneId ZoneId => Data.ZoneId.TheLunarSubterrane;
 
-    public override DungeonId DungeonId => DungeonId.TheLunarSubterrane;
-
     private static readonly int AntlionMarchDuration = 20_500;
 
     private DateTime AntlionMarchEnds = DateTime.MinValue;

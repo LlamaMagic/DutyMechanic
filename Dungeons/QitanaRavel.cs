@@ -27,9 +27,6 @@ public class QitanaRavel : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheQitanaRavel;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheQitanaRavel;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WrathoftheRonka, EnemyAction.ConfessionofFaith, EnemyAction.HeavingBreath };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

@@ -29,9 +29,6 @@ public class SkydeepCenote : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SkydeepCenote;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.SkydeepCenote;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.RollingCurrent, EnemyAction.RollingCurrent2, EnemyAction.Burst, EnemyAction.DeepThunder };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

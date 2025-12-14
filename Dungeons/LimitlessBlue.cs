@@ -24,9 +24,6 @@ public class LimitlessBlue : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.LimitlessBlue;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.LimitlessBlue;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

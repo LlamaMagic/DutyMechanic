@@ -94,9 +94,6 @@ public class FellCourtOfTroia : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheFellCourtOfTroia;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheFellCourtOfTroia;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 30024, 30025, 30243, 30253, 30254, 31208 };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

@@ -24,9 +24,6 @@ public class ContainmentBayZ1T9 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.ContainmentBayZ1T9;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.ContainmentBayZ1T9;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

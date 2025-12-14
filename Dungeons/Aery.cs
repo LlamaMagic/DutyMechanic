@@ -63,9 +63,6 @@ public class Aery : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAery;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheAery;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.HorridBlaze };
 
     /// <inheritdoc/>

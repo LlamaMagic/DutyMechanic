@@ -22,9 +22,6 @@ public class LapisManalis : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.LapisManalis;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.LapisManalis;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         EnemyAction.RoarOfAlbion,

@@ -21,9 +21,6 @@ public class Mothercrystal : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheMothercrystal;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheMothercrystal;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

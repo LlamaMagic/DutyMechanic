@@ -13,9 +13,6 @@ public class Sastasha : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Sastaha;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Sastasha;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

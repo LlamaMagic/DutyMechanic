@@ -30,9 +30,6 @@ public class Emanation : AbstractDungeon
     private BattleCharacter VrilTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(obj => obj.IsVisible && obj.NpcId == EnemyNpc.Vril).FirstOrDefault();
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Emanation;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

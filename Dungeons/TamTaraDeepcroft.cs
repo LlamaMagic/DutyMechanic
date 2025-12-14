@@ -13,9 +13,6 @@ public class TamTaraDeepcroft : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheTamTaraDeepcroft;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheTamTaraDeepcroft;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

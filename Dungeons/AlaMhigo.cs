@@ -25,9 +25,6 @@ public class AlaMhigo : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AlaMhigo;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.AlaMhigo;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

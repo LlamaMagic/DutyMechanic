@@ -40,9 +40,6 @@ public class MesoTerminal : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MesoTerminal;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.MesoTerminal;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         EnemyAction.MemoryOfTheStorm,

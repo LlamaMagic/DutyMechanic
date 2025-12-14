@@ -35,9 +35,6 @@ public class SunkenTemplofQarn : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SunkenTempleofQarn;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.SunkenTempleofQarn;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
 
     /// <inheritdoc/>

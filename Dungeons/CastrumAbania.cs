@@ -20,9 +20,6 @@ public class CastrumAbania : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CastrumAbania;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.CastrumAbania;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.FireII,EnemyAction.RahuComet,EnemyAction.RahuComet2 };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

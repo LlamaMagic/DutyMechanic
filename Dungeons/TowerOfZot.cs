@@ -94,9 +94,6 @@ public class TowerOfZot : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheTowerOfZot;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheTowerOfZot;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         25234, 25233, 25250, 24145,

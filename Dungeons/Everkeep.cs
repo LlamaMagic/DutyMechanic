@@ -34,9 +34,6 @@ public class Everkeep : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Everkeep;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Everkeep;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

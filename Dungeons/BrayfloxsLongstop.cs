@@ -23,9 +23,6 @@ public class BrayfloxsLongstop : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.BrayfloxsLongstop;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.BrayfloxsLongstop;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

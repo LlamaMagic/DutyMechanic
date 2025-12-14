@@ -25,9 +25,6 @@ public class Aetherfont : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAetherfont;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheAetherfont;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         EnemyAction.ExplosiveFrequency,

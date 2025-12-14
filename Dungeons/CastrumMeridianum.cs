@@ -46,9 +46,6 @@ public class CastrumMeridianum : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CastrumMeridianum;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.CastrumMeridianum;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         28778, 28779, 28786, 28791, 28793,

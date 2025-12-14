@@ -49,9 +49,6 @@ public class SohmAl : AbstractDungeon
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.SohmAl;
 
-    /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.NONE;
-
     /// <summary>
     /// Gets spell IDs to follow-dodge while any contained spell is casting.
     /// </summary>

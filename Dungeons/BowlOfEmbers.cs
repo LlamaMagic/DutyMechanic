@@ -24,9 +24,6 @@ public class BowlOfEmbers : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheBowlOfEmbers;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheBowlOfEmbers;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

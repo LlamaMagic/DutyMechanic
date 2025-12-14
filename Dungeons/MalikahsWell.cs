@@ -25,9 +25,6 @@ public class MalikahsWell : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MalikahsWell;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.MalikahsWell;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         EnemyAction.HeadToss,

@@ -23,9 +23,6 @@ public class DrownedCityOfSkalla : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheDrownedCityOfSkalla;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheDrownedCityOfSkalla;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

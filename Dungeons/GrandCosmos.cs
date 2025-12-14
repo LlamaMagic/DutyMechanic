@@ -13,9 +13,6 @@ public class GrandCosmos : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheGrandCosmos;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheGrandCosmos;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

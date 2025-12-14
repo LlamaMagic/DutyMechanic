@@ -27,9 +27,6 @@ public class Antitower : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAntitower;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheAntitower;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

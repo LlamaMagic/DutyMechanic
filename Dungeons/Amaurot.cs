@@ -37,9 +37,6 @@ public class Amaurot : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Amaurot;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.Amaurot;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         532, 1837, 2794, 5445, 7931, 9076, 9338, 9490, 9493, 10256, 10257, 11573,

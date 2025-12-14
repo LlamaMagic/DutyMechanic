@@ -19,9 +19,6 @@ public class HeroesGauntlet : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheHeroesGauntlet;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheHeroesGauntlet;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WildRampage1, EnemyAction.WildRampage2 };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

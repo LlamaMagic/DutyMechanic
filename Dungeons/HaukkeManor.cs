@@ -18,9 +18,6 @@ public class HaukkeManor : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.HaukkeManor;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.HaukkeManor;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };

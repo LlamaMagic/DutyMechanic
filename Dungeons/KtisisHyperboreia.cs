@@ -111,9 +111,6 @@ public class KtisisHyperboreia : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.KtisisHyperboreia;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.KtisisHyperboreia;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
     {
         25234,

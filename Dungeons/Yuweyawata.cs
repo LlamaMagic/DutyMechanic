@@ -35,10 +35,6 @@ public class YuweyawataFieldStation : AbstractDungeon
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.YuweyawataFieldStation;
 
-    /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.YuweyawataFieldStation;
-
-
     private AvoidInfo craterAvoid = default;
 
     /// <inheritdoc/>

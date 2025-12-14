@@ -30,11 +30,6 @@ public abstract class AbstractDungeon
     public abstract ZoneId ZoneId { get; }
 
     /// <summary>
-    /// Gets <see cref="DungeonId"/> for this dungeon.
-    /// </summary>
-    public abstract DungeonId DungeonId { get; }
-
-    /// <summary>
     /// Gets a handle to signal the combat routine should not use certain features (e.g., prevent CR from moving).
     /// </summary>
     protected CapabilityManagerHandle CapabilityHandle { get; } = CapabilityManager.CreateNewHandle();

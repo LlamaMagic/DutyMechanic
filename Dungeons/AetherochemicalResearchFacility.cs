@@ -21,9 +21,6 @@ public class AetherochemicalResearchFacility : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAetherochemicalResearchFacility;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.TheAetherochemicalResearchFacility;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.EndofDays, EnemyAction.EntropicFlame };
 
     /// <inheritdoc/>

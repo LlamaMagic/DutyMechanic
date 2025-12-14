@@ -30,9 +30,6 @@ public class WorqorLarDor : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.WorqorLarDor;
 
     /// <inheritdoc/>
-    public override DungeonId DungeonId => DungeonId.WorqorLarDor;
-
-    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ruinfall, EnemyAction.ThunderousBreath, EnemyAction.NorthernCross, EnemyAction.FreezingDust };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
