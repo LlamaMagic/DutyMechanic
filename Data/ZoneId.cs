@@ -467,12 +467,12 @@ public enum ZoneId : ushort
     Everkeep = 1200,
 
     /// <summary>
-    /// Lv. 100: Alexandria
+    /// Lv. 100.1: Alexandria
     /// </summary>
     Alexandria = 1199,
 
     /// <summary>
-    /// Lv. 100: Yuweyawata Field Station
+    /// Lv. 100.2: Yuweyawata Field Station
     /// </summary>
     YuweyawataFieldStation = 1242,
 
@@ -482,19 +482,23 @@ public enum ZoneId : ushort
     SouthHorn = 1252,
 
     /// <summary>
-    /// Lv. 100: Underkeep
+    /// Lv. 100.3: Underkeep
     /// </summary>
     Underkeep = 1266,
 
     /// <summary>
-    /// Lv. 100: The Meso Terminal
+    /// Lv. 100.4: The Meso Terminal
     /// </summary>
     MesoTerminal = 1292,
 
     /// <summary>
-    /// Lv. 100: The Ageless Necropolis
+    /// Lv. 100.5: The Ageless Necropolis
     /// </summary>
     AgelessNecropolis = 1295,
 
+    /// <summary>
+    /// Lv. 100.6: Mistwake
+    /// </summary>
+    Mistwake = ushort.MaxValue, // TODO: Add Mistwake Zone ID
 #pragma warning restore SA1629 // Documentation text should end with a period
 }

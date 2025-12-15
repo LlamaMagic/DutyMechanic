@@ -135,6 +135,7 @@ internal class DungeonManager
             { ZoneId.Underkeep, typeof(Underkeep) },
             { ZoneId.MesoTerminal, typeof(MesoTerminal) },
             { ZoneId.AgelessNecropolis, typeof(AgelessNecropolis) },
+            { ZoneId.Mistwake, typeof(Mistwake) },
         };
     }
 
