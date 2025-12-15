@@ -1,19 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -25,18 +20,16 @@ public class Everkeep : AbstractDungeon
     private readonly Stopwatch DawnofanAgeTimer = new();
     private static readonly int DawnofanAgeDuration = 180_000;
 
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Everkeep;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -185,7 +178,7 @@ public class Everkeep : AbstractDungeon
     private static class EnemyNpc
     {
         /// <summary>
-        /// Boss: Zoraal Ja .
+        /// Boss: Zoraal Ja.
         /// </summary>
         public const uint ZoraalJa = 12881;
 

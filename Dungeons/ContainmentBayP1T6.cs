@@ -1,6 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
@@ -9,9 +10,7 @@ using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -138,8 +137,6 @@ public class ContainmentBayP1T6 : AbstractDungeon
         public static readonly Vector3 EastSide = new(13.52379f, 0f, 0.09186649f);
     }
 
-
-
     private static class EnemyAction
     {
         /// <summary>
@@ -158,13 +155,13 @@ public class ContainmentBayP1T6 : AbstractDungeon
         /// Quasar
         /// Pulls to the west, so go east
         /// </summary>
-        public static readonly HashSet<uint> QuasarWest = new() {6510};
+        public static readonly HashSet<uint> QuasarWest = new() { 6510 };
 
         /// <summary>
         /// Quasar
         /// Pulls to the east, so go west
         /// </summary>
-        public static readonly HashSet<uint> QuasarEast = new() {6511};
+        public static readonly HashSet<uint> QuasarEast = new() { 6511 };
 
     }
 

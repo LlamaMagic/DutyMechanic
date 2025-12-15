@@ -1,5 +1,6 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -10,7 +11,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -34,8 +34,11 @@ public class MalikahsWell : AbstractDungeon
         EnemyAction.HereticsFork,
         EnemyAction.HereticsFork3,
     };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -113,7 +116,6 @@ public class MalikahsWell : AbstractDungeon
         return Task.FromResult(false);
     }
 
-
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -159,7 +161,7 @@ public class MalikahsWell : AbstractDungeon
                 Stopwatch swiftSpilleTimer = new();
                 swiftSpilleTimer.Restart();
 
-// Attach a wide code that moves with the boss to cause our character to stay behind the boss
+                // Attach a wide code that moves with the boss to cause our character to stay behind the boss
                 AvoidanceManager.AddAvoidUnitCone<GameObject>(
                     canRun: () =>
                         swiftSpilleTimer.IsRunning &&

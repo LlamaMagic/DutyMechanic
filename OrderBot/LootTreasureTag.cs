@@ -1,13 +1,13 @@
 ﻿using Buddy.Coroutines;
 using Clio.XmlEngine;
+using DutyMechanic.Logging;
+using DutyMechanic.Windows;
 using ff14bot.Behavior;
 using ff14bot.Managers;
 using ff14bot.Navigation;
 using ff14bot.Objects;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Logging;
-using DutyMechanic.Windows;
 
 namespace ff14bot.NeoProfiles.Tags;
 

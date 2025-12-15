@@ -5,14 +5,11 @@ using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -26,8 +23,11 @@ public class AlaMhigo : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -83,7 +83,6 @@ public class AlaMhigo : AbstractDungeon
     {
         await FollowDodgeSpells();
 
-
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
         bool result = false;
 
@@ -102,7 +101,6 @@ public class AlaMhigo : AbstractDungeon
 
         return false;
     }
-
 
     private async Task<bool> HandleMagitekScorpionAsync()
     {
@@ -164,7 +162,7 @@ public class AlaMhigo : AbstractDungeon
         public const uint EmptyVessel = 6666;
 
         /// <summary>
-        /// Final Boss: Zenos yae Galvus .
+        /// Final Boss: Zenos yae Galvus.
         /// </summary>
         public const uint ZenosyaeGalvus = 6039;
     }

@@ -10,7 +10,6 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
@@ -25,8 +24,11 @@ public class Paglthan : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.AkhMorn };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -123,7 +125,6 @@ public class Paglthan : AbstractDungeon
             }
         }
 
-
         if (WorldManager.SubZoneId == (uint)SubZoneId.ScalekinPen && Core.Player.InCombat)
         {
             var magitekCore = GameObjectManager.GetObjectsByNPCId<GameObject>(EnemyNpc.MagitekCore)
@@ -147,7 +148,6 @@ public class Paglthan : AbstractDungeon
             }
         }
 
-
         return false;
     }
 
@@ -164,25 +164,24 @@ public class Paglthan : AbstractDungeon
         public const uint LampPost = 108;
 
         /// <summary>
-        /// First Boss: Ball of Levin .
+        /// First Boss: Ball of Levin.
         /// </summary>
         public const uint BallofLevin1 = 10065;
 
         /// <summary>
-        /// First Boss: Supercharged Ball of Levin .
+        /// First Boss: Supercharged Ball of Levin.
         /// </summary>
         public const uint SuperchargedBallofLevin1 = 10066;
 
         /// <summary>
-        /// Second Boss: Magitek Core .
+        /// Second Boss: Magitek Core.
         /// </summary>
         public const uint MagitekCore = 10076;
 
         /// <summary>
-        /// Second Boss: Magitek Missile .
+        /// Second Boss: Magitek Missile.
         /// </summary>
         public const uint MagitekMissile = 10073;
-
 
         /// <summary>
         /// Third Boss: The Everliving Bibliotaph.

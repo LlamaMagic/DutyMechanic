@@ -1,6 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
@@ -11,7 +12,6 @@ using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -118,7 +118,7 @@ public class Emanation : AbstractDungeon
         public const uint DreamingKshatriya = 6386;
 
         /// <summary>
-        /// Vril .
+        /// Vril.
         /// </summary>
         public const uint Vril = 6690;
 
@@ -149,14 +149,14 @@ public class Emanation : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
-        /// <see cref="EnemyNpc.Lakshmi"/>'s the Pull of Light  .
+        /// <see cref="EnemyNpc.Lakshmi"/>'s the Pull of Light.
         /// Tank buster
         ///
         /// </summary>
         public const uint thePullofLight = 9362;
 
         /// <summary>
-        /// <see cref="EnemyNpc.Lakshmi"/>'s Hand of Beauty .
+        /// <see cref="EnemyNpc.Lakshmi"/>'s Hand of Beauty.
         ///
         ///
         /// </summary>

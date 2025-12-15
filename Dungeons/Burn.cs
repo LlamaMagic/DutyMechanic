@@ -2,6 +2,7 @@
 using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
@@ -13,7 +14,6 @@ using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -32,8 +32,11 @@ public class Burn : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -239,7 +242,6 @@ public class Burn : AbstractDungeon
             }
         }
 
-
         return false;
     }
 
@@ -286,7 +288,6 @@ public class Burn : AbstractDungeon
         /// Spread
         /// </summary>
         public static readonly HashSet<uint> Shardstrike = new() { 12693 };
-
 
         /// <summary>
         /// <see cref="EnemyNpc.Hedetet"/>'s Shardfall.

@@ -2,6 +2,7 @@
 using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
@@ -9,12 +10,10 @@ using ff14bot.Behavior;
 using ff14bot.Managers;
 using ff14bot.Navigation;
 using ff14bot.Objects;
-using ff14bot.Pathing;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -194,6 +193,6 @@ public class Antitower : AbstractDungeon
         /// Jittering Jounce
         /// When this spell casts he targets a party memeber that needs to hide behind a rock, since we can't tell who's targetting just hide
         /// </summary>
-        public static readonly HashSet<uint> JitteringJounce = new() {31833};
+        public static readonly HashSet<uint> JitteringJounce = new() { 31833 };
     }
 }

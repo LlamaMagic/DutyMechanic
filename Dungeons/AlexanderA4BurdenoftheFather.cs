@@ -1,17 +1,11 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
-using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -77,8 +71,6 @@ public class AlexanderA4BurdenoftheFather : AbstractDungeon
 
         public static readonly Vector3 SmallPlatform = new(1021f, 38f, 16f);
     }
-
-
 
     private static class EnemyAction
     {

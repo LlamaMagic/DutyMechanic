@@ -1,16 +1,13 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -27,9 +24,13 @@ public class Vanguard : AbstractDungeon
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Vanguard;
 
+    /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.HeavyBlastCannon, EnemyAction.HomingCannon };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -202,7 +203,7 @@ public class Vanguard : AbstractDungeon
         public const uint FulminousFence = 13563;
 
         /// <summary>
-        /// Final Boss: Zander the Snakeskinner .
+        /// Final Boss: Zander the Snakeskinner.
         /// </summary>
         public const uint ZandertheSnakeskinner = 12752;
     }
@@ -261,7 +262,6 @@ public class Vanguard : AbstractDungeon
         /// </summary>
         public static readonly HashSet<uint> AerialOffensive = new() { 36570 };
 
-
         /// <summary>
         /// Vanguard Commander R8
         /// Electrosurge
@@ -296,7 +296,6 @@ public class Vanguard : AbstractDungeon
         /// Boss turns around in circles and sprays electricity while bombs drop. Follow to dodge
         /// </summary>
         public static readonly HashSet<uint> Bombardment = new() { 39016 };
-
 
         /// <summary>
         /// Protector

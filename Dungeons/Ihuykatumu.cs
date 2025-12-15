@@ -1,18 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -22,7 +18,6 @@ namespace DutyMechanic.Dungeons;
 public class Ihuykatumu : AbstractDungeon
 {
     private const int BladeDuration = 7_000;
-
 
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
@@ -44,11 +39,14 @@ public class Ihuykatumu : AbstractDungeon
         EnemyAction.Bury5,
         */
     };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
     private static GameObject whirlWind => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -75,7 +73,6 @@ public class Ihuykatumu : AbstractDungeon
             outerRadius: 40.0f,
             innerRadius: 9.0F,
             priority: AvoidancePriority.Medium);
-
 
         // Boss 1: Hydrowave
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -279,7 +276,6 @@ public class Ihuykatumu : AbstractDungeon
         return false;
     }
 
-
     private static class EnemyNpc
     {
         /// <summary>
@@ -293,12 +289,12 @@ public class Ihuykatumu : AbstractDungeon
         public const uint Drowsie = 12716;
 
         /// <summary>
-        /// Final Boss: Apollyon .
+        /// Final Boss: Apollyon.
         /// </summary>
         public const uint Apollyon = 12711;
 
         /// <summary>
-        /// Final Boss: Apollyon .
+        /// Final Boss: Apollyon.
         /// Whirlwind ability
         /// </summary>
         public const uint Whirlwind = 12715;
@@ -498,14 +494,12 @@ public class Ihuykatumu : AbstractDungeon
         /// </summary>
         public static readonly HashSet<uint> Bladedance = new() { 17998 };
 
-
         /// <summary>
         /// Apollyon
         /// Wing of Lightning
         /// Follow NPC
         /// </summary>
         public static readonly HashSet<uint> WingofLightning = new() { 36351 };
-
 
         /// <summary>
         /// Apollyon

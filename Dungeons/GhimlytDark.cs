@@ -1,5 +1,6 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -8,7 +9,6 @@ using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -22,8 +22,11 @@ public class GhimlytDark : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekRay, EnemyAction.OilShower, EnemyAction.theOrder, EnemyAction.InvisibleSpell };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -71,7 +74,6 @@ public class GhimlytDark : AbstractDungeon
 
         return Task.FromResult(false);
     }
-
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
@@ -214,14 +216,14 @@ public class GhimlytDark : AbstractDungeon
         public const uint Bombardment = 14100;
 
         /// <summary>
-        /// <see cref="EnemyNpc.AnniaquoSoranus"/>'s Covering Fire .
+        /// <see cref="EnemyNpc.AnniaquoSoranus"/>'s Covering Fire.
         ///
         ///
         /// </summary>
         public const uint CoveringFire = 14108;
 
         /// <summary>
-        /// <see cref="EnemyNpc.AnniaquoSoranus"/>'s Covering Fire .
+        /// <see cref="EnemyNpc.AnniaquoSoranus"/>'s Covering Fire.
         ///
         ///
         /// </summary>
@@ -235,7 +237,7 @@ public class GhimlytDark : AbstractDungeon
     private static class EnemyAura
     {
         /// <summary>
-        /// <see cref="EnemyNpc.MistDragon"/>'s Transfiguration.
+        /// Transfiguration.
         ///
         /// When boss has this aura we don't want to try to hide behind him.
         /// </summary>

@@ -2,17 +2,12 @@
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Helpers;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
-using ff14bot.RemoteWindows;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Localization;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -188,12 +183,12 @@ public class Aetherfont : AbstractDungeon
         public const uint MammothTentacle = 12335;
 
         /// <summary>
-        /// Boss from 'The Game Is Afoot' quest: Giant Colibri .
+        /// Boss from 'The Game Is Afoot' quest: Giant Colibri.
         /// </summary>
         public const uint GiantColibri = 12499;
 
         /// <summary>
-        /// Whirlwinds created by Giant Colibri .
+        /// Whirlwinds created by Giant Colibri.
         /// </summary>
         public const uint Whirlwind = 12498;
     }

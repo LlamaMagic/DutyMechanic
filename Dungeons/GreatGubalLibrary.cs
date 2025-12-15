@@ -6,7 +6,6 @@ using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
@@ -131,7 +130,7 @@ public class GreatGubalLibrary : AbstractDungeon
         public const uint InEvent = 1268;
 
         /// <summary>
-        /// AOE stun from <see cref="EnemyNpc.Vishap"/>.
+        /// AOE stun.
         /// </summary>
         public const uint DownForTheCount = 774;
     }

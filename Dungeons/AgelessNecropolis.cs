@@ -1,18 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
-using ff14bot.Helpers;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -21,11 +17,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class AgelessNecropolis : AbstractDungeon
 {
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.AgelessNecropolis;
 
@@ -35,6 +26,7 @@ public class AgelessNecropolis : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { EnemyAction.BlueShockwave };
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -56,7 +48,6 @@ public class AgelessNecropolis : AbstractDungeon
             outerHeight: 90.0f,
             collectionProducer: () => new[] { ArenaCenter.Necron },
             priority: AvoidancePriority.High);
-
 
         return Task.FromResult(false);
     }

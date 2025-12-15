@@ -1,6 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
@@ -9,7 +10,6 @@ using LlamaLibrary.Helpers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 using ActionType = ff14bot.Enums.ActionType;
 
 namespace DutyMechanic.Dungeons;
@@ -43,17 +43,17 @@ public class CopperbellMinesHard : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
-    private static BattleCharacter? HecatoncheirMastermindBC =>
+    private static BattleCharacter HecatoncheirMastermindBC =>
         (BattleCharacter)GameObjectManager.GetObjectByNPCId(HecatoncheirMastermind);
 
-    private static GameObject? ImprovedBlastingDeviceBC =>
+    private static GameObject ImprovedBlastingDeviceBC =>
         GameObjectManager.GetObjectByNPCId(ImprovedBlastingDevice);
 
-    private static GameObject? WaymakerBombBC => GameObjectManager.GetObjectByNPCId(WaymakerBomb);
+    private static GameObject WaymakerBombBC => GameObjectManager.GetObjectByNPCId(WaymakerBomb);
 
-    private static BattleCharacter? GogmagolemBC => (BattleCharacter)GameObjectManager.GetObjectByNPCId(Gogmagolem);
+    private static BattleCharacter GogmagolemBC => (BattleCharacter)GameObjectManager.GetObjectByNPCId(Gogmagolem);
 
-    private static BattleCharacter? KindlingSpriteBC =>
+    private static BattleCharacter KindlingSpriteBC =>
         (BattleCharacter)GameObjectManager.GetObjectByNPCId(KindlingSprite);
 
     /// <inheritdoc/>

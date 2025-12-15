@@ -24,8 +24,11 @@ public class DrownedCityOfSkalla : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -56,7 +59,6 @@ public class DrownedCityOfSkalla : AbstractDungeon
 
         return Task.FromResult(false);
     }
-
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()

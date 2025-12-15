@@ -1,5 +1,6 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -7,7 +8,6 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -20,9 +20,12 @@ public class CastrumAbania : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CastrumAbania;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.FireII,EnemyAction.RahuComet,EnemyAction.RahuComet2 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.FireII, EnemyAction.RahuComet, EnemyAction.RahuComet2 };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -89,7 +92,7 @@ public class CastrumAbania : AbstractDungeon
         public const uint SubjectNumberXXIV = 12392;
 
         /// <summary>
-        /// Final Boss: Inferno .
+        /// Final Boss: Inferno.
         /// </summary>
         public const uint Inferno = 6268;
     }

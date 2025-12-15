@@ -1,18 +1,16 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -265,7 +263,7 @@ public class Aery : AbstractDungeon
         public const uint Gyascutus = 3455;
 
         /// <summary>
-        /// Final Boss: Nidhogg .
+        /// Final Boss: Nidhogg.
         /// </summary>
         public const uint Nidhogg = 3458;
     }
@@ -291,7 +289,7 @@ public class Aery : AbstractDungeon
     private static class PlayerAura
     {
         /// <summary>
-        /// <see cref="EnemyNpc.MistDragon"/>'s Lightning Rod.
+        /// <see cref="EnemyNpc.Rangda"/>'s Lightning Rod.
         ///
         /// This aura is placed on the target of the fire boss's ability causing lightning to strike the target
         /// Dispell the aura by moving to a near by statue

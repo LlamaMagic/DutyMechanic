@@ -281,16 +281,15 @@ public static class AvoidanceHelpers
         List<Vector2> outerPoints = new((pointCount * 2) + 1);
         List<Vector2> innerPoints = new(pointCount + 1);
 
-        const double tau = 2.0 * Math.PI; // No official Math.Tau before .NET 5
-        double step = tau / pointCount;
+        double step = Math.Tau / pointCount;
 
-        for (double theta = 0; theta < tau; theta += step)
+        for (double theta = 0; theta < Math.Tau; theta += step)
         {
             outerPoints.Add(new Vector2((float)(outerRadius * Math.Cos(theta)), (float)(outerRadius * Math.Sin(theta))));
             innerPoints.Add(new Vector2((float)(innerRadius * Math.Cos(theta)), (float)(innerRadius * Math.Sin(theta))));
         }
 
-        return outerPoints.Concat(innerPoints).ToArray();
+        return [.. outerPoints, .. innerPoints];
     }
 
     private static Vector2[] GenerateSquareDonut(float innerWidth, float innerHeight, float outerWidth, float outerHeight)

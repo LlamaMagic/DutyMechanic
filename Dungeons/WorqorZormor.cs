@@ -2,19 +2,17 @@
 using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -33,8 +31,11 @@ public class WorqorZormor : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WindShot, EnemyAction.CrystallineCrush, EnemyAction.Sledgehammer };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -206,12 +207,12 @@ public class WorqorZormor : AbstractDungeon
         public const uint RyoqorTerteh = 12699;
 
         /// <summary>
-        /// First Boss: Qorrloh Teh .
+        /// First Boss: Qorrloh Teh.
         /// </summary>
         public const uint QorrlohTehBig = 12700;
 
         /// <summary>
-        /// First Boss: Qorrloh Teh .
+        /// First Boss: Qorrloh Teh.
         /// </summary>
         public const uint QorrlohTehSmall = 12701;
 

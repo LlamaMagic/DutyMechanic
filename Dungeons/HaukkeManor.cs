@@ -19,8 +19,11 @@ public class HaukkeManor : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -76,7 +79,7 @@ public class HaukkeManor : AbstractDungeon
         public static readonly Vector3 ManorClaviger = new(1.5f, 0f, 0f);
 
         /// <summary>
-        /// Second Boss: Manor Jester & Manor Steward.
+        /// Second Boss: Manor Jester + Manor Steward.
         /// </summary>
         public static readonly Vector3 JesterandSteward = new(0f, -19f, 0f);
 
@@ -89,7 +92,7 @@ public class HaukkeManor : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
-        /// <see cref="EnemyNpc.Lady Amandine"/>'s Petrifying Eye.
+        /// <see cref="EnemyNpc.LadyAmandine"/>'s Petrifying Eye.
         ///
         /// Need to turn away to avoid it
         /// </summary>

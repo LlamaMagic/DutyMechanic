@@ -1,18 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
-using ff14bot.Helpers;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -21,11 +17,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class WorqorLarDor : AbstractDungeon
 {
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.WorqorLarDor;
 
@@ -36,6 +27,7 @@ public class WorqorLarDor : AbstractDungeon
     private static GameObject arcaneSphere => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.ArcaneSphere)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -49,7 +41,6 @@ public class WorqorLarDor : AbstractDungeon
             outerHeight: 90.0f,
             collectionProducer: () => new[] { ArenaCenter.Valigarmanda },
             priority: AvoidancePriority.High);
-
 
         return Task.FromResult(false);
     }
@@ -76,7 +67,6 @@ public class WorqorLarDor : AbstractDungeon
             CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, 4_500, "Doing boss mechanics");
             await MovementHelpers.GetClosestAlly.Follow();
         }
-
 
         return false;
     }

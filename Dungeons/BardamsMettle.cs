@@ -1,6 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
@@ -11,7 +12,6 @@ using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -25,8 +25,11 @@ public class BardamsMettle : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -119,12 +122,12 @@ public class BardamsMettle : AbstractDungeon
         public const uint SteppeSheep = 6174;
 
         /// <summary>
-        /// Iron Sphere .
+        /// Iron Sphere.
         /// </summary>
         public const uint IronSphere = 6193;
 
         /// <summary>
-        /// Final Boss: Lorelei .
+        /// Final Boss: Lorelei.
         /// </summary>
         public const uint Yol = 6155;
     }

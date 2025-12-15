@@ -1,5 +1,6 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -7,7 +8,6 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -20,7 +20,7 @@ public class Xelphatol : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Xelphatol;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ingurgitate,EnemyAction.OnHigh,EnemyAction.HotBlast };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ingurgitate, EnemyAction.OnHigh, EnemyAction.HotBlast };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
@@ -177,7 +177,7 @@ public class Xelphatol : AbstractDungeon
         /// Bill
         /// AoE on target, spread.
         /// </summary>
-        public static readonly HashSet<uint> Bill = new() {6618};
+        public static readonly HashSet<uint> Bill = new() { 6618 };
 
         /// <summary>
         /// Boss 3: Tozol Huatotl

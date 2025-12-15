@@ -1,17 +1,11 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -57,7 +51,6 @@ public class TheRoyalMenagerie : AbstractDungeon
     {
         await FollowDodgeSpells();
 
-
         return false;
     }
 
@@ -80,7 +73,7 @@ public class TheRoyalMenagerie : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
-        /// <see cref="EnemyNpc.Shinryu"/>'s the Pull of Light  .
+        /// <see cref="EnemyNpc.Shinryu"/>'s the Pull of Light.
         /// Tank buster
         ///
         /// </summary>

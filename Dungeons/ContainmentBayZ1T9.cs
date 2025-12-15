@@ -1,17 +1,11 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
-using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -101,7 +95,7 @@ public class ContainmentBayZ1T9 : AbstractDungeon
         /// Pillar of Mercy
         /// When this spell casts he targets a party memeber that needs to hide behind a rock, since we can't tell who's targetting just hide
         /// </summary>
-        public static readonly HashSet<uint> PillarofMercy = new() {5866,5579};
+        public static readonly HashSet<uint> PillarofMercy = new() { 5866, 5579 };
     }
 
     private static class AblityTimers

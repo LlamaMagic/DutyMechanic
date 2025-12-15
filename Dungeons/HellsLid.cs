@@ -1,12 +1,12 @@
 using Buddy.Coroutines;
 using Clio.Common;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 

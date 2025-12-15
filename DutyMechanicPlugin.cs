@@ -150,11 +150,14 @@ public class DutyMechanicPlugin : BotPlugin
         return await dungeonManager.RunAsync();
     }
 
+    /// <summary>
+    /// Disables conflicting plugins. See <seealso cref="ConflictingPluginsToDisable"/>.
+    /// </summary>
     protected void DisableConflictingPlugins()
     {
         foreach (var pluginName in ConflictingPluginsToDisable)
         {
-            PluginContainer? enabledPlugin = PluginManager.Plugins.FirstOrDefault(p => p.Plugin.Name == pluginName && p.Enabled);
+            PluginContainer enabledPlugin = PluginManager.Plugins.FirstOrDefault(p => p.Plugin.Name == pluginName && p.Enabled);
 
             if (enabledPlugin != null)
             {

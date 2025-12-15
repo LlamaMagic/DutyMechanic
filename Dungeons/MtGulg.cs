@@ -1,6 +1,7 @@
 using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -11,7 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -91,7 +91,6 @@ public class MtGulg : AbstractDungeon
             outerHeight: 90.0f,
             collectionProducer: () => new[] { ArenaCenter.ForgivenObscenity },
             priority: AvoidancePriority.High);
-
 
         return false;
     }

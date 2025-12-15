@@ -1,22 +1,13 @@
-﻿using Buddy.Coroutines;
-using Clio.Common;
-using Clio.Utilities;
-using DutyMechanic.Data;
-using DutyMechanic.Helpers;
+﻿using DutyMechanic.Data;
 using DutyMechanic.Logging;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Enums;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
-using ff14bot.Pathing.Avoidance;
+using LlamaLibrary.Extensions;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using LlamaLibrary.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -25,11 +16,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class EurekaPagos : AbstractDungeon
 {
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.EurekaPagos;
 
@@ -47,7 +33,7 @@ public class EurekaPagos : AbstractDungeon
         { ClassJobType.Gunbreaker, 16152 }, // Superbolide
     };
 
-
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

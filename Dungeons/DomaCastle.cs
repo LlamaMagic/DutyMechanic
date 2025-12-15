@@ -1,6 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
@@ -10,7 +11,6 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -24,8 +24,11 @@ public class DomaCastle : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekMissiles };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -130,7 +133,7 @@ public class DomaCastle : AbstractDungeon
         public const uint HexadroneBit = 6204;
 
         /// <summary>
-        /// Final Boss: Hypertuned Grynewaht .
+        /// Final Boss: Hypertuned Grynewaht.
         /// </summary>
         public const uint HypertunedGrynewaht = 6205;
     }

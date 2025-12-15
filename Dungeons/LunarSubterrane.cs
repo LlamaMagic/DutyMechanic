@@ -1,5 +1,6 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
@@ -8,12 +9,7 @@ using ff14bot.Pathing.Avoidance;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Localization;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -27,6 +23,7 @@ public class LunarSubterrane : AbstractDungeon
     /// </summary>
     private SubZoneId lastSubZoneId = SubZoneId.NONE;
 
+    /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheLunarSubterrane;
 
     private static readonly int AntlionMarchDuration = 20_500;
@@ -34,7 +31,6 @@ public class LunarSubterrane : AbstractDungeon
     private DateTime AntlionMarchEnds = DateTime.MinValue;
 
     private readonly Stopwatch AntlionMarchSw = new();
-
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
@@ -45,8 +41,11 @@ public class LunarSubterrane : AbstractDungeon
         EnemyAction.EarthenGeyser2,
         EnemyAction.AntipodalAssault,
     };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -148,7 +147,6 @@ public class LunarSubterrane : AbstractDungeon
             await MovementHelpers.GetClosestAlly.FollowTimed(AntlionMarchSw, AntlionMarchDuration);
         }
 
-
         return false;
     }
 
@@ -189,16 +187,6 @@ public class LunarSubterrane : AbstractDungeon
         public const uint DamcyanAntlion = 12484;
         public const uint SandPit = 2013454;
         public const uint Durante = 12584;
-    }
-
-    private static class EnemyAura
-    {
-        /// <summary>
-        /// <see cref="EnemyNpc.PlaceholderEnemyNpc"/>'s Aura Name.
-        ///
-        /// When the boss has this buff, stuff happens and we deal with it.
-        /// </summary>
-        public const uint PlaceholderEnemyAura = 0x0;
     }
 
     private static class EnemyAction
@@ -266,15 +254,5 @@ public class LunarSubterrane : AbstractDungeon
         /// Large frontal cone
         /// </summary>
         public const uint HardSlash = 35009;
-    }
-
-    private static class PartyAura
-    {
-        /// <summary>
-        /// <see cref="EnemyNpc.PlaceholderEnemyNpc"/>'s Related Action / Mechanic Name.
-        ///
-        /// When the player has this buff, stuff happens and we deal with it.
-        /// </summary>
-        public const uint PlaceholderPartyAura = 0x0;
     }
 }

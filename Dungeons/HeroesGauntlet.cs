@@ -76,7 +76,6 @@ public class HeroesGauntlet : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-
         return Task.FromResult(false);
     }
 
@@ -163,7 +162,7 @@ public class HeroesGauntlet : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralThief"/>'s Coward's Cunning .
+        /// <see cref="EnemyNpc.SpectralThief"/>'s Coward's Cunning.
         ///
         /// Teleports to marked area and does circle AOE
         /// </summary>
@@ -177,14 +176,14 @@ public class HeroesGauntlet : AbstractDungeon
         public const uint Dash = 20435;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralThief"/>'s Coward's Cunning .
+        /// <see cref="EnemyNpc.SpectralThief"/>'s Coward's Cunning.
         ///
         /// Line AOE
         /// </summary>
         public const uint CowardsCunning = 20439;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralThief"/>'s Spectral Whirlwind  .
+        /// <see cref="EnemyNpc.SpectralThief"/>'s Spectral Whirlwind.
         ///
         /// Raid wide AOE
         /// </summary>
@@ -198,42 +197,42 @@ public class HeroesGauntlet : AbstractDungeon
         public const uint SpectralDream = 20427;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralThief"/>'s Spectral Gust .
+        /// <see cref="EnemyNpc.SpectralThief"/>'s Spectral Gust.
         ///
         /// Spread.
         /// </summary>
         public const uint SpectralGust = 21455;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst .
+        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst.
         ///
         /// Spread.
         /// </summary>
         public const uint Burst1 = 21430;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst .
+        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst.
         ///
         /// Spread.
         /// </summary>
         public const uint Burst2 = 21431;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst .
+        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst.
         ///
         /// Spread.
         /// </summary>
         public const uint Burst3 = 20322;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst .
+        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst.
         ///
         /// Spread.
         /// </summary>
         public const uint Burst4 = 20323;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst .
+        /// <see cref="EnemyNpc.SpectralNecromancer"/>'s Burst.
         ///
         /// Spread.
         /// </summary>
@@ -254,7 +253,7 @@ public class HeroesGauntlet : AbstractDungeon
         public const uint WildRampage2 = 20999;
 
         /// <summary>
-        /// <see cref="EnemyNpc.SpectralBerserker"/>'s Wild Anguish .
+        /// <see cref="EnemyNpc.SpectralBerserker"/>'s Wild Anguish.
         ///
         /// This gets casted during the dive bomb phase, if two people are next to each other it will cause a wipe.
         /// </summary>

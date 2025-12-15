@@ -1,14 +1,13 @@
 ﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -22,7 +21,7 @@ public class SohrKai : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
-        new() {EnemyAction.Gallop, EnemyAction.AkhMorn, EnemyAction.FrigidDive};
+        new() { EnemyAction.Gallop, EnemyAction.AkhMorn, EnemyAction.FrigidDive };
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     /// <inheritdoc/>
@@ -206,7 +205,7 @@ public class SohrKai : AbstractDungeon
         /// Holy Breath
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> HolyBreath = new() {32138};
+        public static readonly HashSet<uint> HolyBreath = new() { 32138 };
     }
 
     private static class AblityTimers

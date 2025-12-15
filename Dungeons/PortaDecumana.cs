@@ -1,6 +1,7 @@
 using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
 using ff14bot.Behavior;
@@ -10,12 +11,9 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using ff14bot.RemoteWindows;
 using LlamaLibrary.RemoteWindows;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -24,7 +22,7 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class PortaDecumana : AbstractDungeon
 {
-    private static readonly int CitadelBusterDuration = 5_000;
+    //private static readonly int CitadelBusterDuration = 5_000;
     private static readonly int LaserFocusDuration = 5_000;
     private static readonly int HomingRayDuration = 5_000;
 
@@ -252,7 +250,6 @@ public class PortaDecumana : AbstractDungeon
 
         public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
 
-
         /// <summary>
         /// The Ultima Weapon
         /// Laser Focus
@@ -282,7 +279,6 @@ public class PortaDecumana : AbstractDungeon
         ///
         /// </summary>
         public const uint VulcanBurst = 29003;
-
 
         /// <summary>
         /// The Ultima Weapon

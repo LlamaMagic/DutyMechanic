@@ -1,24 +1,21 @@
 using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
-using ff14bot.Behavior;
-using ff14bot.Enums;
 using ff14bot.Managers;
 using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using ff14bot.RemoteWindows;
 using LlamaLibrary.Helpers;
-using LlamaLibrary.Helpers.NPC;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -32,17 +29,32 @@ public class UltimaThule : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
     private static readonly int ExplopsionDuration = 20_000;
     private static DateTime ExplosionTimestamp = DateTime.MinValue;
 
-    public static int TheLostHydraulic = 4026;
+    /// <summary>
+    /// Sub-zone for the Onicron Recall: Killing Order FATE arena.
+    /// </summary>
+    public static uint TheLostHydraulic = 4026;
 
+    /// <summary>
+    /// Checks if the player has at least one of the specified item in their inventory.
+    /// </summary>
+    /// <param name="ItemId">ID of the item to find.</param>
+    /// <returns><see langword="true"/> if the player has the specified item in their inventory.</returns>
     public static bool HasItem(uint ItemId) => InventoryManager.FilledSlots.Any(i => i.RawItemId == ItemId);
 
+    /// <summary>
+    /// Gets total count of the specified item in the player's inventory.
+    /// </summary>
+    /// <param name="ItemId">ID of the item to count.</param>
+    /// <returns>Total count of the specified item across all stacks in the player's inventory.</returns>
     public static int ItemCount(uint ItemId) => (int)InventoryManager.FilledSlots.Where(i => i.RawItemId == ItemId).Sum(i => i.Count);
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -50,7 +62,7 @@ public class UltimaThule : AbstractDungeon
         // Chi
         // AssaultCarapace
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)TheLostHydraulic,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == TheLostHydraulic,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.AssaultCarapace,
             outerRadius: 90.0f,
             innerRadius: 5.0f,
@@ -59,7 +71,7 @@ public class UltimaThule : AbstractDungeon
         // Chi
         // Fore Arms
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)TheLostHydraulic,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == TheLostHydraulic,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.ForeArms,
             leashPointProducer: () => ArenaCenter.ChiArenaCenter,
             leashRadius: 60.0f,
@@ -70,7 +82,7 @@ public class UltimaThule : AbstractDungeon
         // Chi
         // Rear Guns
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)TheLostHydraulic,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == TheLostHydraulic,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.RearGuns,
             leashPointProducer: () => ArenaCenter.ChiArenaCenter,
             leashRadius: 60.0f,
@@ -80,7 +92,6 @@ public class UltimaThule : AbstractDungeon
 
         return Task.FromResult(false);
     }
-
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
@@ -247,27 +258,27 @@ public class UltimaThule : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
-        /// <see cref="EnemyNpc.Chi"/>'s Assault Carapace.
+        /// <see cref="FateNpc.Chi"/>'s Assault Carapace.
         ///
         /// Donut, move under.
         /// </summary>
         public const uint AssaultCarapace = 25953;
 
         /// <summary>
-        /// <see cref="EnemyNpc.Chi"/>'s Thermobaric Explosive.
+        /// <see cref="FateNpc.Chi"/>'s Thermobaric Explosive.
         ///
         /// </summary>
         public static readonly HashSet<uint> ThermobaricExplosive = new() { 25966 };
 
         /// <summary>
-        /// <see cref="EnemyNpc.Chi"/>'s Fore Arms.
+        /// <see cref="FateNpc.Chi"/>'s Fore Arms.
         ///
         /// Front cone AOE.
         /// </summary>
         public const uint ForeArms = 25959;
 
         /// <summary>
-        /// <see cref="EnemyNpc.Chi"/>'s Rear Guns.
+        /// <see cref="FateNpc.Chi"/>'s Rear Guns.
         ///
         /// Rear cone AOE.
         /// </summary>

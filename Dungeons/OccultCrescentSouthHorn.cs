@@ -1,21 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Common;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
-using DutyMechanic.Logging;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Enums;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -24,11 +17,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class SouthHorn : AbstractDungeon
 {
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.SouthHorn;
 
@@ -61,6 +49,7 @@ public class SouthHorn : AbstractDungeon
         // 67890, // Another Enemy
     };
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -398,7 +387,6 @@ public class SouthHorn : AbstractDungeon
             radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.Low));
 
-
         return Task.FromResult(false);
     }
 
@@ -561,7 +549,6 @@ public class SouthHorn : AbstractDungeon
         return false;
     }
 
-
     private static class EnemyNpc
     {
         /// <summary>
@@ -708,7 +695,6 @@ public class SouthHorn : AbstractDungeon
         /// </summary>
         public const uint PleadingPots = 1977;
     }
-
 
     private static class EnemyAction
     {

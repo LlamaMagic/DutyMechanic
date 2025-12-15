@@ -6,12 +6,9 @@ using ff14bot.Behavior;
 using ff14bot.Managers;
 using ff14bot.Navigation;
 using ff14bot.Objects;
-using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Helpers;
 
 namespace DutyMechanic.Dungeons;
 
@@ -33,22 +30,22 @@ public class LimitlessBlue : AbstractDungeon
         AvoidanceManager.AvoidInfos.Clear();
 
         // Creating a small donut around Bismark's back so that casters are forced to move onto it's back
-/*
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.ZoneId == 436,
-            objectSelector: c => c.NpcId == EnemyNpc.ChitinCarapace && c.IsTargetable,
-            outerRadius: 50.0f,
-            innerRadius: 10.0F,
-            priority: AvoidancePriority.Medium);
+        /*
+                AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
+                    canRun: () => Core.Player.InCombat && WorldManager.ZoneId == 436,
+                    objectSelector: c => c.NpcId == EnemyNpc.ChitinCarapace && c.IsTargetable,
+                    outerRadius: 50.0f,
+                    innerRadius: 10.0F,
+                    priority: AvoidancePriority.Medium);
 
-        // Creating a small donut around Bismark's back so that casters are forced to move onto it's back
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.ZoneId == 436,
-            objectSelector: c => c.NpcId == EnemyNpc.Corona && c.IsTargetable,
-            outerRadius: 50.0f,
-            innerRadius: 10.0F,
-            priority: AvoidancePriority.Medium);
-*/
+                // Creating a small donut around Bismark's back so that casters are forced to move onto it's back
+                AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
+                    canRun: () => Core.Player.InCombat && WorldManager.ZoneId == 436,
+                    objectSelector: c => c.NpcId == EnemyNpc.Corona && c.IsTargetable,
+                    outerRadius: 50.0f,
+                    innerRadius: 10.0F,
+                    priority: AvoidancePriority.Medium);
+        */
 
         return Task.FromResult(false);
     }

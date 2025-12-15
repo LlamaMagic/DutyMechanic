@@ -1,10 +1,10 @@
 ﻿using Buddy.Coroutines;
 using Clio.XmlEngine;
+using DutyMechanic.Localization;
 using ff14bot.Managers;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Localization;
 
 namespace ff14bot.NeoProfiles.Tags;
 

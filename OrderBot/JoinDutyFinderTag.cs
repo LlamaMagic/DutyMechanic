@@ -1,7 +1,7 @@
 ﻿using Buddy.Coroutines;
 using Clio.XmlEngine;
-using System.Threading.Tasks;
 using DutyMechanic.Windows;
+using System.Threading.Tasks;
 
 namespace ff14bot.NeoProfiles.Tags;
 

@@ -1,11 +1,9 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System;
@@ -13,7 +11,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -33,8 +30,11 @@ public class SirensongSea : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Hydroball, EnemyAction.MorbidAdvance, EnemyAction.MorbidRetreat };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -225,7 +225,7 @@ public class SirensongSea : AbstractDungeon
         public const uint TheGroveller = 6073;
 
         /// <summary>
-        /// Final Boss: Lorelei .
+        /// Final Boss: Lorelei.
         /// </summary>
         public const uint Lorelei = 6074;
 

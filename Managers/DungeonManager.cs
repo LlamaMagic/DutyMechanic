@@ -1,7 +1,6 @@
 ﻿using DutyMechanic.Data;
 using DutyMechanic.Dungeons;
 using DutyMechanic.Helpers;
-using DutyMechanic.Logging;
 using ff14bot.Managers;
 using System;
 using System.Collections.Generic;

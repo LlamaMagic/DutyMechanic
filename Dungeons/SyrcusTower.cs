@@ -2,6 +2,7 @@ using Buddy.Coroutines;
 using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
@@ -13,10 +14,8 @@ using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using ff14bot.RemoteWindows;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -334,7 +333,7 @@ public class SyrcusTower : AbstractDungeon
         public const uint Kichiknebik = 2826;
 
         /// <summary>
-        /// Second Boss: Dimensional Compression .
+        /// Second Boss: Dimensional Compression.
         /// </summary>
         public const uint DimensionalCompression = 2819;
 

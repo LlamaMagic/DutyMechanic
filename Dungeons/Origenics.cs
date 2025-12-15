@@ -1,18 +1,14 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -37,8 +33,11 @@ public class Origenics : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.CollectiveAgony };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -190,7 +189,6 @@ public class Origenics : AbstractDungeon
             }
         }
 
-
         return false;
     }
 
@@ -260,7 +258,7 @@ public class Origenics : AbstractDungeon
         public const uint Deceiver = 12693;
 
         /// <summary>
-        /// Final Boss: Ambrose the Undeparted .
+        /// Final Boss: Ambrose the Undeparted.
         /// </summary>
         public const uint AmbrosetheUndeparted = 12695;
     }
@@ -396,7 +394,6 @@ public class Origenics : AbstractDungeon
         /// Causes large Line AoEs. They're not cast by actual NPCs so we can't create avoids for them, follow instead
         /// </summary>
         public static readonly HashSet<uint> PsychokinesisLines = new() { 36427 };
-
 
         /// <summary>
         /// Ambrose the Undeparted

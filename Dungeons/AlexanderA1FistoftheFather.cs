@@ -1,17 +1,9 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
-using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
-using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Helpers;
 
 namespace DutyMechanic.Dungeons;
 
@@ -76,7 +68,6 @@ public class AlexanderA1FistoftheFather : AbstractDungeon
         /// </summary>
         public static readonly Vector3 Oppressor = new(0f, -24f, -160f);
     }
-
 
     private static class EnemyAction
     {

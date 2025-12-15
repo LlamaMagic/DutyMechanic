@@ -1,17 +1,12 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -25,8 +20,11 @@ public class HullbreakerIsle : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -61,7 +59,6 @@ public class HullbreakerIsle : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-
         return Task.FromResult(false);
     }
 
@@ -88,7 +85,6 @@ public class HullbreakerIsle : AbstractDungeon
 
         return false;
     }
-
 
     private async Task<bool> HandleSasquatchAsync()
     {

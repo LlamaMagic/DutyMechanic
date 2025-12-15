@@ -1,18 +1,15 @@
-﻿using Buddy.Coroutines;
-using Clio.Common;
+﻿using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
 
 namespace DutyMechanic.Dungeons;
 
@@ -33,8 +30,10 @@ public class Alexandria : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Superbolt, EnemyAction.Overexposure, EnemyAction.LightofDevotion };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
     private static GameObject interferonC => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonC)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
@@ -43,6 +42,7 @@ public class Alexandria : AbstractDungeon
 
     private static bool InterfornPresent => interferonC != null || interferonR != null;
 
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -190,7 +190,6 @@ public class Alexandria : AbstractDungeon
             rotationDegrees: -220.0f,
             radius: 40.0f,
             arcDegrees: 320f);
-
 
         // Boss 3: Halo of Destruction
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
@@ -350,7 +349,7 @@ public class Alexandria : AbstractDungeon
         public const uint Amalgam = 12864;
 
         /// <summary>
-        /// Final Boss: Eliminator .
+        /// Final Boss: Eliminator.
         /// </summary>
         public const uint Eliminator = 12729;
     }

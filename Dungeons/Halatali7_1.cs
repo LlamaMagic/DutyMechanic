@@ -1,10 +1,6 @@
-using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
-using ff14bot.Managers;
-using ff14bot.Objects;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
@@ -14,11 +10,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Halatali7_1 : AbstractDungeon
 {
-    /// <summary>
-    /// Tracks sub-zone since last tick for environmental decision making.
-    /// </summary>
-    private SubZoneId lastSubZoneId = SubZoneId.NONE;
-
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Halatali7_1;
 

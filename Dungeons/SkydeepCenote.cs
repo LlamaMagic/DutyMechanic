@@ -1,17 +1,13 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
-using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DutyMechanic.Extensions;
-using DutyMechanic.Logging;
 
 namespace DutyMechanic.Dungeons;
 
@@ -30,8 +26,11 @@ public class SkydeepCenote : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.RollingCurrent, EnemyAction.RollingCurrent2, EnemyAction.Burst, EnemyAction.DeepThunder };
+
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+
+    /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
@@ -194,7 +193,7 @@ public class SkydeepCenote : AbstractDungeon
         public const uint Firearms = 12888;
 
         /// <summary>
-        /// Final Boss: Maulskull .
+        /// Final Boss: Maulskull.
         /// </summary>
         public const uint Maulskull = 12728;
     }
