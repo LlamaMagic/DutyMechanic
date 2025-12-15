@@ -21,10 +21,10 @@ public class GhimlytDark : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheGhimlytDark;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekRay, EnemyAction.OilShower, EnemyAction.theOrder, EnemyAction.InvisibleSpell };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.MagitekRay, EnemyAction.OilShower, EnemyAction.theOrder, EnemyAction.InvisibleSpell];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -33,7 +33,7 @@ public class GhimlytDark : AbstractDungeon
 
         // Boss 1: Wild Fire Beam / Boss 3: Covering Fire
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is ((uint)SubZoneId.TheFieldofDust or (uint)SubZoneId.ProvisionalImperialLanding),
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is (uint)SubZoneId.TheFieldofDust or (uint)SubZoneId.ProvisionalImperialLanding,
             objectSelector: bc => bc.CastingSpellId is EnemyAction.WildFireBeam or EnemyAction.CoveringFire && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
@@ -96,7 +96,7 @@ public class GhimlytDark : AbstractDungeon
     /// <summary>
     /// Boss 1: Hedetet.
     /// </summary>
-    private async Task<bool> HandleMarkIIIBMagitek()
+    private static async Task<bool> HandleMarkIIIBMagitek()
     {
         return false;
     }
@@ -104,7 +104,7 @@ public class GhimlytDark : AbstractDungeon
     /// <summary>
     /// Boss 2: Defective Drone.
     /// </summary>
-    private async Task<bool> HandlePrometheus()
+    private static async Task<bool> HandlePrometheus()
     {
         var prometheus = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Prometheus)
             .FirstOrDefault(bc => bc.CanAttack); // boss
@@ -120,7 +120,7 @@ public class GhimlytDark : AbstractDungeon
     /// <summary>
     /// Boss 3: Mist Dragon.
     /// </summary>
-    private async Task<bool> HandleJuliaandAnnia()
+    private static async Task<bool> HandleJuliaandAnnia()
     {
         /*
         var annia = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.AnniaquoSoranus)
@@ -199,7 +199,7 @@ public class GhimlytDark : AbstractDungeon
         ///
         /// Four missles hit corners of the map, making the only safe spot the middle
         /// </summary>
-        public static readonly HashSet<uint> FreezingMissile = new() { 13398 };
+        public static readonly HashSet<uint> FreezingMissile = [13398];
 
         /// <summary>
         /// <see cref="EnemyNpc.JuliaquoSoranus"/>'s the Order.

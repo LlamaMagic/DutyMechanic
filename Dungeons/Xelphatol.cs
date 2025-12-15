@@ -20,9 +20,11 @@ public class Xelphatol : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Xelphatol;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ingurgitate, EnemyAction.OnHigh, EnemyAction.HotBlast };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Ingurgitate, EnemyAction.OnHigh, EnemyAction.HotBlast];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -92,18 +94,18 @@ public class Xelphatol : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleNuzalHuelocAsync()
+    private static async Task<bool> HandleNuzalHuelocAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleDotoliCilocAsync()
+    private static async Task<bool> HandleDotoliCilocAsync()
     {
 
         return false;
     }
 
-    private async Task<bool> HandleTozolHuatotlAsync()
+    private static async Task<bool> HandleTozolHuatotlAsync()
     {
         if (EnemyAction.Bill.IsCasting())
         {
@@ -177,7 +179,7 @@ public class Xelphatol : AbstractDungeon
         /// Bill
         /// AoE on target, spread.
         /// </summary>
-        public static readonly HashSet<uint> Bill = new() { 6618 };
+        public static readonly HashSet<uint> Bill = [6618];
 
         /// <summary>
         /// Boss 3: Tozol Huatotl

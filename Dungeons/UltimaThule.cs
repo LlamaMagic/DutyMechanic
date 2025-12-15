@@ -31,14 +31,15 @@ public class UltimaThule : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     private static readonly int ExplopsionDuration = 20_000;
     private static DateTime ExplosionTimestamp = DateTime.MinValue;
 
     /// <summary>
     /// Sub-zone for the Onicron Recall: Killing Order FATE arena.
     /// </summary>
-    public static uint TheLostHydraulic = 4026;
+    private static readonly uint TheLostHydraulic = 4026;
 
     /// <summary>
     /// Checks if the player has at least one of the specified item in their inventory.
@@ -111,7 +112,7 @@ public class UltimaThule : AbstractDungeon
         return result;
     }
 
-    private async Task<bool> HandleCommsExpansion()
+    private static async Task<bool> HandleCommsExpansion()
     {
         LlamaLibrary.Helpers.NPC.Npc npc = new(FateNpc.N6205, 960, new Vector3(409.438f, 437.6704f, 198.1257f)); // N-6205
 
@@ -179,12 +180,12 @@ public class UltimaThule : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleSecureConnection()
+    private static async Task<bool> HandleSecureConnection()
     {
         return false;
     }
 
-    private async Task<bool> HandleKillingOrder()
+    private static async Task<bool> HandleKillingOrder()
     {
         if (EnemyAction.ThermobaricExplosive.IsCasting())
         {
@@ -268,7 +269,7 @@ public class UltimaThule : AbstractDungeon
         /// <see cref="FateNpc.Chi"/>'s Thermobaric Explosive.
         ///
         /// </summary>
-        public static readonly HashSet<uint> ThermobaricExplosive = new() { 25966 };
+        public static readonly HashSet<uint> ThermobaricExplosive = [25966];
 
         /// <summary>
         /// <see cref="FateNpc.Chi"/>'s Fore Arms.

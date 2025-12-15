@@ -27,7 +27,7 @@ public class BardamsMettle : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -39,13 +39,13 @@ public class BardamsMettle : AbstractDungeon
         // draw a circle avoid at the end of cast so we run/face away from the boss.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheRebirthofBardamtheBrave,
-            objectSelector: bc => bc.CastingSpellId == (uint)EnemyAction.EmptyGaze && bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds <= 500,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.EmptyGaze && bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds <= 500,
             radiusProducer: bc => 18.0f,
             priority: AvoidancePriority.High));
 
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheRebirthofBardamtheBrave,
-            objectSelector: bc => bc.NpcId == (uint)EnemyNpc.IronSphere,
+            objectSelector: bc => bc.NpcId == EnemyNpc.IronSphere,
             radiusProducer: bc => 10f,
             priority: AvoidancePriority.High));
 
@@ -54,7 +54,7 @@ public class BardamsMettle : AbstractDungeon
         // draw a circle avoid at the end of cast so we run/face away from the boss.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheVoicelessMuse,
-            objectSelector: bc => bc.CastingSpellId == (uint)EnemyAction.EyeoftheFierce && bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds <= 500,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.EyeoftheFierce && bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds <= 500,
             radiusProducer: bc => 18.0f,
             priority: AvoidancePriority.High));
 
@@ -157,7 +157,7 @@ public class BardamsMettle : AbstractDungeon
         /// Rush
         /// Run to the sheep
         /// </summary>
-        public static readonly HashSet<uint> Rush = new() { 7929 };
+        public static readonly HashSet<uint> Rush = [7929];
 
         /// <summary>
         ///  Bardam

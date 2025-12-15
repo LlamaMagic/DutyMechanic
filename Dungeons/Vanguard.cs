@@ -25,10 +25,10 @@ public class Vanguard : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Vanguard;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.HeavyBlastCannon, EnemyAction.HomingCannon };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.HeavyBlastCannon, EnemyAction.HomingCannon];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -95,7 +95,7 @@ public class Vanguard : AbstractDungeon
             innerHeight: 33.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.VanguardCommanderR8 },
+            collectionProducer: () => [ArenaCenter.VanguardCommanderR8],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -104,7 +104,7 @@ public class Vanguard : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Protector },
+            collectionProducer: () => [ArenaCenter.Protector],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -167,7 +167,7 @@ public class Vanguard : AbstractDungeon
     /// <summary>
     /// Boss 2: Protector.
     /// </summary>
-    private async Task<bool> Protector()
+    private static async Task<bool> Protector()
     {
         if (EnemyAction.Bombardment.IsCasting())
         {
@@ -180,7 +180,7 @@ public class Vanguard : AbstractDungeon
     /// <summary>
     /// Boss 3: Zander the Snakeskinner.
     /// </summary>
-    private async Task<bool> ZandertheSnakeskinner()
+    private static async Task<bool> ZandertheSnakeskinner()
     {
         return false;
     }
@@ -235,7 +235,7 @@ public class Vanguard : AbstractDungeon
         /// </summary>
         public const uint Rush = 36569;
 
-        public static readonly HashSet<uint> RushCasting = new() { 36569 };
+        public static readonly HashSet<uint> RushCasting = [36569];
 
         /// <summary>
         /// Vanguard Commander R8
@@ -260,7 +260,7 @@ public class Vanguard : AbstractDungeon
         /// Aerial Offensive
         /// Follow
         /// </summary>
-        public static readonly HashSet<uint> AerialOffensive = new() { 36570 };
+        public static readonly HashSet<uint> AerialOffensive = [36570];
 
         /// <summary>
         /// Vanguard Commander R8
@@ -295,14 +295,14 @@ public class Vanguard : AbstractDungeon
         /// Bombardment
         /// Boss turns around in circles and sprays electricity while bombs drop. Follow to dodge
         /// </summary>
-        public static readonly HashSet<uint> Bombardment = new() { 39016 };
+        public static readonly HashSet<uint> Bombardment = [39016];
 
         /// <summary>
         /// Protector
         /// Electrowhirl
         /// Boss turns around in circles and sprays electricity while bombs drop
         /// </summary>
-        public static readonly HashSet<uint> Electrowhirl = new() { 37160 };
+        public static readonly HashSet<uint> Electrowhirl = [37160];
 
         /// <summary>
         /// Protector

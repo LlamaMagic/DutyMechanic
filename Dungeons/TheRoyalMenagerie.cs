@@ -18,9 +18,11 @@ public class TheRoyalMenagerie : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheRoyalMenagerie;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -40,7 +42,7 @@ public class TheRoyalMenagerie : AbstractDungeon
             innerHeight: 10.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Shinryu },
+            collectionProducer: () => [ArenaCenter.Shinryu],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);

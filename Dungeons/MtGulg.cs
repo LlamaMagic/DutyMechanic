@@ -31,23 +31,23 @@ public class MtGulg : AbstractDungeon
     /// <summary>
     /// Set of boss-related monster IDs.
     /// </summary>
-    private static readonly HashSet<uint> BossIds = new()
-    {
+    private static readonly HashSet<uint> BossIds =
+    [
         Brightsphere,
         ForgivenCruelty,
         ForgivenWhimsy,
         ForgivenObscenity,
         ForgivenRevelry,
         ForgivenDissonance,
-    };
+    ];
 
-    private static readonly HashSet<uint> LumenInfinitum = new() { 16818 };
-    private static readonly HashSet<uint> Exegesis = new() { 15622, 15623, 16987, 16988, 16989, };
-    private static readonly HashSet<uint> RightPalm = new() { 16247, 16248 };
-    private static readonly HashSet<uint> LeftPalm = new() { 16249, 16250 };
-    private static readonly HashSet<uint> GoldChaser = new() { 15652, 15653, 17066 };
+    private static readonly HashSet<uint> LumenInfinitum = [16818];
+    private static readonly HashSet<uint> Exegesis = [15622, 15623, 16987, 16988, 16989,];
+    private static readonly HashSet<uint> RightPalm = [16247, 16248];
+    private static readonly HashSet<uint> LeftPalm = [16249, 16250];
+    private static readonly HashSet<uint> GoldChaser = [15652, 15653, 17066];
 
-    private static readonly HashSet<uint> PenancePianissimo = new() { 15644 };
+    private static readonly HashSet<uint> PenancePianissimo = [15644];
     private static readonly Vector3 PenancePianissimoCenter = new(-239.9347f, 210.0f, 236.9791f);
     private static readonly int PenancePianissimoDuration = 45_000;
     private static DateTime penancePianissimoTimestamp = DateTime.MinValue;
@@ -56,13 +56,15 @@ public class MtGulg : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MtGulg;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         15614, 15615, 15616, 15617, 15618, 15622, 15623, 15638, 15640, 15641, 15642, 15643, 15644, 15645, 15648, 15649,
         16247, 16248, 16249, 16250, 16521, 16818, 16987, 16988, 16989, 17153, 18025,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {
@@ -89,7 +91,7 @@ public class MtGulg : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.ForgivenObscenity },
+            collectionProducer: () => [ArenaCenter.ForgivenObscenity],
             priority: AvoidancePriority.High);
 
         return false;
@@ -173,7 +175,7 @@ public class MtGulg : AbstractDungeon
 
         if (WorldManager.SubZoneId != (uint)SubZoneId.TheWindingFlare)
         {
-            BossIds.ToggleSideStep(new uint[] { ForgivenObscenity });
+            BossIds.ToggleSideStep([ForgivenObscenity]);
         }
         else
         {

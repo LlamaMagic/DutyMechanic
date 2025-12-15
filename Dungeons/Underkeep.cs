@@ -29,10 +29,10 @@ public class Underkeep : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Underkeep;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.DeterrentPulse };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.DeterrentPulse];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { EnemyAction.ThunderousSlash };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ThunderousSlash];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -93,7 +93,7 @@ public class Underkeep : AbstractDungeon
             innerHeight: 29.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.SoldierS0 },
+            collectionProducer: () => [ArenaCenter.SoldierS0],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -102,7 +102,7 @@ public class Underkeep : AbstractDungeon
             innerHeight: 35.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.ValiaPira },
+            collectionProducer: () => [ArenaCenter.ValiaPira],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -132,7 +132,7 @@ public class Underkeep : AbstractDungeon
     /// <summary>
     /// Boss 1: Gargant.
     /// </summary>
-    private async Task<bool> Gargant()
+    private static async Task<bool> Gargant()
     {
         return false;
     }
@@ -140,7 +140,7 @@ public class Underkeep : AbstractDungeon
     /// <summary>
     /// Boss 2: Soldier S0.
     /// </summary>
-    private async Task<bool> SoldierS0()
+    private static async Task<bool> SoldierS0()
     {
         return false;
     }
@@ -242,7 +242,7 @@ public class Underkeep : AbstractDungeon
         /// </summary>
         public const uint ThunderousSlash = 43136;
 
-        public static readonly HashSet<uint> ThunderousSlashHash = new() { 43136 };
+        public static readonly HashSet<uint> ThunderousSlashHash = [43136];
 
         /// <summary>
         /// Soldier S0
@@ -292,7 +292,7 @@ public class Underkeep : AbstractDungeon
         /// Starts the orbs moving
         /// </summary>
         public const uint CoordinateMarch = 42513;
-        public static readonly HashSet<uint> CoordinateMarchHash = new() { 42513 };
+        public static readonly HashSet<uint> CoordinateMarchHash = [42513];
 
     }
 

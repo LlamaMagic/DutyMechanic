@@ -38,21 +38,21 @@ public class AnamnesisAnyder : AbstractDungeon
     private const uint UnknownB = 9261;
     private const uint Kyklops = 9263;
 
-    private static readonly HashSet<uint> LuminousRayA = new() { 20007 };
-    private static readonly HashSet<uint> LuminousRayB = new() { 20007 };
+    private static readonly HashSet<uint> LuminousRayA = [20007];
+    private static readonly HashSet<uint> LuminousRayB = [20007];
     private static readonly int LuminousRayDuration = 6_000;
 
-    private static readonly HashSet<uint> RagingGlower = new() { 19286, 28266 };
+    private static readonly HashSet<uint> RagingGlower = [19286, 28266];
     private static readonly int RagingGlowerDuration = 6_000;
 
-    private static readonly HashSet<uint> WanderersPyre = new() { 19291, 19295 };
+    private static readonly HashSet<uint> WanderersPyre = [19291, 19295];
     private static readonly int WanderersPyreDuration = 6_000;
 
-    private static readonly HashSet<uint> FallingWater = new() { 19325 };
+    private static readonly HashSet<uint> FallingWater = [19325];
     private static readonly int FallingWaterDuration = 6_000;
 
-    private static readonly HashSet<uint> NonSidestepSpells = new()
-    {
+    private static readonly HashSet<uint> NonSidestepSpells =
+    [
         19289,
         19290,
         19286,
@@ -72,7 +72,7 @@ public class AnamnesisAnyder : AbstractDungeon
         20006,
         20007,
         28266,
-    };
+    ];
 
     private static DateTime ragingGlowerTimestamp = DateTime.MinValue;
     private static DateTime luminousRayTimestamp = DateTime.MinValue;
@@ -81,8 +81,8 @@ public class AnamnesisAnyder : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AnamnesisAnyder;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         19293,
         19289,
         19294,
@@ -99,9 +99,11 @@ public class AnamnesisAnyder : AbstractDungeon
         19287,
         19322,
         20005,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

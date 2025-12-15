@@ -27,10 +27,10 @@ public class QitanaRavel : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheQitanaRavel;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WrathoftheRonka, EnemyAction.ConfessionofFaith, EnemyAction.HeavingBreath };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.WrathoftheRonka, EnemyAction.ConfessionofFaith, EnemyAction.HeavingBreath];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -126,7 +126,7 @@ public class QitanaRavel : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleLozatlAsync()
+    private static async Task<bool> HandleLozatlAsync()
     {
         if (EnemyAction.HeatUpLeft.IsCasting())
         {
@@ -161,12 +161,12 @@ public class QitanaRavel : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleBatsquatchAsync()
+    private static async Task<bool> HandleBatsquatchAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleErosAsync()
+    private static async Task<bool> HandleErosAsync()
     {
         BattleCharacter ErosNPC = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Eros)
             .FirstOrDefault(bc => bc.IsTargetable && bc.IsValid);
@@ -267,7 +267,7 @@ public class QitanaRavel : AbstractDungeon
         /// Heat Up
         /// Left side status
         /// </summary>
-        public static readonly HashSet<uint> HeatUpLeft = new() { 15501 };
+        public static readonly HashSet<uint> HeatUpLeft = [15501];
 
         public static readonly int HeatUpLeftDuration = 22_000;
 
@@ -276,7 +276,7 @@ public class QitanaRavel : AbstractDungeon
         /// Heat Up
         /// Right side status
         /// </summary>
-        public static readonly HashSet<uint> HeatUpRight = new() { 15502 };
+        public static readonly HashSet<uint> HeatUpRight = [15502];
 
         public static readonly int HeatUpRightDuration = 22_000;
 
@@ -299,7 +299,7 @@ public class QitanaRavel : AbstractDungeon
         /// Confession of Faith
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> ConfessionofFaithSpread = new() { 15523 };
+        public static readonly HashSet<uint> ConfessionofFaithSpread = [15523];
         public static readonly int ConfessionofFaithSpreadDuration = 6_000;
 
         /// <summary>
@@ -314,7 +314,7 @@ public class QitanaRavel : AbstractDungeon
         /// Hound out of Heaven
         /// Run away from boss, if you're the target
         /// </summary>
-        public static readonly HashSet<uint> HoundoutofHeaven = new() { 15514 };
+        public static readonly HashSet<uint> HoundoutofHeaven = [15514];
     }
 
     private static class TankBusters

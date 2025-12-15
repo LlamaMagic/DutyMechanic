@@ -46,14 +46,16 @@ public class CastrumMeridianum : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CastrumMeridianum;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         28778, 28779, 28786, 28791, 28793,
         28797, 28790, 29356, 28787, 29357,
         29356,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

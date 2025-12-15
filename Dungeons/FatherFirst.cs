@@ -17,26 +17,26 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class FatherFirst : AbstractDungeon
 {
-    private static readonly HashSet<uint> CircleAoeCastIds = new()
-    {
+    private static readonly HashSet<uint> CircleAoeCastIds =
+    [
         EnemyAction.MorningStarsZigZag,
         EnemyAction.MorningStarsAimed,
         EnemyAction.BurningSunPersistent,
         EnemyAction.BurningSunPersistentHit,
         EnemyAction.BurningSunSmall,
         EnemyAction.BurningSunSmallHit,
-    };
+    ];
 
-    private static readonly HashSet<uint> DualBlowsFirstCastIds = new()
-    {
+    private static readonly HashSet<uint> DualBlowsFirstCastIds =
+    [
         EnemyAction.DualBlowsLeftFirst,
         EnemyAction.DualBlowsRightFirst,
-    };
+    ];
 
-    private static readonly HashSet<uint> ShadeTowerCastIds = new()
-    {
+    private static readonly HashSet<uint> ShadeTowerCastIds =
+    [
         EnemyAction.TheThrillShade,
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.AFatherFirst;
@@ -44,7 +44,7 @@ public class FatherFirst : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -69,7 +69,7 @@ public class FatherFirst : AbstractDungeon
         AvoidanceManager.AddAvoidLocation(
             canRun: () => Core.Player.InCombat,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
-            locationProducer: (BattleCharacter bc) => bc.SpellCastInfo?.CastLocation ?? bc.TargetGameObject.Location,
+            locationProducer: bc => bc.SpellCastInfo?.CastLocation ?? bc.TargetGameObject.Location,
             collectionProducer: () => GameObjectManager.GetObjectsOfType<BattleCharacter>()
                 .Where(bc => CircleAoeCastIds.Contains(bc.CastingSpellId)));
 

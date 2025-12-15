@@ -31,10 +31,10 @@ public class Burn : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheBurn;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -102,7 +102,7 @@ public class Burn : AbstractDungeon
             innerHeight: 19.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.DefectiveDrone },
+            collectionProducer: () => [ArenaCenter.DefectiveDrone],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -188,7 +188,7 @@ public class Burn : AbstractDungeon
     /// <summary>
     /// Boss 2: Defective Drone.
     /// </summary>
-    private async Task<bool> HandleDefectiveDrone()
+    private static async Task<bool> HandleDefectiveDrone()
     {
         return false;
     }
@@ -287,21 +287,21 @@ public class Burn : AbstractDungeon
         ///
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> Shardstrike = new() { 12693 };
+        public static readonly HashSet<uint> Shardstrike = [12693];
 
         /// <summary>
         /// <see cref="EnemyNpc.Hedetet"/>'s Shardfall.
         ///
         /// Room Wide AOE, move behind Dim Crystal to dodge
         /// </summary>
-        public static readonly HashSet<uint> Shardfall = new() { 12689 };
+        public static readonly HashSet<uint> Shardfall = [12689];
 
         /// <summary>
         /// <see cref="EnemyNpc.Hedetet"/>'s Hailfire.
         ///
         /// Single target ability that needs to move behind the Dim Crystal to dodge
         /// </summary>
-        public static readonly HashSet<uint> Hailfire = new() { 12692 };
+        public static readonly HashSet<uint> Hailfire = [12692];
 
         public const uint Hailfireuint = 12692;
 

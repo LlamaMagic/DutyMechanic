@@ -10,8 +10,8 @@ internal static class PartyMembers
     /// <summary>
     /// Gets NPC IDs of all possible party members.
     /// </summary>
-    public static readonly HashSet<PartyMemberId> AllPartyMemberIds = new()
-    {
+    public static readonly HashSet<PartyMemberId> AllPartyMemberIds =
+    [
         PartyMemberId.Alisaie,
         PartyMemberId.Alphinaud,
         PartyMemberId.CrystalExarch,
@@ -63,13 +63,13 @@ internal static class PartyMembers
         PartyMemberId.WukLamat,
         PartyMemberId.Krile,
         PartyMemberId.Sphene,
-    };
+    ];
 
     /// <summary>
     /// Gets NPC IDs of non-tank party members.
     /// </summary>
-    public static readonly HashSet<PartyMemberId> SafePartyMemberIds = new()
-    {
+    public static readonly HashSet<PartyMemberId> SafePartyMemberIds =
+    [
         PartyMemberId.Alphinaud,
         PartyMemberId.Estinien,
         PartyMemberId.Lyna,
@@ -107,13 +107,13 @@ internal static class PartyMembers
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
         PartyMemberId.Sphene,
-    };
+    ];
 
     /// <summary>
     /// Gets NPC IDs of DPS party members.
     /// </summary>
-    public static readonly HashSet<PartyMemberId> PartyDpsIds = new()
-    {
+    public static readonly HashSet<PartyMemberId> PartyDpsIds =
+    [
         PartyMemberId.Alisaie,
         PartyMemberId.Estinien,
         PartyMemberId.Lyna,
@@ -141,13 +141,13 @@ internal static class PartyMembers
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
 
-    };
+    ];
 
     /// <summary>
     /// Gets NPC IDs of Tank party members.
     /// </summary>
-    public static readonly HashSet<PartyMemberId> PartyTankIds = new()
-    {
+    public static readonly HashSet<PartyMemberId> PartyTankIds =
+    [
         PartyMemberId.Carvallain,
         PartyMemberId.CrystalExarch,
         PartyMemberId.GrahaTia,
@@ -163,13 +163,13 @@ internal static class PartyMembers
         PartyMemberId.Gosetsu,
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
-    };
+    ];
 
     /// <summary>
     /// Gets NPC IDs of Healer party members.
     /// </summary>
-    public static readonly HashSet<PartyMemberId> PartyHealerIds = new()
-    {
+    public static readonly HashSet<PartyMemberId> PartyHealerIds =
+    [
         PartyMemberId.Alphinaud,
         PartyMemberId.CrystalExarch,
         PartyMemberId.GrahaTia,
@@ -186,5 +186,5 @@ internal static class PartyMembers
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
         PartyMemberId.Sphene,
-    };
+    ];
 }

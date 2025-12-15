@@ -25,7 +25,7 @@ public class AlaMhigo : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -102,12 +102,12 @@ public class AlaMhigo : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleMagitekScorpionAsync()
+    private static async Task<bool> HandleMagitekScorpionAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleAulusAsync()
+    private static async Task<bool> HandleAulusAsync()
     {
         // Handle Out of Body experience
         if (WorldManager.SubZoneId == (uint)SubZoneId.TheChamberofKnowledge && Core.Player.InCombat)
@@ -134,7 +134,7 @@ public class AlaMhigo : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleZenosAsync()
+    private static async Task<bool> HandleZenosAsync()
     {
         return false;
     }
@@ -202,7 +202,7 @@ public class AlaMhigo : AbstractDungeon
         /// Target Search
         /// Follow for 10 seconds after cast happens
         /// </summary>
-        public static readonly HashSet<uint> TargetSearch = new() { 8262 };
+        public static readonly HashSet<uint> TargetSearch = [8262];
 
         /// <summary>
         /// Aulus mal Asina

@@ -19,9 +19,11 @@ public class HeroesGauntlet : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheHeroesGauntlet;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WildRampage1, EnemyAction.WildRampage2 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.WildRampage1, EnemyAction.WildRampage2];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -29,7 +31,7 @@ public class HeroesGauntlet : AbstractDungeon
 
         // Boss 1: Spectral Gust
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is ((uint)SubZoneId.MountArgaiMines or (uint)SubZoneId.IlluminatedPlaza),
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is (uint)SubZoneId.MountArgaiMines or (uint)SubZoneId.IlluminatedPlaza,
             objectSelector: bc => bc.CastingSpellId is EnemyAction.SpectralGust or EnemyAction.WildAnguish && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
@@ -103,17 +105,17 @@ public class HeroesGauntlet : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleSpectralThiefAsync()
+    private static async Task<bool> HandleSpectralThiefAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleSpectralNecromancerAsync()
+    private static async Task<bool> HandleSpectralNecromancerAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleSpectralBerserkerAsync()
+    private static async Task<bool> HandleSpectralBerserkerAsync()
     {
         return false;
     }

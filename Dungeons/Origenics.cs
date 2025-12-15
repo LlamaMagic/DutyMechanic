@@ -32,10 +32,10 @@ public class Origenics : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Origenics;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.CollectiveAgony };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.CollectiveAgony];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -102,7 +102,7 @@ public class Origenics : AbstractDungeon
             innerHeight: 30.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Herpekaris },
+            collectionProducer: () => [ArenaCenter.Herpekaris],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -111,7 +111,7 @@ public class Origenics : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Deceiver },
+            collectionProducer: () => [ArenaCenter.Deceiver],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -120,7 +120,7 @@ public class Origenics : AbstractDungeon
             innerHeight: 37.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.AmbrosetheUndeparted },
+            collectionProducer: () => [ArenaCenter.AmbrosetheUndeparted],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -195,7 +195,7 @@ public class Origenics : AbstractDungeon
     /// <summary>
     /// Boss 2: Deceiver.
     /// </summary>
-    private async Task<bool> Deceiver()
+    private static async Task<bool> Deceiver()
     {
         if (EnemyAction.Surge.IsCasting())
         {
@@ -302,14 +302,14 @@ public class Origenics : AbstractDungeon
         /// Writhing Riot
         /// Boss does a three fold attack with a large AOE, front, side, then back alternating. Follow NPC to dodge easiest
         /// </summary>
-        public static readonly HashSet<uint> WrithingRiot = new() { 36463 };
+        public static readonly HashSet<uint> WrithingRiot = [36463];
 
         /// <summary>
         /// Deceiver
         /// Surge
         /// Follow NPC
         /// </summary>
-        public static readonly HashSet<uint> Surge = new() { 39736 };
+        public static readonly HashSet<uint> Surge = [39736];
 
         /// <summary>
         /// Deceiver
@@ -372,14 +372,14 @@ public class Origenics : AbstractDungeon
         /// Extrasensory Field
         /// Follow
         /// </summary>
-        public static readonly HashSet<uint> ExtrasensoryField = new() { 36432, 36433, 36434 };
+        public static readonly HashSet<uint> ExtrasensoryField = [36432, 36433, 36434];
 
         /// <summary>
         /// Ambrose the Undeparted
         /// Psychokinesis
         /// Throws a straight line spear in front of boss. Also cast LanceDash at the same time
         /// </summary>
-        public static readonly HashSet<uint> Psychokinesis = new() { 38929 };
+        public static readonly HashSet<uint> Psychokinesis = [38929];
 
         /// <summary>
         /// Ambrose the Undeparted
@@ -393,7 +393,7 @@ public class Origenics : AbstractDungeon
         /// Psychokinesis
         /// Causes large Line AoEs. They're not cast by actual NPCs so we can't create avoids for them, follow instead
         /// </summary>
-        public static readonly HashSet<uint> PsychokinesisLines = new() { 36427 };
+        public static readonly HashSet<uint> PsychokinesisLines = [36427];
 
         /// <summary>
         /// Ambrose the Undeparted

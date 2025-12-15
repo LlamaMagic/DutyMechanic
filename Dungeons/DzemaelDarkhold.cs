@@ -29,8 +29,10 @@ public class DzemaelDarkhold : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -64,9 +66,9 @@ public class DzemaelDarkhold : AbstractDungeon
 
                     await Coroutine.Wait(30_000, () => !boss.Auras.AuraList.Contains(invulnAura));
                     if (!boss.Auras.AuraList.Contains(invulnAura) && Core.Me.InCombat &&
-                        GameObjectManager.Attackers.Contains(boss) && (PartyManager.IsInParty &&
+                        GameObjectManager.Attackers.Contains(boss) && PartyManager.IsInParty &&
                                                                        PartyManager.AllMembers.Any(pm =>
-                                                                           pm is TrustPartyMember)))
+                                                                           pm is TrustPartyMember))
                     {
                         Logger.Information($"Using Engage.");
                         boss.Target();

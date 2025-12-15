@@ -15,31 +15,33 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class HellsLid : AbstractDungeon
 {
-    private static readonly HashSet<uint> HellOfWater = new()
-    {
+    private static readonly HashSet<uint> HellOfWater =
+    [
         11541,
         10192,
-    };
+    ];
 
-    private static readonly HashSet<uint> HellOfWaste2 = new()
-    {
+    private static readonly HashSet<uint> HellOfWaste2 =
+    [
         10194,
         10193,
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.HellsLid;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         11541,
         10192, // Hell of Water by Genbu
         10193,
         10194, // Hell of Waste by Genbu
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

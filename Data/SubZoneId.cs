@@ -5,7 +5,6 @@
 /// </summary>
 public enum SubZoneId : uint
 {
-#pragma warning disable SA1629 // Documentation text should end with a period
     /// <summary>
     /// Sub-Zone ID unavailable.
     /// </summary>
@@ -794,7 +793,7 @@ public enum SubZoneId : uint
     /// <summary>
     /// Lv. 90.6: The Lunar Subterrane > Carnelian Courtyard, Durante
     /// </summary>
-    CarnelianCourtyard = 4356,
+    CarnelianCourtyard = 4437,
 
     /// <summary>
     /// Lv. 91: Ihuykatumu > Punutiy Pool, Prime Punutiy
@@ -936,6 +935,4 @@ public enum SubZoneId : uint
     /// Lv. 100: The Meso Terminal > Non-volatile Memory, Immortal Remains
     /// </summary>
     NonvolatileMemory = 5272,
-
-#pragma warning restore SA1629 // Documentation text should end with a period
 }

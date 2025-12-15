@@ -171,7 +171,7 @@ public static class AvoidanceHelpers
     {
         return AddAvoidDonut(
             canRun,
-            collectionProducer: () => new[] { locationProducer() },
+            collectionProducer: () => [locationProducer()],
             outerRadius,
             innerRadius,
             priority);
@@ -242,12 +242,12 @@ public static class AvoidanceHelpers
         float halfWidth = width / 2.0f;
 
         Vector2[] rectangle =
-        {
-            new Vector2(halfWidth - xOffset, length + yOffset),
-            new Vector2(-halfWidth - xOffset, length + yOffset),
-            new Vector2(-halfWidth - xOffset, yOffset),
-            new Vector2(halfWidth - xOffset, yOffset),
-        };
+        [
+            new(halfWidth - xOffset, length + yOffset),
+            new(-halfWidth - xOffset, length + yOffset),
+            new(-halfWidth - xOffset, yOffset),
+            new(halfWidth - xOffset, yOffset),
+        ];
 
         return rectangle;
     }
@@ -258,20 +258,20 @@ public static class AvoidanceHelpers
 
         // https://www.desmos.com/calculator/uql6hp3ldg
         Vector2[] cross =
-        {
-            new Vector2(halfThickness, length),
-            new Vector2(halfThickness, halfThickness),
-            new Vector2(length, halfThickness),
-            new Vector2(length, -halfThickness),
-            new Vector2(halfThickness, -halfThickness),
-            new Vector2(halfThickness, -length),
-            new Vector2(-halfThickness, -length),
-            new Vector2(-halfThickness, -halfThickness),
-            new Vector2(-length, -halfThickness),
-            new Vector2(-length, halfThickness),
-            new Vector2(-halfThickness, halfThickness),
-            new Vector2(-halfThickness, length),
-        };
+        [
+            new(halfThickness, length),
+            new(halfThickness, halfThickness),
+            new(length, halfThickness),
+            new(length, -halfThickness),
+            new(halfThickness, -halfThickness),
+            new(halfThickness, -length),
+            new(-halfThickness, -length),
+            new(-halfThickness, -halfThickness),
+            new(-length, -halfThickness),
+            new(-length, halfThickness),
+            new(-halfThickness, halfThickness),
+            new(-halfThickness, length),
+        ];
 
         return cross;
     }
@@ -302,19 +302,19 @@ public static class AvoidanceHelpers
 
         // https://www.desmos.com/calculator/l70fgnow9a
         Vector2[] squareDonut =
-        {
-            new Vector2(halfOuterWidth, halfOuterHeight),
-            new Vector2(halfOuterWidth, -halfOuterHeight),
-            new Vector2(-halfOuterWidth, -halfOuterHeight),
-            new Vector2(-halfOuterWidth, halfOuterHeight),
-            new Vector2(halfOuterWidth, halfOuterHeight),
+        [
+            new(halfOuterWidth, halfOuterHeight),
+            new(halfOuterWidth, -halfOuterHeight),
+            new(-halfOuterWidth, -halfOuterHeight),
+            new(-halfOuterWidth, halfOuterHeight),
+            new(halfOuterWidth, halfOuterHeight),
 
-            new Vector2(halfInnerWidth, halfInnerHeight),
-            new Vector2(-halfInnerWidth, halfInnerHeight),
-            new Vector2(-halfInnerWidth, -halfInnerHeight),
-            new Vector2(halfInnerWidth, -halfInnerHeight),
-            new Vector2(halfInnerWidth, halfInnerHeight),
-        };
+            new(halfInnerWidth, halfInnerHeight),
+            new(-halfInnerWidth, halfInnerHeight),
+            new(-halfInnerWidth, -halfInnerHeight),
+            new(halfInnerWidth, -halfInnerHeight),
+            new(halfInnerWidth, halfInnerHeight),
+        ];
 
         return squareDonut;
     }

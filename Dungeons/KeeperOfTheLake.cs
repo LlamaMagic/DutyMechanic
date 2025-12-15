@@ -56,9 +56,11 @@ public class KeeperOfTheLake : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheKeeperOfTheLake;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 29283 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [29283];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

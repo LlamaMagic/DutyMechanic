@@ -5,7 +5,6 @@
 /// </summary>
 public enum ZoneId : ushort
 {
-#pragma warning disable SA1629 // Documentation text should end with a period
     /// <summary>
     /// Zone ID not available.
     /// </summary>
@@ -500,5 +499,4 @@ public enum ZoneId : ushort
     /// Lv. 100.6: Mistwake
     /// </summary>
     Mistwake = ushort.MaxValue, // TODO: Add Mistwake Zone ID
-#pragma warning restore SA1629 // Documentation text should end with a period
 }

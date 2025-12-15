@@ -65,18 +65,18 @@ public class Aitiascope : AbstractDungeon
     private static readonly Vector3 AmonArenaCenter = new(10f, -236f, -487f);
 
     // Livia the Undeterred
-    private readonly HashSet<uint> aglaeaClimb = new() { 25668, 25667, 25666 };
+    private readonly HashSet<uint> aglaeaClimb = [25668, 25667, 25666];
 
     // Rhitahtyn the Unshakable
-    private readonly HashSet<uint> vexillatio = new() { 25678 };
-    private readonly HashSet<uint> shieldSkewer = new() { 25680 };
-    private readonly HashSet<uint> sharpShell = new() { 25682, 25684 };
+    private readonly HashSet<uint> vexillatio = [25678];
+    private readonly HashSet<uint> shieldSkewer = [25680];
+    private readonly HashSet<uint> sharpShell = [25682, 25684];
 
     // Amon the Undying
-    private readonly HashSet<uint> thundagaForte = new() { 25690, 25691, 25691 };
-    private readonly HashSet<uint> curtainCall = new() { 25702 };
-    private readonly HashSet<uint> rightFiragaForte = new() { 25696 };
-    private readonly HashSet<uint> leftFiragaForte = new() { 25697 };
+    private readonly HashSet<uint> thundagaForte = [25690, 25691, 25691];
+    private readonly HashSet<uint> curtainCall = [25702];
+    private readonly HashSet<uint> rightFiragaForte = [25696];
+    private readonly HashSet<uint> leftFiragaForte = [25697];
 
     private readonly Stopwatch amonTimerOne = new();
     private readonly Stopwatch amonTimerTwo = new();
@@ -85,8 +85,8 @@ public class Aitiascope : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAitiascope;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         25234,
         25233,
         25250,
@@ -94,10 +94,10 @@ public class Aitiascope : AbstractDungeon
         25180,
         25742,
         25677,
-    };
+    ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()

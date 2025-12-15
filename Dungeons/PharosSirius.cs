@@ -25,17 +25,19 @@ public class PharosSirius : AbstractDungeon
     private const int BiggerFirePuddle1 = 2003034;
     private const int CorruptedAetherCloud = 2258;
 
-    private static readonly HashSet<uint> AetherDetonation = new() { 1668, 5377, 5376, 1669 };
+    private static readonly HashSet<uint> AetherDetonation = [1668, 5377, 5376, 1669];
 
-    private readonly HashSet<uint> avoidobjs = new();
+    private readonly HashSet<uint> avoidobjs = [];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.PharosSirius;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -47,7 +49,7 @@ public class PharosSirius : AbstractDungeon
             // checking if the avoid is already added keeps it from being added again
             if (GameObjectManager.GameObjects.Any(i => i.NpcId == FirePuddle1 && !avoidobjs.Contains(i.ObjectId)))
             {
-                uint[] ids = GameObjectManager.GetObjectsByNPCId(FirePuddle1).Select(i => i.ObjectId).ToArray();
+                uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(FirePuddle1).Select(i => i.ObjectId)];
                 AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 10.5f, ids);
                 foreach (uint id in ids)
                 {
@@ -58,7 +60,7 @@ public class PharosSirius : AbstractDungeon
 
             if (GameObjectManager.GameObjects.Any(i => i.NpcId == FirePuddle2 && !avoidobjs.Contains(i.ObjectId)))
             {
-                uint[] ids = GameObjectManager.GetObjectsByNPCId(FirePuddle2).Select(i => i.ObjectId).ToArray();
+                uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(FirePuddle2).Select(i => i.ObjectId)];
                 AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 10.5f, ids);
                 foreach (uint id in ids)
                 {
@@ -70,7 +72,7 @@ public class PharosSirius : AbstractDungeon
             if (GameObjectManager.GameObjects.Any(i =>
                     i.NpcId == BiggerFirePuddle1 && !avoidobjs.Contains(i.ObjectId)))
             {
-                uint[] ids = GameObjectManager.GetObjectsByNPCId(BiggerFirePuddle1).Select(i => i.ObjectId).ToArray();
+                uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(BiggerFirePuddle1).Select(i => i.ObjectId)];
                 AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 14f, ids);
                 foreach (uint id in ids)
                 {

@@ -23,10 +23,10 @@ public class DomaCastle : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.DomaCastle;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.MagitekMissiles };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.MagitekMissiles];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -180,7 +180,7 @@ public class DomaCastle : AbstractDungeon
         /// Thermobaric Charge
         /// Run away
         /// </summary>
-        public static readonly HashSet<uint> ThermobaricCharge = new() { 8357 };
+        public static readonly HashSet<uint> ThermobaricCharge = [8357];
 
         /// <summary>
         /// Hypertuned Grynewaht

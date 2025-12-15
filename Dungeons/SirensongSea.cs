@@ -29,10 +29,10 @@ public class SirensongSea : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheSirensongSea;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Hydroball, EnemyAction.MorbidAdvance, EnemyAction.MorbidRetreat };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Hydroball, EnemyAction.MorbidAdvance, EnemyAction.MorbidRetreat];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -272,14 +272,14 @@ public class SirensongSea : AbstractDungeon
         /// Enter Night
         /// Move to edge of arena to break tether
         /// </summary>
-        public static readonly HashSet<uint> EnterNight = new() { 8032 };
+        public static readonly HashSet<uint> EnterNight = [8032];
 
         /// <summary>
         /// The Governor
         /// Shadowflow
         /// relative to boss facing, that should be cones aiming at 30, 90, 120, 210, 300 going clockwise
         /// </summary>
-        public static readonly HashSet<uint> Shadowflow = new() { 8030 };
+        public static readonly HashSet<uint> Shadowflow = [8030];
 
         /// <summary>
         /// Lorelei

@@ -35,7 +35,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <summary>
     /// List of plugins we disable to prevent conflicts.
     /// </summary>
-    protected List<string> ConflictingPluginsToDisable => ["RBTrust", "Trust"];
+    protected static List<string> ConflictingPluginsToDisable => ["RBTrust", "Trust"];
 
     /// <inheritdoc/>
     public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
@@ -121,7 +121,7 @@ public class DutyMechanicPlugin : BotPlugin
         RemoveHooks();
     }
 
-    private bool CanTrust()
+    private static bool CanTrust()
     {
         if (LoadingHelpers.IsInInstance || WorldManager.ZoneId is (ushort)ZoneId.UltimaThule or (ushort)ZoneId.SouthHorn or (ushort)ZoneId.EurekaAnemos or (ushort)ZoneId.EurekaPagos or (ushort)ZoneId.EurekaPyros)
         {
@@ -153,7 +153,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <summary>
     /// Disables conflicting plugins. See <seealso cref="ConflictingPluginsToDisable"/>.
     /// </summary>
-    protected void DisableConflictingPlugins()
+    protected static void DisableConflictingPlugins()
     {
         foreach (var pluginName in ConflictingPluginsToDisable)
         {
@@ -167,7 +167,7 @@ public class DutyMechanicPlugin : BotPlugin
         }
     }
 
-    private async Task<bool> TryRespawnPlayerAsync()
+    private static async Task<bool> TryRespawnPlayerAsync()
     {
         if (Core.Player.IsAlive)
         {

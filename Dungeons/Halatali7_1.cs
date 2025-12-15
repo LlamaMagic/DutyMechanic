@@ -14,9 +14,11 @@ public class Halatali7_1 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Halatali7_1;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Fireflow, EnemyAction.Fireflow2, EnemyAction.HydroelectricShock };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Fireflow, EnemyAction.Fireflow2, EnemyAction.HydroelectricShock];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

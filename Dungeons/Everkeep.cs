@@ -24,10 +24,10 @@ public class Everkeep : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Everkeep;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -110,7 +110,7 @@ public class Everkeep : AbstractDungeon
             outerWidth: 90.0f,
             outerHeight: 90.0f,
             rotation: 0.80f,
-            collectionProducer: () => new[] { ArenaCenter.ZoraalJa },
+            collectionProducer: () => [ArenaCenter.ZoraalJa],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -155,7 +155,7 @@ public class Everkeep : AbstractDungeon
                     outerWidth: 90.0f,
                     outerHeight: 90.0f,
                     rotation: 0.8f,
-                    collectionProducer: () => new[] { ArenaCenter.ZoraalJa },
+                    collectionProducer: () => [ArenaCenter.ZoraalJa],
                     priority: AvoidancePriority.High);
             }
 
@@ -231,28 +231,28 @@ public class Everkeep : AbstractDungeon
         /// Dawn of an Age
         /// Square donut around boss, then transforms the battlefield into a small square
         /// </summary>
-        public static readonly HashSet<uint> DawnofanAge = new() { 37716 };
+        public static readonly HashSet<uint> DawnofanAge = [37716];
 
         /// <summary>
         /// Zoraal Ja
         /// Actualize
         /// Signals the end of the Dawn of an Age area
         /// </summary>
-        public static readonly HashSet<uint> Actualize = new() { 37718 };
+        public static readonly HashSet<uint> Actualize = [37718];
 
         /// <summary>
         /// Zoraal Ja
         /// Half Circuit
         /// Donut avoid
         /// </summary>
-        public static readonly HashSet<uint> HalfCircuit = new()
-        {
+        public static readonly HashSet<uint> HalfCircuit =
+        [
             37739,
             37740,
             37741,
             37742,
             37743,
-        };
+        ];
 
         /// <summary>
         /// Zoraal Ja
@@ -289,7 +289,7 @@ public class Everkeep : AbstractDungeon
         /// </summary>
         public const uint DoubleedgedSwordsFront = 37714;
 
-        public static readonly HashSet<uint> DoubleedgedSwordsFrontHash = new() { 37714 };
+        public static readonly HashSet<uint> DoubleedgedSwordsFrontHash = [37714];
 
         /// <summary>
         /// Zoraal Ja
@@ -298,7 +298,7 @@ public class Everkeep : AbstractDungeon
         /// </summary>
         public const uint DoubleedgedSwordsBack = 37713;
 
-        public static readonly HashSet<uint> DoubleedgedSwordsBackHash = new() { 37713 };
+        public static readonly HashSet<uint> DoubleedgedSwordsBackHash = [37713];
     }
 
     private static class PlayerAura

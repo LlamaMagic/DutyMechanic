@@ -23,10 +23,10 @@ internal static class MovementHelpers
     /// <summary>
     /// List of subzones where we don't want Movement speed to be used.
     /// </summary>
-    private static List<uint> dontUseSprint = new()
-    {
+    private static readonly List<uint> dontUseSprint =
+    [
         (uint)SubZoneId.PathofDyingLight,
-    };
+    ];
 
     /// <summary>
     /// Gets the nearest party member.
@@ -123,7 +123,7 @@ internal static class MovementHelpers
             AvoidanceManager.RemoveAvoid(spreadInfo);
 
             DateTime spreadEndsAt = DateTime.Now.AddMilliseconds(duration);
-            uint[] partyMemberIds = PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId).ToArray();
+            uint[] partyMemberIds = [.. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId)];
 
             spreadInfo = AvoidanceManager.AddAvoidObject<BattleCharacter>(
                 () => Core.Player.InCombat && DateTime.Now < spreadEndsAt,

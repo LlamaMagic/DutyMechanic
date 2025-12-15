@@ -18,9 +18,11 @@ public class ContainmentBayZ1T9 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.ContainmentBayZ1T9;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -95,7 +97,7 @@ public class ContainmentBayZ1T9 : AbstractDungeon
         /// Pillar of Mercy
         /// When this spell casts he targets a party memeber that needs to hide behind a rock, since we can't tell who's targetting just hide
         /// </summary>
-        public static readonly HashSet<uint> PillarofMercy = new() { 5866, 5579 };
+        public static readonly HashSet<uint> PillarofMercy = [5866, 5579];
     }
 
     private static class AblityTimers

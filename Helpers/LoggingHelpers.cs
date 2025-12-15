@@ -12,7 +12,7 @@ namespace DutyMechanic.Helpers;
 /// </summary>
 public static class LoggingHelpers
 {
-    private static readonly Dictionary<IntPtr, SpellCastInfo> TrackedCasts = new();
+    private static readonly Dictionary<IntPtr, SpellCastInfo> TrackedCasts = [];
     private static ushort lastZoneId = 0;
     private static uint lastSubZoneId = 0;
 

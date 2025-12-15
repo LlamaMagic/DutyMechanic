@@ -85,7 +85,7 @@ public abstract class AbstractDungeon
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
     protected async Task<bool> FollowDodgeSpells()
     {
-        if (SpellsToFollowDodge == null || !SpellsToFollowDodge.Any())
+        if (SpellsToFollowDodge == null || SpellsToFollowDodge.Count == 0)
         {
             return false;
         }
@@ -110,7 +110,7 @@ public abstract class AbstractDungeon
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
     protected async Task<bool> TankBusterSpells()
     {
-        if (SpellsToTankBust == null || !SpellsToTankBust.Any() || !Core.Me.IsTank())
+        if (SpellsToTankBust == null || SpellsToTankBust.Count == 0 || !Core.Me.IsTank())
         {
             return false;
         }

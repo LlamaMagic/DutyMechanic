@@ -22,14 +22,16 @@ public class LapisManalis : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.LapisManalis;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         EnemyAction.RoarOfAlbion,
         EnemyAction.Hydrofall,
         EnemyAction.HydraulicRam,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -143,13 +145,13 @@ public class LapisManalis : AbstractDungeon
         AvoidanceHelpers.AddAvoidDonut(
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ForumMessorum
                 && Core.Player.GetAuraById(PartyAura.GlassyEyed)?.TimeLeft > 2.0f,
-            collectionProducer: () => new[]
-            {
+            collectionProducer: () =>
+            [
                 MechanicLocation.TenebrismTowerNorth,
                 MechanicLocation.TenebrismTowerSouth,
                 MechanicLocation.TenebrismTowerEast,
                 MechanicLocation.TenebrismTowerWest,
-            },
+            ],
             outerRadius: 10.0f,
             innerRadius: 5.0f,
             priority: AvoidancePriority.High);
@@ -258,7 +260,7 @@ public class LapisManalis : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Albion },
+            collectionProducer: () => [ArenaCenter.Albion],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -274,7 +276,7 @@ public class LapisManalis : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Cagnazzo },
+            collectionProducer: () => [ArenaCenter.Cagnazzo],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);

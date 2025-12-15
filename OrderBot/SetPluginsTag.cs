@@ -19,13 +19,11 @@ public class SetPluginsTag : AbstractTaskTag
     [XmlAttribute("PluginNames")]
     public string PluginNames { get; set; }
 
-#pragma warning disable SA1623 // Property summary documentation should match accessors
     /// <summary>
     /// Gets or sets comma separated list of new plugin states.
     /// </summary>
     [XmlAttribute("IsEnabled")]
     public bool IsEnabled { get; set; } = true;
-#pragma warning restore SA1623 // Property summary documentation should match accessors
 
     /// <inheritdoc/>
     protected override Task<bool> RunAsync()

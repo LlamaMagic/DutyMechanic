@@ -31,9 +31,11 @@ public class TowerOfBabil : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheTowerOfBabil;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.ShockingForce };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.ShockingForce];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

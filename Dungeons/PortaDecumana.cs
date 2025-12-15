@@ -30,9 +30,10 @@ public class PortaDecumana : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.ThePortaDecumana;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -132,7 +133,7 @@ public class PortaDecumana : AbstractDungeon
         }
 
         // Handle LB3
-        if (Core.Me.IsDPS() && LimitBreak.Percentage == 3 && (Core.Me.HasTarget && Core.Me.CurrentTarget.IsValid && Core.Me.CurrentTarget.CurrentHealthPercent > 1))
+        if (Core.Me.IsDPS() && LimitBreak.Percentage == 3 && Core.Me.HasTarget && Core.Me.CurrentTarget.IsValid && Core.Me.CurrentTarget.CurrentHealthPercent > 1)
         {
             await CombatHelpers.UseLB3();
         }
@@ -225,21 +226,21 @@ public class PortaDecumana : AbstractDungeon
         /// Homing Lasers
         /// Tank Buster
         /// </summary>
-        public static readonly HashSet<uint> HomingLasers = new() { 29023 };
+        public static readonly HashSet<uint> HomingLasers = [29023];
 
         /// <summary>
         /// The Ultima Weapon
         /// Assault Cannon
         /// Magitek Bits come out and do various multilined attacks.
         /// </summary>
-        public static readonly HashSet<uint> AssaultCannon = new() { 29019 };
+        public static readonly HashSet<uint> AssaultCannon = [29019];
 
         /// <summary>
         /// The Ultima Weapon
         /// Homing Ray
         ///
         /// </summary>
-        public static readonly HashSet<uint> HomingRay = new() { 29011, 29012 };
+        public static readonly HashSet<uint> HomingRay = [29011, 29012];
 
         /// <summary>
         /// The Ultima Weapon
@@ -248,7 +249,7 @@ public class PortaDecumana : AbstractDungeon
         /// </summary>
         public const uint CitadelBuster = 29020;
 
-        public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
+        public static readonly HashSet<uint> CitadelBusterHash = [29020];
 
         /// <summary>
         /// The Ultima Weapon
@@ -257,7 +258,7 @@ public class PortaDecumana : AbstractDungeon
         /// </summary>
         public const uint LaserFocus = 29014;
 
-        public static readonly HashSet<uint> LaserFocusHash = new() { 29013, 29014 };
+        public static readonly HashSet<uint> LaserFocusHash = [29013, 29014];
 
         /// <summary>
         /// The Ultima Weapon
@@ -329,7 +330,7 @@ public class PortaDecumana : AbstractDungeon
         /// Radiant Blaze
         /// This move is casted but doesn't actually ever complete. It's stopped by doing enough damage to make Ifirit leave Ultima Weapon.
         /// </summary>
-        public static readonly HashSet<uint> RadiantBlaze = new() { 28991 };
+        public static readonly HashSet<uint> RadiantBlaze = [28991];
 
         /// <summary>
         /// The Ultima Weapon
@@ -343,7 +344,7 @@ public class PortaDecumana : AbstractDungeon
         /// Hellfire (Ifrit)
         /// This move causes a wind shield around Ultima Weapon.
         /// </summary>
-        public static readonly HashSet<uint> Hellfire = new() { 28978, 29002 };
+        public static readonly HashSet<uint> Hellfire = [28978, 29002];
 
         /// <summary>
         /// The Ultima Weapon

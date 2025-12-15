@@ -20,6 +20,7 @@ internal static class UsefulTasks
                 SelectYesno.Yes();
             }
         }
+
         return false;
     }
 }

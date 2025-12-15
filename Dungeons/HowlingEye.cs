@@ -18,17 +18,19 @@ public class HowlingEye : AbstractDungeon
 {
     private const int Garuda = 1644;
 
-    private static readonly HashSet<uint> MistralSong = new() { 667, 660 };
-    private static readonly HashSet<uint> Slipstream = new() { 659 };
-    private static readonly HashSet<uint> MistralShriek = new() { 661 };
+    private static readonly HashSet<uint> MistralSong = [667, 660];
+    private static readonly HashSet<uint> Slipstream = [659];
+    private static readonly HashSet<uint> MistralShriek = [661];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheHowlingEye;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

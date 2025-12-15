@@ -14,7 +14,7 @@ internal class LocalizationProvider
     /// Localized strings are loaded from Translations.{cultureCode}.resx files. Default strings are loaded from Translations.resx.
     /// </summary>
     /// <param name="cultureCode">Localization to display.</param>
-    public void SetLocalization(string cultureCode)
+    public static void SetLocalization(string cultureCode)
     {
         CultureInfo culture;
 

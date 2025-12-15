@@ -44,13 +44,13 @@ public class DohnMheg : AbstractDungeon
 
     private readonly Stopwatch laughingLeapSw = new();
 
-    private readonly HashSet<uint> laughingLeap = new()
-    {
+    private readonly HashSet<uint> laughingLeap =
+    [
         8852, 8840,
-    };
+    ];
 
-    private readonly List<Vector3> tightRopeWalkPoints = new()
-    {
+    private readonly List<Vector3> tightRopeWalkPoints =
+    [
         new Vector3(-142.8355f, -144.5264f, -232.6624f),
         new Vector3(-140.8284f, -144.5366f, -246.1443f),
         new Vector3(-130.1889f, -144.5366f, -242.3840f),
@@ -59,7 +59,7 @@ public class DohnMheg : AbstractDungeon
         new Vector3(-122.5055f, -144.5192f, -258.3726f),
         new Vector3(-128.1084f, -144.5226f, -258.0896f),
         new Vector3(-128.4761f, -144.5166f, -262.4524f),
-    };
+    ];
 
     private DateTime laughingLeapEnds = DateTime.MinValue;
 
@@ -70,12 +70,12 @@ public class DohnMheg : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.DohnMheg;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         13547, 13952,
-    };
+    ];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {

@@ -21,10 +21,10 @@ public class AgelessNecropolis : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AgelessNecropolis;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { EnemyAction.BlueShockwave };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.BlueShockwave];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -46,7 +46,7 @@ public class AgelessNecropolis : AbstractDungeon
             innerHeight: 28.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Necron },
+            collectionProducer: () => [ArenaCenter.Necron],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -119,13 +119,13 @@ public class AgelessNecropolis : AbstractDungeon
         /// </summary>
         public const uint BlueShockwave = 44546;
 
-        public static readonly HashSet<uint> BlueShockwaveHash = new() { 44546 };
+        public static readonly HashSet<uint> BlueShockwaveHash = [44546];
 
         /// <summary>
         /// Necron
         /// Grand Cross (44533) - AoE
         /// </summary>
-        public static readonly HashSet<uint> GrandCross = new() { 44533 };
+        public static readonly HashSet<uint> GrandCross = [44533];
     }
 
     private static class PlayerAura

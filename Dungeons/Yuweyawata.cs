@@ -34,10 +34,10 @@ public class YuweyawataFieldStation : AbstractDungeon
     private AvoidInfo craterAvoid = default;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.BoulderDance, };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.BoulderDance,];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {
@@ -157,7 +157,7 @@ public class YuweyawataFieldStation : AbstractDungeon
     /// <summary>
     /// Boss 1: Lindblum Zaghnal.
     /// </summary>
-    private async Task<bool> LindblumZaghnal()
+    private static async Task<bool> LindblumZaghnal()
     {
         return false;
     }
@@ -303,7 +303,7 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// </summary>
         public const uint TelltaleTears = 40649;
 
-        public static readonly HashSet<uint> TelltaleTearsHash = new() { 40649 };
+        public static readonly HashSet<uint> TelltaleTearsHash = [40649];
 
         /// <summary>
         /// Overseer Kanilokka
@@ -319,7 +319,7 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// </summary>
         public const uint Soulweave2 = 40642;
 
-        public static readonly HashSet<uint> SoulweaveHash = new() { 40641, 40642 };
+        public static readonly HashSet<uint> SoulweaveHash = [40641, 40642];
 
         /// <summary>
         /// Overseer Kanilokka
@@ -328,7 +328,7 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// </summary>
         public const uint DarkII = 40656;
 
-        public static readonly HashSet<uint> DarkIIHash = new() { 40656 };
+        public static readonly HashSet<uint> DarkIIHash = [40656];
 
         /// <summary>
         /// Overseer Kanilokka
@@ -349,14 +349,14 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// Necrohazard
         /// Plants blood on the ground with a confusion hand over your head
         /// </summary>
-        public static readonly HashSet<uint> Necrohazard = new() { 40646 };
+        public static readonly HashSet<uint> Necrohazard = [40646];
 
         /// <summary>
         /// Overseer Kanilokka
         /// Dark Souls
         /// Tank Buster, use rampart
         /// </summary>
-        public static readonly HashSet<uint> DarkSouls = new() { 40658 };
+        public static readonly HashSet<uint> DarkSouls = [40658];
 
         /// <summary>
         /// Overseer Kanilokka
@@ -370,21 +370,21 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// UnnamedLines
         /// Follow to dodge these
         /// </summary>
-        public static readonly HashSet<uint> UnnamedLines = new() { 40661, 40662 };
+        public static readonly HashSet<uint> UnnamedLines = [40661, 40662];
 
         /// <summary>
         /// Lunipyati
         /// Leaping Earth
         /// Follow to dodge these
         /// </summary>
-        public static readonly HashSet<uint> LeapingEarth = new() { 40606 };
+        public static readonly HashSet<uint> LeapingEarth = [40606];
 
         /// <summary>
         /// Lunipyati
         /// RagingClaw
         /// Straight line aoe
         /// </summary>
-        public static readonly HashSet<uint> RagingClaw = new() { 40612 };
+        public static readonly HashSet<uint> RagingClaw = [40612];
 
         /// <summary>
         /// Lunipyati
@@ -398,7 +398,7 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// Beastly Roar
         /// Proximity based damage
         /// </summary>
-        public static readonly HashSet<uint> BeastlyRoar = new() { 40608, 40610 };
+        public static readonly HashSet<uint> BeastlyRoar = [40608, 40610];
 
         /// <summary>
         /// Lunipyati
@@ -407,28 +407,28 @@ public class YuweyawataFieldStation : AbstractDungeon
         /// </summary>
         public const uint JaggedEdge = 40615;
 
-        public static readonly HashSet<uint> JaggedEdgeHash = new() { 40615 };
+        public static readonly HashSet<uint> JaggedEdgeHash = [40615];
 
         /// <summary>
         /// Lunipyati
         /// Slabber
         /// Tank buster
         /// </summary>
-        public static readonly HashSet<uint> Slabber = new() { 40619 };
+        public static readonly HashSet<uint> Slabber = [40619];
 
         /// <summary>
         /// Lunipyati
         /// Turali Stone IV
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> TuraliStoneIV = new() { 40616 };
+        public static readonly HashSet<uint> TuraliStoneIV = [40616];
 
         /// <summary>
         /// Lunipyati
         /// Crater Carve
         /// Carves a big hole in the middle of the battlefield
         /// </summary>
-        public static readonly HashSet<uint> CraterCarve = new() { 40604, 40605 };
+        public static readonly HashSet<uint> CraterCarve = [40604, 40605];
     }
 
     private static class PlayerAura

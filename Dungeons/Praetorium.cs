@@ -16,13 +16,13 @@ public class Praetorium : AbstractDungeon
     private const int Nero = 2135;
     private const int Gaius = 2136;
 
-    private static readonly HashSet<uint> BossIds = new()
-    {
+    private static readonly HashSet<uint> BossIds =
+    [
         Nero, Gaius,
-    };
+    ];
 
-    private static readonly HashSet<uint> Spells = new()
-    {
+    private static readonly HashSet<uint> Spells =
+    [
         // Nero
         // Augmented Suffering
         1156,
@@ -45,11 +45,11 @@ public class Praetorium : AbstractDungeon
         19774,
         20107,
         28493,
-    };
+    ];
 
     // Augmented Suffering, stack
-    private static readonly HashSet<uint> AugmentedSuffering = new()
-    {
+    private static readonly HashSet<uint> AugmentedSuffering =
+    [
         1156,
         7607,
         8492,
@@ -57,30 +57,32 @@ public class Praetorium : AbstractDungeon
         21101,
         28622,
         28476,
-    };
+    ];
 
     // Augmented Shatter, stack
-    private static readonly HashSet<uint> AugmentedShatter = new()
-    {
+    private static readonly HashSet<uint> AugmentedShatter =
+    [
         1158,
         7609,
         8494,
         28477,
         28619,
-    };
+    ];
 
-    private static readonly HashSet<uint> FestinaLente = new()
-    {
+    private static readonly HashSet<uint> FestinaLente =
+    [
         19657, 19774, 20107, 28493,
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.ThePraetorium;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

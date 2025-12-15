@@ -20,10 +20,10 @@ public class CastrumAbania : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.CastrumAbania;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.FireII, EnemyAction.RahuComet, EnemyAction.RahuComet2 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.FireII, EnemyAction.RahuComet, EnemyAction.RahuComet2];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -136,7 +136,7 @@ public class CastrumAbania : AbstractDungeon
         /// Blizzard II
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> BlizzardII = new() { 33461 };
+        public static readonly HashSet<uint> BlizzardII = [33461];
 
         public static readonly int BlizzardIIDuration = 5_000;
 

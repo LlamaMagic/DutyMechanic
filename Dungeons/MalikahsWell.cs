@@ -25,18 +25,18 @@ public class MalikahsWell : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MalikahsWell;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         EnemyAction.HeadToss,
         EnemyAction.FlailSmash,
         15607,
         EnemyAction.BreakingWheel,
         EnemyAction.HereticsFork,
         EnemyAction.HereticsFork3,
-    };
+    ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -140,12 +140,12 @@ public class MalikahsWell : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleGreaterArmadilloAsync()
+    private static async Task<bool> HandleGreaterArmadilloAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleAmphibiousTalosAsync()
+    private static async Task<bool> HandleAmphibiousTalosAsync()
     {
         BattleCharacter amphibiousTalosNpc = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(NpcId: EnemyNpc.AmphibiousTalos)
             .FirstOrDefault(bc => bc.IsTargetable);
@@ -178,7 +178,7 @@ public class MalikahsWell : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleStorgeAsync()
+    private static async Task<bool> HandleStorgeAsync()
     {
         return false;
     }
@@ -273,7 +273,7 @@ public class MalikahsWell : AbstractDungeon
         /// Swift Spill
         /// Casts a lazer in front of the boss for ~13sec
         /// </summary>
-        public static readonly HashSet<uint> SwiftSpill = new() { 15599 };
+        public static readonly HashSet<uint> SwiftSpill = [15599];
 
         public static readonly int SwiftSpillDuration = 14_000;
 

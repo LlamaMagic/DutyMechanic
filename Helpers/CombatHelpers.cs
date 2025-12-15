@@ -10,8 +10,8 @@ namespace DutyMechanic.Helpers;
 
 internal static class CombatHelpers
 {
-    private static uint reprisal = 7535;
-    private static uint rampart = 7531;
+    private static readonly uint reprisal = 7535;
+    private static readonly uint rampart = 7531;
 
     /// <summary>
     /// Logic for handling tank busters

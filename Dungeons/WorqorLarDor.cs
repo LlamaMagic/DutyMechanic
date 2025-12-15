@@ -21,10 +21,12 @@ public class WorqorLarDor : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.WorqorLarDor;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Ruinfall, EnemyAction.ThunderousBreath, EnemyAction.NorthernCross, EnemyAction.FreezingDust };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Ruinfall, EnemyAction.ThunderousBreath, EnemyAction.NorthernCross, EnemyAction.FreezingDust];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
-    private static GameObject arcaneSphere => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.ArcaneSphere)
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
+    private static GameObject ArcaneSphere => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.ArcaneSphere)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
     /// <inheritdoc/>
@@ -39,7 +41,7 @@ public class WorqorLarDor : AbstractDungeon
             innerHeight: 27.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Valigarmanda },
+            collectionProducer: () => [ArenaCenter.Valigarmanda],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -62,7 +64,7 @@ public class WorqorLarDor : AbstractDungeon
             await MovementHelpers.Spread(4_500, 4f);
         }
 
-        if (arcaneSphere != null || EnemyAction.SusurrantBreath.IsCasting() || EnemyAction.CalamitousEcho.IsCasting() || EnemyAction.HailofFeathers.IsCasting() || EnemyAction.SlitheringStrike.IsCasting() || EnemyAction.StranglingCoil.IsCasting())
+        if (ArcaneSphere != null || EnemyAction.SusurrantBreath.IsCasting() || EnemyAction.CalamitousEcho.IsCasting() || EnemyAction.HailofFeathers.IsCasting() || EnemyAction.SlitheringStrike.IsCasting() || EnemyAction.StranglingCoil.IsCasting())
         {
             CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, 4_500, "Doing boss mechanics");
             await MovementHelpers.GetClosestAlly.Follow();
@@ -99,21 +101,21 @@ public class WorqorLarDor : AbstractDungeon
         /// Quarantine
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> Quarantine = new() { 36384 };
+        public static readonly HashSet<uint> Quarantine = [36384];
 
         /// <summary>
         /// Valigarmanda
         /// Ice Talon
         /// AoE Tank Buster
         /// </summary>
-        public static readonly HashSet<uint> IceTalon = new() { 36184 };
+        public static readonly HashSet<uint> IceTalon = [36184];
 
         /// <summary>
         /// Valigarmanda
         /// Blighted Bolt
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> BlightedBolt = new() { 36172 };
+        public static readonly HashSet<uint> BlightedBolt = [36172];
 
         /// <summary>
         /// Valigarmanda
@@ -141,7 +143,7 @@ public class WorqorLarDor : AbstractDungeon
         /// Strangling Coil
         /// Create a Donut, Sidestep detects it but the donut is too big
         /// </summary>
-        public static readonly HashSet<uint> StranglingCoil = new() { 36159, 36160 };
+        public static readonly HashSet<uint> StranglingCoil = [36159, 36160];
 
         /// <summary>
         /// Valigarmanda
@@ -162,28 +164,28 @@ public class WorqorLarDor : AbstractDungeon
         /// Slithering Strike
         ///
         /// </summary>
-        public static readonly HashSet<uint> SlitheringStrike = new() { 36157, 36158 };
+        public static readonly HashSet<uint> SlitheringStrike = [36157, 36158];
 
         /// <summary>
         /// Valigarmanda
         /// Susurrant Breath
         ///
         /// </summary>
-        public static readonly HashSet<uint> SusurrantBreath = new() { 36155, 36156 };
+        public static readonly HashSet<uint> SusurrantBreath = [36155, 36156];
 
         /// <summary>
         /// Valigarmanda
         /// Hail of Feathers
         ///
         /// </summary>
-        public static readonly HashSet<uint> HailofFeathers = new() { 36361, 36170 };
+        public static readonly HashSet<uint> HailofFeathers = [36361, 36170];
 
         /// <summary>
         /// Valigarmanda
         /// Calamitous Echo
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> CalamitousEcho = new() { 36195 };
+        public static readonly HashSet<uint> CalamitousEcho = [36195];
     }
 
     private static class PlayerAura

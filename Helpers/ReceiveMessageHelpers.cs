@@ -17,7 +17,7 @@ internal static class ReceiveMessageHelpers
 
         if ((int)args.ChatLogEntry.MessageType <= 8774
             || LosesEffectRegex.IsMatch(args.ChatLogEntry.FullLine)
-            || args.ChatLogEntry.FullLine.Contains("⇒"))
+            || args.ChatLogEntry.FullLine.Contains('⇒'))
         {
             return;
         }
@@ -57,13 +57,13 @@ internal static class ReceiveMessageHelpers
         }
     }
 
-    public static HashSet<string> Skillsdetstr { get; set; } = new();
+    public static HashSet<string> Skillsdetstr { get; set; } = [];
 
     public static void SkillsdetstrGet(HashSet<uint> goldChaser)
     {
         IEnumerable<string> skstr = goldChaser?.Select(r => DataManager.GetSpellData(r).LocalizedName);
 
-        Skillsdetstr = new HashSet<string>(skstr);
+        Skillsdetstr = [.. skstr];
     }
 
     public static bool SkillsdetStatus;
@@ -99,23 +99,25 @@ internal static class ReceiveMessageHelpers
         }
     }
 
-    public static HashSet<string> SkillsdeterminationOverStr = new();
+    public static HashSet<string> SkillsdeterminationOverStr = [];
 
     public static bool SkillsdeterminationOverStatus;
 
     public static void SkillsdeterminationOver(string sderstr)
     {
-        if (sderstr.Contains("uses") ||
-                sderstr.Contains("casts"))
+        if (sderstr.Contains("uses")
+         || sderstr.Contains("casts"))
         {
             try
             {
-                if ((bool)SkillsdeterminationOverStr?.Any())
+                if (SkillsdeterminationOverStr.Count == 0)
                 {
-                    if (SkillsdeterminationOverStr.Any(str => sderstr.Contains(str)))
-                    {
-                        SkillsdeterminationOverStatus = true;
-                    }
+                    return;
+                }
+
+                if (SkillsdeterminationOverStr.Any(str => sderstr.Contains(str)))
+                {
+                    SkillsdeterminationOverStatus = true;
                 }
             }
             catch
@@ -125,13 +127,13 @@ internal static class ReceiveMessageHelpers
         }
     }
 
-    public static HashSet<string> MagnetOverStr = new();
+    public static HashSet<string> MagnetOverStr = [];
 
     public static void MagnetOverStrGet(HashSet<uint> magnet)
     {
         IEnumerable<string> str = magnet?.Select(r => DataManager.GetSpellData(r).LocalizedName);
 
-        MagnetOverStr = new HashSet<string>(str);
+        MagnetOverStr = [.. str];
     }
 
     public static bool MagnetOverStatus;
@@ -143,7 +145,7 @@ internal static class ReceiveMessageHelpers
         {
             try
             {
-                if ((bool)MagnetOverStr?.Any())
+                if (MagnetOverStr.Count != 0)
                 {
                     MagnetOverStatus = (bool)MagnetOverStr?.Any(r => sderstr.Contains(r));
                 }

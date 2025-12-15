@@ -21,17 +21,17 @@ public class SouthHorn : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SouthHorn;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
-    private uint? CurrentFateId =>
+    private static uint? CurrentFateId =>
         FateManager.WithinFate && FateManager.ActiveFates.Any()
             ? FateManager.ActiveFates
                 .OrderBy(fate => Core.Me.Distance(fate.Location))
                 .First().Id
-            : (uint?)null;
+            : null;
 
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {
@@ -41,13 +41,13 @@ public class SouthHorn : AbstractDungeon
         { ClassJobType.Gunbreaker, 16152 }, // Superbolide
     };
 
-    List<uint> soundDetectingEnemyIds = new List<uint>
-    {
+    readonly List<uint> soundDetectingEnemyIds =
+    [
         13935, // Crescent Harpuia
         13923, // Crescent Geshunpest
         13924, // Crescent Armor
         // 67890, // Another Enemy
-    };
+    ];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -444,7 +444,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1962 Type: Rough Waters
     /// </summary>
-    private async Task<bool> HandleRoughWaters()
+    private static async Task<bool> HandleRoughWaters()
     {
         //Logger.Information($"We are in FATE Rough Waters");
         return false;
@@ -453,7 +453,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1963 Type: The Golden Guardian
     /// </summary>
-    private async Task<bool> HandleTheGoldenGuardian()
+    private static async Task<bool> HandleTheGoldenGuardian()
     {
         //Logger.Information($"We are in FATE The Golden Guardian");
         return false;
@@ -462,7 +462,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1964 Type: King of the Crescent
     /// </summary>
-    private async Task<bool> HandleKingOfTheCrescent()
+    private static async Task<bool> HandleKingOfTheCrescent()
     {
         //Logger.Information($"We are in FATE King of the Crescent");
         return false;
@@ -471,7 +471,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1965 Type: The Winged Terror
     /// </summary>
-    private async Task<bool> HandleTheWingedTerror()
+    private static async Task<bool> HandleTheWingedTerror()
     {
         //Logger.Information($"We are in FATE The Winged Terror");
         return false;
@@ -480,7 +480,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1966 Type: An Unending Duty
     /// </summary>
-    private async Task<bool> HandleAnUnendingDuty()
+    private static async Task<bool> HandleAnUnendingDuty()
     {
         //Logger.Information($"We are in FATE An Unending Duty");
         return false;
@@ -489,7 +489,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1967 Type: Brain Drain
     /// </summary>
-    private async Task<bool> HandleBrainDrain()
+    private static async Task<bool> HandleBrainDrain()
     {
         //Logger.Information($"We are in FATE Brain Drain");
         return false;
@@ -498,7 +498,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1968 Type: A Delicate Balance
     /// </summary>
-    private async Task<bool> HandleADelicateBalance()
+    private static async Task<bool> HandleADelicateBalance()
     {
         //Logger.Information($"We are in FATE A Delicate Balance");
         return false;
@@ -507,7 +507,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1969 Type: Sworn to Soil
     /// </summary>
-    private async Task<bool> HandleSwornToSoil()
+    private static async Task<bool> HandleSwornToSoil()
     {
         //Logger.Information($"We are in FATE Sworn to Soil");
         return false;
@@ -516,7 +516,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1970 Type: A Prying Eye
     /// </summary>
-    private async Task<bool> HandleAPryingEye()
+    private static async Task<bool> HandleAPryingEye()
     {
         //Logger.Information($"We are in FATE A Prying Eye");
         return false;
@@ -525,7 +525,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1971 Type: Fatal Allure
     /// </summary>
-    private async Task<bool> HandleFatalAllure()
+    private static async Task<bool> HandleFatalAllure()
     {
         //Logger.Information($"We are in FATE Fatal Allure");
         return false;
@@ -534,7 +534,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1972 Type: Serving Darkness
     /// </summary>
-    private async Task<bool> HandleServingDarkness()
+    private static async Task<bool> HandleServingDarkness()
     {
         //Logger.Information($"We are in FATE Serving Darkness");
         return false;
@@ -543,7 +543,7 @@ public class SouthHorn : AbstractDungeon
     /// <summary>
     /// 1977 Type: Pleading Pots
     /// </summary>
-    private async Task<bool> HandlePleadingPots()
+    private static async Task<bool> HandlePleadingPots()
     {
         //Logger.Information($"We are in FATE Pleading Pots");
         return false;

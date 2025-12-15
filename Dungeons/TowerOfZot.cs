@@ -74,17 +74,17 @@ public class TowerOfZot : AbstractDungeon
     // Haywire 24145
 
     // B1
-    private readonly HashSet<uint> transmute = new()
-    {
+    private readonly HashSet<uint> transmute =
+    [
         25242, 25372, 25371, 25373,
-    };
+    ];
 
-    private readonly HashSet<uint> deltaattack = new() { 25260, 25261, 25262, };
+    private readonly HashSet<uint> deltaattack = [25260, 25261, 25262,];
 
     private const int Sanduruva = 10257;
 
     // Prakamya Siddhi
-    private readonly HashSet<uint> prakamyaSiddhi = new() { 25251 };
+    private readonly HashSet<uint> prakamyaSiddhi = [25251];
 
     private static DateTime prakamyaSiddhiTimestamp = DateTime.MinValue;
 
@@ -94,12 +94,14 @@ public class TowerOfZot : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheTowerOfZot;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         25234, 25233, 25250, 24145,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {

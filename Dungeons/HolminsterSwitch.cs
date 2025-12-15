@@ -31,28 +31,28 @@ public class HolminsterSwitch : AbstractDungeon
     /// <summary>
     /// Set of boss-related monster IDs.
     /// </summary>
-    private static readonly HashSet<uint> BossIds = new()
-    {
+    private static readonly HashSet<uint> BossIds =
+    [
         ForgivenDissonance,
         TesleenTheForgiven,
         Philia,
         IronChainObj,
-    };
+    ];
 
-    private static readonly HashSet<uint> Thumbscrew = new() { 15814, 16850 };
-    private static readonly HashSet<uint> BrazenBull = new() { 15817, 15820 };
-    private static readonly HashSet<uint> Exorcise = new() { 15826, 15827 };
-    private static readonly HashSet<uint> FeveredFlagellation = new() { 15829, 15830, 17440 };
-    private static readonly HashSet<uint> RightKnout = new() { 15846 };
-    private static readonly HashSet<uint> LeftKnout = new() { 15847 };
-    private static readonly HashSet<uint> IntotheLight = new() { 15847, 17232 };
-    private static readonly HashSet<uint> Taphephobia = new() { 15842, 16769 };
-    private static readonly HashSet<uint> FierceBeating = new() { 15834, 15835, 15836, 15837, 15838, 15839, };
+    private static readonly HashSet<uint> Thumbscrew = [15814, 16850];
+    private static readonly HashSet<uint> BrazenBull = [15817, 15820];
+    private static readonly HashSet<uint> Exorcise = [15826, 15827];
+    private static readonly HashSet<uint> FeveredFlagellation = [15829, 15830, 17440];
+    private static readonly HashSet<uint> RightKnout = [15846];
+    private static readonly HashSet<uint> LeftKnout = [15847];
+    private static readonly HashSet<uint> IntotheLight = [15847, 17232];
+    private static readonly HashSet<uint> Taphephobia = [15842, 16769];
+    private static readonly HashSet<uint> FierceBeating = [15834, 15835, 15836, 15837, 15838, 15839,];
 
     private static readonly Vector3 ExorciseStackLoc = new(79.35034f, 0f, -81.01664f);
     private static readonly int ExorciseDuration = 25_000;
 
-    private static readonly HashSet<uint> Pendulum = new() { 15833, 15842, 16769, 16777, 16790, };
+    private static readonly HashSet<uint> Pendulum = [15833, 15842, 16769, 16777, 16790,];
     private static readonly Vector3 PendulumDodgeLoc = new(117.1188f, 23f, -474.0881f);
 
     private static readonly int FierceBeatingDuration = 32_000;
@@ -62,13 +62,15 @@ public class HolminsterSwitch : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.HolminsterSwitch;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         15602, 15609, 15814, 15815, 15816, 15817, 15818, 15819, 15820, 15822, 15843, 15845, 15846, 15847, 15848, 15849,
         15886, 16765, 16779, 16780, 16781, 16782, 16850, 16851, 16852, 17232, 17552,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

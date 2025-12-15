@@ -26,7 +26,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -40,7 +40,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Kelpie },
+            collectionProducer: () => [ArenaCenter.Kelpie],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -83,7 +83,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
     /// <summary>
     /// Boss 1: Kelpie.
     /// </summary>
-    private async Task<bool> HandleKelpie()
+    private static async Task<bool> HandleKelpie()
     {
         return false;
     }
@@ -91,7 +91,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
     /// <summary>
     /// Boss 2: The Old One.
     /// </summary>
-    private async Task<bool> HandleTheOldOne()
+    private static async Task<bool> HandleTheOldOne()
     {
         return false;
     }
@@ -99,7 +99,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
     /// <summary>
     /// Boss 3: Hrodric Poisontongue.
     /// </summary>
-    private async Task<bool> HandleHrodricPoisontongue()
+    private static async Task<bool> HandleHrodricPoisontongue()
     {
         return false;
     }
@@ -136,7 +136,7 @@ public class DrownedCityOfSkalla : AbstractDungeon
         ///
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> AntlionMarch = new() { 34816 };
+        public static readonly HashSet<uint> AntlionMarch = [34816];
 
         /// <summary>
         /// <see cref="Burn.EnemyNpc.MistDragon"/>'s Touchdown.

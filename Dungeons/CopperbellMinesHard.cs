@@ -32,17 +32,19 @@ public class CopperbellMinesHard : AbstractDungeon
     private const int GreenFirePuddle = 2002922;
     private const int AbyssWorm = 2290;
 
-    private static readonly HashSet<uint> DarkFireIII = new() { 1679 };
+    private static readonly HashSet<uint> DarkFireIII = [1679];
 
-    private readonly HashSet<uint> avoidobjs = new();
+    private readonly HashSet<uint> avoidobjs = [];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheCopperbellMinesHard;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     private static BattleCharacter HecatoncheirMastermindBC =>
         (BattleCharacter)GameObjectManager.GetObjectByNPCId(HecatoncheirMastermind);
 
@@ -88,7 +90,7 @@ public class CopperbellMinesHard : AbstractDungeon
         }
 
         // Gogmagolem
-        if (WorldManager.SubZoneId == (uint)SubZoneId.TheCryingDark && Core.Me.InCombat && !GameObjectManager.Attackers.Contains(KindlingSpriteBC) && (ImprovedBlastingDeviceBC != null && ImprovedBlastingDeviceBC.IsTargetable))
+        if (WorldManager.SubZoneId == (uint)SubZoneId.TheCryingDark && Core.Me.InCombat && !GameObjectManager.Attackers.Contains(KindlingSpriteBC) && ImprovedBlastingDeviceBC != null && ImprovedBlastingDeviceBC.IsTargetable)
         {
             /*
             if (!await Coroutine.Wait(
@@ -134,7 +136,7 @@ public class CopperbellMinesHard : AbstractDungeon
         {
             AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
 
-            uint[] ids = GameObjectManager.GetObjectsByNPCId(GreenFirePuddle).Select(i => i.ObjectId).ToArray();
+            uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(GreenFirePuddle).Select(i => i.ObjectId)];
             AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 5f, ids);
             foreach (uint id in ids)
             {
@@ -151,7 +153,7 @@ public class CopperbellMinesHard : AbstractDungeon
             {
                 AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
 
-                uint[] ids = GameObjectManager.GetObjectsByNPCId(AbyssWorm).Select(i => i.ObjectId).ToArray();
+                uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(AbyssWorm).Select(i => i.ObjectId)];
                 AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 6f, ids);
                 foreach (uint id in ids)
                 {

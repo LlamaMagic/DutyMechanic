@@ -22,7 +22,7 @@ public class HullbreakerIsle : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -86,17 +86,17 @@ public class HullbreakerIsle : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleSasquatchAsync()
+    private static async Task<bool> HandleSasquatchAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleSjoormAsync()
+    private static async Task<bool> HandleSjoormAsync()
     {
         return false;
     }
 
-    private async Task<bool> HandleKrakenAsync()
+    private static async Task<bool> HandleKrakenAsync()
     {
         return false;
     }

@@ -21,10 +21,10 @@ public class AetherochemicalResearchFacility : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAetherochemicalResearchFacility;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.EndofDays, EnemyAction.EntropicFlame };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.EndofDays, EnemyAction.EntropicFlame];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -272,21 +272,21 @@ public class AetherochemicalResearchFacility : AbstractDungeon
         /// Height of Chaos
         /// Tank buster, but does AOE so treating it like a spread.
         /// </summary>
-        public static readonly HashSet<uint> HeightofChaos = new() { 31911 };
+        public static readonly HashSet<uint> HeightofChaos = [31911];
 
         /// <summary>
         /// Boss 4: Ascian Prime.
         /// Dark Blizzard III.
         /// Fan of cone AOEs not detected by SideStep. Dummy cast 31914 intentionally excluded.
         /// </summary>
-        public static readonly HashSet<uint> DarkBlizzardIII = new()
-        {
+        public static readonly HashSet<uint> DarkBlizzardIII =
+        [
             31915,
             31916,
             31917,
             31918,
             31919
-        };
+        ];
     }
 
     private static class PartyAuras

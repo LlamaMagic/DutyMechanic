@@ -23,9 +23,10 @@ public class ContainmentBayP1T6 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.ContainmentBayP1T6;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -155,13 +156,13 @@ public class ContainmentBayP1T6 : AbstractDungeon
         /// Quasar
         /// Pulls to the west, so go east
         /// </summary>
-        public static readonly HashSet<uint> QuasarWest = new() { 6510 };
+        public static readonly HashSet<uint> QuasarWest = [6510];
 
         /// <summary>
         /// Quasar
         /// Pulls to the east, so go west
         /// </summary>
-        public static readonly HashSet<uint> QuasarEast = new() { 6511 };
+        public static readonly HashSet<uint> QuasarEast = [6511];
 
     }
 

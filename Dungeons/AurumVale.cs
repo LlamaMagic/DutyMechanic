@@ -23,24 +23,26 @@ public class AurumVale : AbstractDungeon
     private const uint GoldLungAura = 302;
     private const uint BurrsAura = 303;
 
-    private static readonly uint[] LocksmithFruits = new uint[]
-    {
+    private static readonly uint[] LocksmithFruits =
+    [
         2002647, 2002648, 2002649, 2000778,
-    };
+    ];
 
-    private static readonly uint[] MisersMistressFruits = new uint[]
-    {
+    private static readonly uint[] MisersMistressFruits =
+    [
         2002654, 2002655, 2002656, 2002657, 2002658,
         2002659, 2002660, 2002661, 2002662, 2002663,
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheAurumVale;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -65,7 +67,7 @@ public class AurumVale : AbstractDungeon
         return false;
     }
 
-    private async Task TryCleanseWithFruitAsync(uint auraId, uint auraStacks, uint[] fruitIds)
+    private static async Task TryCleanseWithFruitAsync(uint auraId, uint auraStacks, uint[] fruitIds)
     {
         Aura cleansableAura = Core.Player.GetAuraById(auraId);
 

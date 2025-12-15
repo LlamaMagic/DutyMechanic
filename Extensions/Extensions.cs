@@ -41,7 +41,7 @@ internal static class Extensions
 
         if (sidestepPlugin != null)
         {
-            HashSet<uint> filteredIds = new(bossIds.Where(id => ignoreIds == null || !ignoreIds.Contains(id)));
+            HashSet<uint> filteredIds = [.. bossIds.Where(id => ignoreIds == null || !ignoreIds.Contains(id))];
 
             bool isBoss = ignoreIds != null
             ? GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)

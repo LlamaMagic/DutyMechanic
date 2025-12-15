@@ -27,8 +27,10 @@ public class Antitower : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -91,7 +93,7 @@ public class Antitower : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleZuroRoggoAsync()
+    private static async Task<bool> HandleZuroRoggoAsync()
     {
         return false;
     }
@@ -117,13 +119,14 @@ public class Antitower : AbstractDungeon
                 Navigator.PlayerMover.MoveTowards(point);
                 await Coroutine.Yield();
             }
+
             await CommonTasks.StopMoving();
         }
 
         return false;
     }
 
-    private async Task<bool> CalcabrinaAsync()
+    private static async Task<bool> CalcabrinaAsync()
     {
         return false;
     }
@@ -193,6 +196,6 @@ public class Antitower : AbstractDungeon
         /// Jittering Jounce
         /// When this spell casts he targets a party memeber that needs to hide behind a rock, since we can't tell who's targetting just hide
         /// </summary>
-        public static readonly HashSet<uint> JitteringJounce = new() { 31833 };
+        public static readonly HashSet<uint> JitteringJounce = [31833];
     }
 }

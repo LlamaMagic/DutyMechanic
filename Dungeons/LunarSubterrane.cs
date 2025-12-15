@@ -33,17 +33,17 @@ public class LunarSubterrane : AbstractDungeon
     private readonly Stopwatch AntlionMarchSw = new();
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         EnemyAction.RuinousHex,
         EnemyAction.ShadowySigil,
         EnemyAction.Landslip,
         EnemyAction.EarthenGeyser2,
         EnemyAction.AntipodalAssault,
-    };
+    ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -59,7 +59,7 @@ public class LunarSubterrane : AbstractDungeon
 
         // Boss 1: Void Dark II / Boss 3: Fallen Grace
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is ((uint)SubZoneId.ClovenCrystalSquare or (uint)SubZoneId.CarnelianCourtyard),
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is (uint)SubZoneId.ClovenCrystalSquare or (uint)SubZoneId.CarnelianCourtyard,
             objectSelector: bc => bc.CastingSpellId is EnemyAction.VoidDarkII or EnemyAction.FallenGrace && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
@@ -81,7 +81,7 @@ public class LunarSubterrane : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.DarkElf },
+            collectionProducer: () => [ArenaCenter.DarkElf],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -90,7 +90,7 @@ public class LunarSubterrane : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.DamcyanAntlion },
+            collectionProducer: () => [ArenaCenter.DamcyanAntlion],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -126,7 +126,7 @@ public class LunarSubterrane : AbstractDungeon
     /// <summary>
     /// Boss 1: Dark Elf.
     /// </summary>
-    private async Task<bool> HandleDarkElf()
+    private static async Task<bool> HandleDarkElf()
     {
         return false;
     }
@@ -153,7 +153,7 @@ public class LunarSubterrane : AbstractDungeon
     /// <summary>
     /// Boss 3: Durante.
     /// </summary>
-    private async Task<bool> HandleDurante()
+    private static async Task<bool> HandleDurante()
     {
         return false;
     }
@@ -231,7 +231,7 @@ public class LunarSubterrane : AbstractDungeon
         ///
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> AntlionMarch = new() { 34816 };
+        public static readonly HashSet<uint> AntlionMarch = [34816];
 
         /// public const uint AntlionMarch = 34816;
         /// <summary>

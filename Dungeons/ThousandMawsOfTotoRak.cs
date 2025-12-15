@@ -20,17 +20,19 @@ public class ThousandMawsOfTotoRak : AbstractDungeon
 
     private const uint PoisonAura = 2089;
 
-    private static readonly HashSet<uint> DeadlyThrust = new() { 702 };
+    private static readonly HashSet<uint> DeadlyThrust = [702];
 
-    private readonly HashSet<uint> avoidobjs = new();
+    private readonly HashSet<uint> avoidobjs = [];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheThousandMawsOfTotoRak;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -60,7 +62,7 @@ public class ThousandMawsOfTotoRak : AbstractDungeon
             {
                 AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
 
-                uint[] ids = GameObjectManager.GetObjectsByNPCId(DeadlyThrustPuddle).Select(i => i.ObjectId).ToArray();
+                uint[] ids = [.. GameObjectManager.GetObjectsByNPCId(DeadlyThrustPuddle).Select(i => i.ObjectId)];
                 AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Me.InCombat, 10f, ids);
                 foreach (uint id in ids)
                 {

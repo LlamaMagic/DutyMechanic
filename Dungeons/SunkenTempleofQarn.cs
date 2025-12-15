@@ -28,10 +28,10 @@ public class SunkenTemplofQarn : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SunkenTempleofQarn;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { EnemyAction.Triclip, EnemyAction.LoomingJudgment };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.Triclip, EnemyAction.LoomingJudgment];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -45,7 +45,7 @@ public class SunkenTemplofQarn : AbstractDungeon
             innerHeight: 29.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Teratotaur },
+            collectionProducer: () => [ArenaCenter.Teratotaur],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -54,7 +54,7 @@ public class SunkenTemplofQarn : AbstractDungeon
             innerHeight: 29.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.TempleGuardian },
+            collectionProducer: () => [ArenaCenter.TempleGuardian],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -63,7 +63,7 @@ public class SunkenTemplofQarn : AbstractDungeon
             innerHeight: 35.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Adjudicator },
+            collectionProducer: () => [ArenaCenter.Adjudicator],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -121,7 +121,7 @@ public class SunkenTemplofQarn : AbstractDungeon
     /// <summary>
     /// Boss 2: Temple Guardian.
     /// </summary>
-    private async Task<bool> TempleGuardian()
+    private static async Task<bool> TempleGuardian()
     {
         return false;
     }
@@ -129,7 +129,7 @@ public class SunkenTemplofQarn : AbstractDungeon
     /// <summary>
     /// Boss 3: Adjudicator.
     /// </summary>
-    private async Task<bool> Adjudicator()
+    private static async Task<bool> Adjudicator()
     {
         return false;
     }

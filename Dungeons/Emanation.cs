@@ -23,16 +23,18 @@ public class Emanation : AbstractDungeon
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Emanation;
 
-    private BattleCharacter LakshmiTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(obj => obj.IsVisible && obj.IsTargetable && obj.NpcId == EnemyNpc.Lakshmi).FirstOrDefault();
+    private static BattleCharacter LakshmiTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().FirstOrDefault(obj => obj.IsVisible && obj.IsTargetable && obj.NpcId == EnemyNpc.Lakshmi);
 
-    private BattleCharacter DreamingKshatriyTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(obj => obj.IsVisible && obj.IsTargetable && obj.NpcId == EnemyNpc.DreamingKshatriya).FirstOrDefault();
+    private static BattleCharacter DreamingKshatriyTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().FirstOrDefault(obj => obj.IsVisible && obj.IsTargetable && obj.NpcId == EnemyNpc.DreamingKshatriya);
 
-    private BattleCharacter VrilTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(obj => obj.IsVisible && obj.NpcId == EnemyNpc.Vril).FirstOrDefault();
+    private static BattleCharacter VrilTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>().FirstOrDefault(obj => obj.IsVisible && obj.NpcId == EnemyNpc.Vril);
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -167,7 +169,7 @@ public class Emanation : AbstractDungeon
         ///
         /// Large Pushback, need to use DutyAction to dodge
         /// </summary>
-        internal static readonly HashSet<uint> DivineDenial = new() { 9349 };
+        internal static readonly HashSet<uint> DivineDenial = [9349];
         public const uint DivineDenialConstant = 9349;
     }
 

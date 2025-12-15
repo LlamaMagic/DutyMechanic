@@ -28,8 +28,8 @@ public class Ihuykatumu : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Ihuykatumu;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+     [
         /*
          EnemyAction.Decay,
         EnemyAction.Bury,
@@ -38,12 +38,12 @@ public class Ihuykatumu : AbstractDungeon
         EnemyAction.Bury4,
         EnemyAction.Bury5,
         */
-    };
+     ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
-    private static GameObject whirlWind => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
+    private static GameObject WhirlWind => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
     /// <inheritdoc/>
@@ -134,7 +134,7 @@ public class Ihuykatumu : AbstractDungeon
         // Boss 3: Razor Zephyr
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Breathcatch,
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.RazorZephyr && whirlWind == null,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.RazorZephyr && WhirlWind == null,
             width: 12.5f,
             length: 30f,
             yOffset: 0f,
@@ -156,7 +156,7 @@ public class Ihuykatumu : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.PrimePunutiy },
+            collectionProducer: () => [ArenaCenter.PrimePunutiy],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -208,7 +208,7 @@ public class Ihuykatumu : AbstractDungeon
     /// <summary>
     /// Boss 1: Prime Punutiy.
     /// </summary>
-    private async Task<bool> PrimePunutiy()
+    private static async Task<bool> PrimePunutiy()
     {
         if (EnemyAction.Bury.IsCasting())
         {
@@ -221,7 +221,7 @@ public class Ihuykatumu : AbstractDungeon
     /// <summary>
     /// Boss 2: Drowsie.
     /// </summary>
-    private async Task<bool> Drowsie()
+    private static async Task<bool> Drowsie()
     {
         return false;
     }
@@ -267,7 +267,7 @@ public class Ihuykatumu : AbstractDungeon
             await MovementHelpers.GetClosestAlly.Follow();
         }
 
-        if (whirlWind != null && !EnemyAction.ThunderIII.IsCasting())
+        if (WhirlWind != null && !EnemyAction.ThunderIII.IsCasting())
         {
             SidestepPlugin.Enabled = false;
             await MovementHelpers.GetClosestAlly.Follow();
@@ -325,7 +325,7 @@ public class Ihuykatumu : AbstractDungeon
         /// Punutiy Flop
         /// Run away
         /// </summary>
-        public static readonly HashSet<uint> ThermobaricCharge = new() { 8357 };
+        public static readonly HashSet<uint> ThermobaricCharge = [8357];
 
         /// <summary>
         /// Prime Punutiy
@@ -341,8 +341,8 @@ public class Ihuykatumu : AbstractDungeon
         /// Might have to follow npc on these as too many are happening at once for sidestep to dodgge affectively
         /// 36497,36498,36499,36500,36503
         /// </summary>
-        public static readonly HashSet<uint> Bury = new()
-        {
+        public static readonly HashSet<uint> Bury =
+        [
             36497,
             36498,
             36499,
@@ -350,7 +350,7 @@ public class Ihuykatumu : AbstractDungeon
             36501,
             36502,
             36503,
-        };
+        ];
 
         /// <summary>
         /// Prime Punutiy
@@ -387,7 +387,7 @@ public class Ihuykatumu : AbstractDungeon
         /// </summary>
         public const uint ShoreShakerInner = 36514;
 
-        public static readonly HashSet<uint> ShoreShakerInnerHash = new() { 36514 };
+        public static readonly HashSet<uint> ShoreShakerInnerHash = [36514];
 
         /// <summary>
         /// Prime Punutiy
@@ -485,28 +485,28 @@ public class Ihuykatumu : AbstractDungeon
         /// Blade
         /// AoE tank buster
         /// </summary>
-        public static readonly HashSet<uint> Blade = new() { 36356, 36357 };
+        public static readonly HashSet<uint> Blade = [36356, 36357];
 
         /// <summary>
         /// Apollyon
         /// Bladedance
         /// Follow NPC
         /// </summary>
-        public static readonly HashSet<uint> Bladedance = new() { 17998 };
+        public static readonly HashSet<uint> Bladedance = [17998];
 
         /// <summary>
         /// Apollyon
         /// Wing of Lightning
         /// Follow NPC
         /// </summary>
-        public static readonly HashSet<uint> WingofLightning = new() { 36351 };
+        public static readonly HashSet<uint> WingofLightning = [36351];
 
         /// <summary>
         /// Apollyon
         /// Thunder III
         /// AoE Spread
         /// </summary>
-        public static readonly HashSet<uint> ThunderIII = new() { 36353 };
+        public static readonly HashSet<uint> ThunderIII = [36353];
     }
 
     private static class PlayerAura

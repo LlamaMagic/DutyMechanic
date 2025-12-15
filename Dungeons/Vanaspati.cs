@@ -21,50 +21,50 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Vanaspati : AbstractDungeon
 {
-    private readonly HashSet<uint> follow = new()
-    {
+    private readonly HashSet<uint> follow =
+    [
         25139, 25140,
-    };
+    ];
 
-    private readonly HashSet<uint> follow1 = new()
-    {
+    private readonly HashSet<uint> follow1 =
+    [
         25151, 25153,
-    };
+    ];
 
-    private readonly HashSet<uint> follow2 = new()
-    {
+    private readonly HashSet<uint> follow2 =
+    [
         25160, 25166,
-    };
+    ];
 
-    private readonly HashSet<uint> magnet = new()
-    {
+    private readonly HashSet<uint> magnet =
+    [
         25143, 25146, 25148, 27852,
-    };
+    ];
 
-    private readonly HashSet<uint> magnet1 = new()
-    {
+    private readonly HashSet<uint> magnet1 =
+    [
         25145,
-    };
+    ];
 
-    private readonly HashSet<uint> magnet2 = new()
-    {
+    private readonly HashSet<uint> magnet2 =
+    [
         25147,
-    };
+    ];
 
-    private readonly HashSet<uint> magnet3 = new()
-    {
+    private readonly HashSet<uint> magnet3 =
+    [
        25142, 25168,
-    };
+    ];
 
-    private readonly HashSet<uint> magnet4 = new()
-    {
+    private readonly HashSet<uint> magnet4 =
+    [
         25169,
-    };
+    ];
 
-    private readonly HashSet<string> overStr = new()
-    {
+    private readonly HashSet<string> overStr =
+    [
        "地脉失控", "污秽的",
-    };
+    ];
 
     private readonly AvoidInfo avoidNull = AvoidanceManager.AddAvoidLocation(() => false, 0, () => new Vector3("0,0,1"));
 
@@ -99,7 +99,7 @@ public class Vanaspati : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     private static bool HasTarget => GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).
                 Any(bc => bc.CanAttack && bc.IsTargetable);
 
@@ -227,7 +227,7 @@ public class Vanaspati : AbstractDungeon
             }
         }
 
-        if (follow.IsCasting() && !magnet3SW.IsRunning || followSW.IsRunning)
+        if ((follow.IsCasting() && !magnet3SW.IsRunning) || followSW.IsRunning)
         {
             if (!followSW.IsRunning)
             {

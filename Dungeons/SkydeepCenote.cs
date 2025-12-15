@@ -25,10 +25,10 @@ public class SkydeepCenote : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SkydeepCenote;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.RollingCurrent, EnemyAction.RollingCurrent2, EnemyAction.Burst, EnemyAction.DeepThunder };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.RollingCurrent, EnemyAction.RollingCurrent2, EnemyAction.Burst, EnemyAction.DeepThunder];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -57,7 +57,7 @@ public class SkydeepCenote : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Firearms },
+            collectionProducer: () => [ArenaCenter.Firearms],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -66,7 +66,7 @@ public class SkydeepCenote : AbstractDungeon
             innerHeight: 35.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Maulskull },
+            collectionProducer: () => [ArenaCenter.Maulskull],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -104,7 +104,7 @@ public class SkydeepCenote : AbstractDungeon
     /// <summary>
     /// Boss 1: Feather Ray.
     /// </summary>
-    private async Task<bool> FeatherRay()
+    private static async Task<bool> FeatherRay()
     {
         return false;
     }
@@ -112,7 +112,7 @@ public class SkydeepCenote : AbstractDungeon
     /// <summary>
     /// Boss 2: Firearms.
     /// </summary>
-    private async Task<bool> Firearms()
+    private static async Task<bool> Firearms()
     {
         if (EnemyAction.Artillery.IsCasting() || EnemyAction.ThunderlightBurst.IsCasting())
         {
@@ -130,7 +130,7 @@ public class SkydeepCenote : AbstractDungeon
     /// <summary>
     /// Boss 3: Maulskull.
     /// </summary>
-    private async Task<bool> Maulskull()
+    private static async Task<bool> Maulskull()
     {
         if (!EnemyAction.RingingBlows.IsCasting() && (EnemyAction.ColossalImpact.IsCasting() || EnemyAction.Stonecarver.IsCasting() || EnemyAction.Shatter.IsCasting() || EnemyAction.Landing.IsCasting() || EnemyAction.Impact.IsCasting()))
         {
@@ -249,21 +249,21 @@ public class SkydeepCenote : AbstractDungeon
         /// Thunderlight Flurry
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> ThunderlightFlurry = new() { 36450 };
+        public static readonly HashSet<uint> ThunderlightFlurry = [36450];
 
         /// <summary>
         /// Firearms
         /// Thunderlight Burst
         /// Follow
         /// </summary>
-        public static readonly HashSet<uint> ThunderlightBurst = new() { 36443, 36445, 38581, 38582 };
+        public static readonly HashSet<uint> ThunderlightBurst = [36443, 36445, 38581, 38582];
 
         /// <summary>
         /// Firearms
         /// Artillery
         /// Run away
         /// </summary>
-        public static readonly HashSet<uint> Artillery = new() { 38660, 38661, 38662, 38663 };
+        public static readonly HashSet<uint> Artillery = [38660, 38661, 38662, 38663];
 
         /// <summary>
         /// Maulskull
@@ -277,63 +277,63 @@ public class SkydeepCenote : AbstractDungeon
         /// Destructive Heat
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> DestructiveHeat = new() { 36709 };
+        public static readonly HashSet<uint> DestructiveHeat = [36709];
 
         /// <summary>
         /// Maulskull
         /// Impact
         /// Line up around the blue circle to avoid pushback
         /// </summary>
-        public static readonly HashSet<uint> Impact = new() { 36677 };
+        public static readonly HashSet<uint> Impact = [36677];
 
         /// <summary>
         /// Maulskull
         /// Colossal Impact
         /// Line up around the blue circle to avoid pushback
         /// </summary>
-        public static readonly HashSet<uint> ColossalImpact = new() { 36704, 36706 };
+        public static readonly HashSet<uint> ColossalImpact = [36704, 36706];
 
         /// <summary>
         /// Maulskull
         /// Ringing Blows
         /// Line up around the blue circle to avoid pushback
         /// </summary>
-        public static readonly HashSet<uint> RingingBlows = new() { 36694, 36695 };
+        public static readonly HashSet<uint> RingingBlows = [36694, 36695];
 
         /// <summary>
         /// Maulskull
         /// Shatter
         /// Line AOE
         /// </summary>
-        public static readonly HashSet<uint> Shatter = new() { 36684, 36685, 36686 };
+        public static readonly HashSet<uint> Shatter = [36684, 36685, 36686];
 
         /// <summary>
         /// Maulskull
         /// Stonecarver
         ///
         /// </summary>
-        public static readonly HashSet<uint> Stonecarver = new()
-        {
+        public static readonly HashSet<uint> Stonecarver =
+        [
             36668,
             36670,
             36671,
             36696,
             36697,
-        };
+        ];
 
         /// <summary>
         /// Maulskull
         /// Landing
         /// Lots of rocks fall, follow NPCs to dodgge
         /// </summary>
-        public static readonly HashSet<uint> Landing = new() { 36683 };
+        public static readonly HashSet<uint> Landing = [36683];
 
         /// <summary>
         /// Maulskull
         /// Wrought Fire
         /// AoE Tank Buster
         /// </summary>
-        public static readonly HashSet<uint> WroughtFire = new() { 39121, 39122 };
+        public static readonly HashSet<uint> WroughtFire = [39121, 39122];
     }
 
     private static class PlayerAura

@@ -20,8 +20,8 @@ public class Aetherfont : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheAetherfont;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         EnemyAction.ExplosiveFrequency,
         EnemyAction.ResonantFrequency,
         EnemyAction.Tidalspout,
@@ -31,12 +31,12 @@ public class Aetherfont : AbstractDungeon
         EnemyAction.LightningRampage3,
         EnemyAction.LightningRampage4,
         EnemyAction.StickySpit,
-    };
+    ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
-    private BattleCharacter Whirlwinds => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
+    private static BattleCharacter Whirlwinds => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsTargetable);
 
     /// <inheritdoc/>
@@ -213,11 +213,11 @@ public class Aetherfont : AbstractDungeon
 
     private static class ArenaOutline
     {
-        public static readonly Vector2[] Octomammoth = new Vector2[]
-        {
-            new Vector2(-100.000f, 100.000f), new Vector2(-30.657f, -19.343f), new Vector2(-33.000f, -25.000f), new Vector2(-30.657f, -30.657f), new Vector2(-25.000f, -33.000f), new Vector2(-19.343f, -30.657f), new Vector2(-17.000f, -25.000f), new Vector2(-19.343f, -19.343f), new Vector2(-17.678f, -15.322f), new Vector2(-12.021f, -12.979f), new Vector2(-9.678f, -7.322f), new Vector2(-5.657f, -5.657f), new Vector2(0.000f, -8.000f), new Vector2(5.657f, -5.657f), new Vector2(9.678f, -7.322f), new Vector2(12.021f, -12.979f), new Vector2(17.678f, -15.322f), new Vector2(19.343f, -19.343f), new Vector2(17.000f, -25.000f), new Vector2(19.343f, -30.657f), new Vector2(25.000f, -33.000f), new Vector2(30.657f, -30.657f), new Vector2(33.000f, -25.000f), new Vector2(30.657f, -19.343f), new Vector2(25.000f, -17.000f), new Vector2(23.335f, -12.979f), new Vector2(25.678f, -7.322f), new Vector2(23.335f, -1.665f), new Vector2(17.678f, 0.678f), new Vector2(12.021f, -1.665f), new Vector2(8.000f, 0.000f), new Vector2(5.657f, 5.657f), new Vector2(0.000f, 8.000f), new Vector2(-5.657f, 5.657f), new Vector2(-8.000f, 0.000f), new Vector2(-12.021f, -1.665f), new Vector2(-17.678f, 0.678f),
-            new Vector2(-23.335f, -1.665f), new Vector2(-25.678f, -7.322f), new Vector2(-23.335f, -12.979f), new Vector2(-25.000f, -17.000f), new Vector2(-30.657f, -19.343f), new Vector2(-100.000f, 100.000f), new Vector2(100.000f, 100.000f), new Vector2(100.000f, -70.000f), new Vector2(-100.000f, -70.000f),
-        };
+        public static readonly Vector2[] Octomammoth =
+        [
+            new(-100.000f, 100.000f), new(-30.657f, -19.343f), new(-33.000f, -25.000f), new(-30.657f, -30.657f), new(-25.000f, -33.000f), new(-19.343f, -30.657f), new(-17.000f, -25.000f), new(-19.343f, -19.343f), new(-17.678f, -15.322f), new(-12.021f, -12.979f), new(-9.678f, -7.322f), new(-5.657f, -5.657f), new(0.000f, -8.000f), new(5.657f, -5.657f), new(9.678f, -7.322f), new(12.021f, -12.979f), new(17.678f, -15.322f), new(19.343f, -19.343f), new(17.000f, -25.000f), new(19.343f, -30.657f), new(25.000f, -33.000f), new(30.657f, -30.657f), new(33.000f, -25.000f), new(30.657f, -19.343f), new(25.000f, -17.000f), new(23.335f, -12.979f), new(25.678f, -7.322f), new(23.335f, -1.665f), new(17.678f, 0.678f), new(12.021f, -1.665f), new(8.000f, 0.000f), new(5.657f, 5.657f), new(0.000f, 8.000f), new(-5.657f, 5.657f), new(-8.000f, 0.000f), new(-12.021f, -1.665f), new(-17.678f, 0.678f),
+            new(-23.335f, -1.665f), new(-25.678f, -7.322f), new(-23.335f, -12.979f), new(-25.000f, -17.000f), new(-30.657f, -19.343f), new(-100.000f, 100.000f), new(100.000f, 100.000f), new(100.000f, -70.000f), new(-100.000f, -70.000f),
+        ];
     }
 
     private static class EnemyAction

@@ -28,9 +28,11 @@ public class SyrcusTower : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.SyrcusTower;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -153,7 +155,7 @@ public class SyrcusTower : AbstractDungeon
         return Core.Player.InCombat && Core.Player.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene;
     }
 
-    private async Task<bool> HandleScyllaAsync()
+    private static async Task<bool> HandleScyllaAsync()
     {
         /*
         var SmolderingSoul = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.SmolderingSoul)
@@ -165,7 +167,7 @@ public class SyrcusTower : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleGlasyaLabolasAsync()
+    private static async Task<bool> HandleGlasyaLabolasAsync()
     {
         return false;
     }
@@ -245,7 +247,7 @@ public class SyrcusTower : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleXandeAsync()
+    private static async Task<bool> HandleXandeAsync()
     {
         // Soak AetherialMine if you're not the tank
         // Removing this for now. It looks suspicious, especially when multiple people are doing it
@@ -383,7 +385,7 @@ public class SyrcusTower : AbstractDungeon
         ///
         /// Spread.
         /// </summary>
-        public static readonly HashSet<uint> CurtainCall = new() { 2441, 2821 };
+        public static readonly HashSet<uint> CurtainCall = [2441, 2821];
     }
 
     private static class PlayerAura

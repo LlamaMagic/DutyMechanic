@@ -36,18 +36,18 @@ public class MesoTerminal : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.MesoTerminal;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         EnemyAction.MemoryOfTheStorm,
         EnemyAction.SensoryDeprivation,
         EnemyAction.SterileSphereLeft,
         EnemyAction.SterileSphereRight,
         EnemyAction.Keraunography,
         EnemyAction.Electray,
-    };
+    ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { EnemyAction.ConcentratedDose, EnemyAction.RelentlessTorment, EnemyAction.MemoryOfThePyre, };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ConcentratedDose, EnemyAction.RelentlessTorment, EnemyAction.MemoryOfThePyre,];
 
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {
@@ -76,7 +76,7 @@ public class MesoTerminal : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.ChirurgeonGeneral },
+            collectionProducer: () => [ArenaCenter.ChirurgeonGeneral],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -85,7 +85,7 @@ public class MesoTerminal : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.HoodedHeadsmen },
+            collectionProducer: () => [ArenaCenter.HoodedHeadsmen],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidDonut(
@@ -101,7 +101,7 @@ public class MesoTerminal : AbstractDungeon
             innerHeight: 38.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.ImmortalRemains },
+            collectionProducer: () => [ArenaCenter.ImmortalRemains],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -131,7 +131,7 @@ public class MesoTerminal : AbstractDungeon
     /// <summary>
     /// Boss 1: Chirurgeon General.
     /// </summary>
-    private async Task<bool> ChirurgeonGeneral()
+    private static async Task<bool> ChirurgeonGeneral()
     {
         if (Core.Me.HasAura(PlayerAura.Insensible))
         {
@@ -174,7 +174,7 @@ public class MesoTerminal : AbstractDungeon
     /// <summary>
     /// Boss 3: Immortal Remains.
     /// </summary>
-    private async Task<bool> ImmortalRemains()
+    private static async Task<bool> ImmortalRemains()
     {
         return false;
     }
@@ -202,27 +202,27 @@ public class MesoTerminal : AbstractDungeon
         /// <summary>
         /// First Boss: Chirurgeon General
         /// </summary>
-        public static readonly Vector3 ChirurgeonGeneral = new Vector3(270f, -582.5f, 12f);
+        public static readonly Vector3 ChirurgeonGeneral = new(270f, -582.5f, 12f);
 
         /// <summary>
         /// Second Boss: Hooded Headsmen
         /// </summary>
-        public static readonly Vector3 HoodedHeadsmen = new Vector3(60f, -490f, -258f);
+        public static readonly Vector3 HoodedHeadsmen = new(60f, -490f, -258f);
 
         /// <summary>
         /// Second Boss: Cell Block B
         /// </summary>
-        public static readonly Vector3 CellBlockβ = new Vector3(60f, -490f, -248f);
+        public static readonly Vector3 CellBlockβ = new(60f, -490f, -248f);
 
         /// <summary>
         /// Final Boss: Immortal Remains
         /// </summary>
-        public static readonly Vector3 ImmortalRemains = new Vector3(0f, 320f, 0f);
+        public static readonly Vector3 ImmortalRemains = new(0f, 320f, 0f);
 
         /// <summary>
         /// Final Boss: Impression Safe Spot
         /// </summary>
-        public static readonly Vector3 ImpressionSafeSpot = new Vector3(-10.8f, 320f, 7.5f);
+        public static readonly Vector3 ImpressionSafeSpot = new(-10.8f, 320f, 7.5f);
     }
 
     private static class EnemyAction
@@ -267,7 +267,7 @@ public class MesoTerminal : AbstractDungeon
         /// Immortal Remains
         /// Impression (43818 / 43819) - Pushback
         /// </summary>
-        public static readonly HashSet<uint> Impression1 = new() { 43818 };
+        public static readonly HashSet<uint> Impression1 = [43818];
 
         public const uint Impression2 = 43819;
 

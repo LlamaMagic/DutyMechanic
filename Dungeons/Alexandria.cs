@@ -29,18 +29,18 @@ public class Alexandria : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Alexandria;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.Superbolt, EnemyAction.Overexposure, EnemyAction.LightofDevotion };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Superbolt, EnemyAction.Overexposure, EnemyAction.LightofDevotion];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
-    private static GameObject interferonC => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonC)
+    private static GameObject InterferonC => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonC)
         .FirstOrDefault(bc => bc.IsVisible); // +
 
-    private static GameObject interferonR => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonR)
+    private static GameObject InterferonR => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonR)
         .FirstOrDefault(bc => bc.IsVisible); // O
 
-    private static bool InterfornPresent => interferonC != null || interferonR != null;
+    private static bool InterfornPresent => InterferonC != null || InterferonR != null;
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -226,7 +226,7 @@ public class Alexandria : AbstractDungeon
             innerHeight: 29.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.AntivirusX },
+            collectionProducer: () => [ArenaCenter.AntivirusX],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -235,7 +235,7 @@ public class Alexandria : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Amalgam },
+            collectionProducer: () => [ArenaCenter.Amalgam],
             priority: AvoidancePriority.High);
 
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -244,7 +244,7 @@ public class Alexandria : AbstractDungeon
             innerHeight: 28.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Eliminator },
+            collectionProducer: () => [ArenaCenter.Eliminator],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -282,7 +282,7 @@ public class Alexandria : AbstractDungeon
     /// <summary>
     /// Boss 1: Antivirus X.
     /// </summary>
-    private async Task<bool> AntivirusX()
+    private static async Task<bool> AntivirusX()
     {
         if (EnemyAction.Quarantine.IsCasting())
         {
@@ -313,7 +313,7 @@ public class Alexandria : AbstractDungeon
     /// <summary>
     /// Boss 2: Amalgam.
     /// </summary>
-    private async Task<bool> Amalgam()
+    private static async Task<bool> Amalgam()
     {
         return false;
     }
@@ -321,7 +321,7 @@ public class Alexandria : AbstractDungeon
     /// <summary>
     /// Boss 3: Eliminator.
     /// </summary>
-    private async Task<bool> Eliminator()
+    private static async Task<bool> Eliminator()
     {
         return false;
     }
@@ -384,7 +384,7 @@ public class Alexandria : AbstractDungeon
         /// Quarantine
         /// Stack
         /// </summary>
-        public static readonly HashSet<uint> Quarantine = new() { 36384 };
+        public static readonly HashSet<uint> Quarantine = [36384];
 
         public const uint QuarantineConst = 36384;
 
@@ -458,7 +458,7 @@ public class Alexandria : AbstractDungeon
         /// </summary>
         public const uint TernaryChargeInner = 39253;
 
-        public static readonly HashSet<uint> TernaryChargeHash = new() { 39253 };
+        public static readonly HashSet<uint> TernaryChargeHash = [39253];
 
         /// <summary>
         /// Amalgam
@@ -549,7 +549,7 @@ public class Alexandria : AbstractDungeon
         /// Impact
         /// Stand on the edge of impact to get pushed back
         /// </summary>
-        public static readonly HashSet<uint> Impact = new() { 36794 };
+        public static readonly HashSet<uint> Impact = [36794];
 
         public const uint ImpactConst = 36794;
     }

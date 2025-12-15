@@ -39,13 +39,13 @@ public class FellCourtOfTroia : AbstractDungeon
     private const int FiredampDuration = 5_750;
     private const int BlightedBedevilmentDuration = 5_750;
 
-    private static readonly HashSet<uint> VoidGravity = new() { 29626, 30022, 30242, 30023 };
-    private static readonly HashSet<uint> VoidNail = new() { 29823 };
-    private static readonly HashSet<uint> RottenRampage = new() { 30231 };
-    private static readonly HashSet<uint> VoidVortex = new() { 30024, 30025, 30243, 30253, 30254, };
-    private static readonly HashSet<uint> ToricVoid = new() { 29829, 31207, 31206, };
+    private static readonly HashSet<uint> VoidGravity = [29626, 30022, 30242, 30023];
+    private static readonly HashSet<uint> VoidNail = [29823];
+    private static readonly HashSet<uint> RottenRampage = [30231];
+    private static readonly HashSet<uint> VoidVortex = [30024, 30025, 30243, 30253, 30254,];
+    private static readonly HashSet<uint> ToricVoid = [29829, 31207, 31206,];
 
-    private static readonly HashSet<uint> Firedamp = new() { 30262, 30263 };
+    private static readonly HashSet<uint> Firedamp = [30262, 30263];
 
     private static readonly Vector3 EvilDreamersArenaCenter = new(168f, -700f, 90f);
     private static readonly Vector3 BeatriceArenaCenter = new(0f, -698f, -148f);
@@ -94,9 +94,9 @@ public class FellCourtOfTroia : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.TheFellCourtOfTroia;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 30024, 30025, 30243, 30253, 30254, 31208 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [30024, 30025, 30243, 30253, 30254, 31208];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -224,7 +224,7 @@ public class FellCourtOfTroia : AbstractDungeon
         return result;
     }
 
-    private async Task<bool> HandleEvilDreamersAsync()
+    private static async Task<bool> HandleEvilDreamersAsync()
     {
         if (VoidGravity.IsCasting())
         {
@@ -234,7 +234,7 @@ public class FellCourtOfTroia : AbstractDungeon
         return false;
     }
 
-    private async Task<bool> HandleBeatriceAsync()
+    private static async Task<bool> HandleBeatriceAsync()
     {
         if (VoidNail.IsCasting())
         {

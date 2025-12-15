@@ -15,10 +15,10 @@ public class EurekaPyros : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.EurekaPyros;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {

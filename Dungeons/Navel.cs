@@ -16,18 +16,20 @@ public class Navel : AbstractDungeon
 {
     private const int Titan = 1801;
 
-    private static readonly HashSet<uint> Spells = new()
-    {
+    private static readonly HashSet<uint> Spells =
+    [
         651,
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheNavel;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

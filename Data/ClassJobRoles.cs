@@ -11,21 +11,21 @@ internal static class ClassJobRoles
     /// <summary>
     /// Gets all <see cref="ClassJobType"/>s in the Tank role.
     /// </summary>
-    public static readonly HashSet<ClassJobType> Tanks = new()
-    {
+    public static readonly HashSet<ClassJobType> Tanks =
+    [
         ClassJobType.Gladiator,
         ClassJobType.Marauder,
         ClassJobType.Paladin,
         ClassJobType.Gunbreaker,
         ClassJobType.Warrior,
         ClassJobType.DarkKnight,
-    };
+    ];
 
     /// <summary>
     /// Gets all <see cref="ClassJobType"/>s in the DPS role.
     /// </summary>
-    public static readonly HashSet<ClassJobType> DPS = new()
-    {
+    public static readonly HashSet<ClassJobType> DPS =
+    [
         ClassJobType.Lancer,
         ClassJobType.Archer,
         ClassJobType.Thaumaturge,
@@ -45,25 +45,25 @@ internal static class ClassJobRoles
         ClassJobType.Reaper,
         ClassJobType.Viper,
         ClassJobType.Pictomancer,
-    };
+    ];
 
     /// <summary>
     /// Gets all <see cref="ClassJobType"/>s in the Healer role.
     /// </summary>
-    public static readonly HashSet<ClassJobType> Healers = new()
-    {
+    public static readonly HashSet<ClassJobType> Healers =
+    [
         ClassJobType.Sage,
         ClassJobType.Astrologian,
         ClassJobType.WhiteMage,
         ClassJobType.Scholar,
         ClassJobType.Conjurer,
-    };
+    ];
 
     /// <summary>
     /// Gets all <see cref="ClassJobType"/>s that primarily fight in melee range.
     /// </summary>
-    public static readonly List<ClassJobType> Melee = new()
-    {
+    public static readonly List<ClassJobType> Melee =
+    [
         ClassJobType.Lancer,
         ClassJobType.Dragoon,
         ClassJobType.Pugilist,
@@ -78,7 +78,7 @@ internal static class ClassJobRoles
         ClassJobType.Paladin,
         ClassJobType.Warrior,
         ClassJobType.Gunbreaker,
-    };
+    ];
 
     internal static readonly Dictionary<ClassJobType, int> LimitBreak3 = new()
     {

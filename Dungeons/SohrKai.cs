@@ -21,9 +21,15 @@ public class SohrKai : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
-        new() { EnemyAction.Gallop, EnemyAction.AkhMorn, EnemyAction.FrigidDive };
+    [
+        EnemyAction.Gallop,
+        EnemyAction.AkhMorn,
+        EnemyAction.FrigidDive
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -205,7 +211,7 @@ public class SohrKai : AbstractDungeon
         /// Holy Breath
         /// Spread
         /// </summary>
-        public static readonly HashSet<uint> HolyBreath = new() { 32138 };
+        public static readonly HashSet<uint> HolyBreath = [32138];
     }
 
     private static class AblityTimers

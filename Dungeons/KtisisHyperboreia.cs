@@ -58,32 +58,32 @@ public class KtisisHyperboreia : AbstractDungeon
 
     // Lyssa
     private const int FrostBiteAndSeekDuration = 20_000;
-    private readonly HashSet<uint> frostBiteAndSeek = new() { 25175 };
+    private readonly HashSet<uint> frostBiteAndSeek = [25175];
 
     // Ladon Lord
-    private readonly HashSet<uint> pyricBreath = new()
-    {
+    private readonly HashSet<uint> pyricBreath =
+    [
         25734,
         25735,
         25736,
         25737,
         25738,
         25739
-    };
+    ];
 
     // hermes
-    private readonly HashSet<uint> hermetica = new() { 25888, 25893, 25895 };
-    private readonly HashSet<uint> meteor = new() { 25891, 25890 };
-    private readonly HashSet<uint> trueAero = new() { 25899, 25901 };
-    private readonly HashSet<uint> trueAeroII = new() { 25897, 25896, 25898 };
-    private readonly HashSet<uint> trueTornado = new() { 25902, 25906 };
-    private readonly HashSet<uint> doubleSpell = new() { 25892 };
-    private readonly HashSet<uint> quadruple = new() { 25894 };
-    private readonly HashSet<uint> trueBravery = new() { 25907 };
-    private readonly HashSet<uint> trismegistos = new() { 25886 };
+    private readonly HashSet<uint> hermetica = [25888, 25893, 25895];
+    private readonly HashSet<uint> meteor = [25891, 25890];
+    private readonly HashSet<uint> trueAero = [25899, 25901];
+    private readonly HashSet<uint> trueAeroII = [25897, 25896, 25898];
+    private readonly HashSet<uint> trueTornado = [25902, 25906];
+    private readonly HashSet<uint> doubleSpell = [25892];
+    private readonly HashSet<uint> quadruple = [25894];
+    private readonly HashSet<uint> trueBravery = [25907];
+    private readonly HashSet<uint> trismegistos = [25886];
 
-    private readonly HashSet<uint> anySpellAfterHermetica = new()
-    {
+    private readonly HashSet<uint> anySpellAfterHermetica =
+    [
         25891,
         25890,
         25899,
@@ -99,7 +99,7 @@ public class KtisisHyperboreia : AbstractDungeon
         25897,
         25896,
         25898,
-    };
+    ];
 
     private DateTime frostBiteAndSeekEnds = DateTime.MinValue;
 
@@ -111,17 +111,19 @@ public class KtisisHyperboreia : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.KtisisHyperboreia;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new()
-    {
+    protected override HashSet<uint> SpellsToFollowDodge { get; } =
+    [
         25234,
         25233,
         25250,
         24145,
         25180,
         25742,
-    };
+    ];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> OnEnterDungeonAsync()
     {

@@ -21,7 +21,7 @@ public class StepsOfFaith : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -31,7 +31,7 @@ public class StepsOfFaith : AbstractDungeon
         AvoidanceManager.AddAvoidLocation(
             canRun: () => Core.Player.InCombat,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius,
-            locationProducer: (BattleCharacter bc) => bc.SpellCastInfo?.CastLocation ?? bc.TargetGameObject.Location,
+            locationProducer: bc => bc.SpellCastInfo?.CastLocation ?? bc.TargetGameObject.Location,
             collectionProducer: () => GameObjectManager.GetObjectsOfType<BattleCharacter>()
                 .Where(bc => bc.CastingSpellId is EnemyAction.Flamisphere or EnemyAction.Fireball));
 

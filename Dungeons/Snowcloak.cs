@@ -12,7 +12,7 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Snowcloak : AbstractDungeon
 {
-    private static readonly HashSet<uint> FrozenSpike = new() { 30262 };
+    private static readonly HashSet<uint> FrozenSpike = [30262];
 
     private static readonly int FrozenSpikeDuration = 10_000;
 
@@ -47,9 +47,11 @@ public class Snowcloak : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Snowcloak;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { 29586, 29599 };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [29586, 29599];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

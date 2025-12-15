@@ -40,10 +40,10 @@ public class AlzadaalsLegacy : AbstractDungeon
     private static readonly Vector3 ArmoredChariotArenaCenter = new(0, 0, 0);
     private static readonly Vector3 KapikuluArenaCenter = new(0, 0, 0);
 
-    private static readonly HashSet<uint> TentacleDig = new()
-    {
+    private static readonly HashSet<uint> TentacleDig =
+    [
         EnemyAction.TentacleDigA, EnemyAction.TentacleDigB, EnemyAction.TentacleDigC,
-    };
+    ];
 
     private readonly Stopwatch tentacleDigSw = new();
 
@@ -53,9 +53,11 @@ public class AlzadaalsLegacy : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.AlzadaalsLegacy;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new();
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
     {
@@ -145,12 +147,12 @@ public class AlzadaalsLegacy : AbstractDungeon
         return false;
     }
 
-    private Task<bool> HandleArmoredChariotAsync()
+    private static Task<bool> HandleArmoredChariotAsync()
     {
         return Task.FromResult(false);
     }
 
-    private Task<bool> HandleKapikuluAsync()
+    private static Task<bool> HandleKapikuluAsync()
     {
         return Task.FromResult(false);
     }

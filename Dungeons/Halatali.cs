@@ -17,20 +17,22 @@ public class Halatali : AbstractDungeon
     private const int ThunderclapGuivre = 1196;
     private const int LightningPool = 2001648;
 
-    private static readonly List<(Vector3 Location, float Radius)> LightningPoolAvoids = new()
-    {
+    private static readonly List<(Vector3 Location, float Radius)> LightningPoolAvoids =
+    [
         (new Vector3(-177.9965f, -14.69446f, -133.0435f), 25f),
         (new Vector3(-189.0614f, -15.30659f, -157.837f), 15f),
         (new Vector3(-204.8858f, -15.06509f, -117.6959f), 20f),
-    };
+    ];
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.Halatali;
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

@@ -30,10 +30,10 @@ public class WorqorZormor : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.WorqorZormor;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { EnemyAction.WindShot, EnemyAction.CrystallineCrush, EnemyAction.Sledgehammer };
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.WindShot, EnemyAction.CrystallineCrush, EnemyAction.Sledgehammer];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -96,7 +96,7 @@ public class WorqorZormor : AbstractDungeon
             innerHeight: 39.0f,
             outerWidth: 90.0f,
             outerHeight: 90.0f,
-            collectionProducer: () => new[] { ArenaCenter.Gurfurlur },
+            collectionProducer: () => [ArenaCenter.Gurfurlur],
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -170,7 +170,7 @@ public class WorqorZormor : AbstractDungeon
     /// <summary>
     /// Boss 3: Gurfurlur.
     /// </summary>
-    private async Task<bool> Gurfurlur()
+    private static async Task<bool> Gurfurlur()
     {
         if ((EnemyAction.Allfire.IsCasting() || EnemyAction.Windswrath.IsCasting() || EnemyAction.GreatFlood.IsCasting()) && !EnemyAction.VolcanicDrop.IsCasting())
         {
@@ -257,35 +257,35 @@ public class WorqorZormor : AbstractDungeon
         /// Sparkling Sprinkling
         /// Avoid on players
         /// </summary>
-        public static readonly HashSet<uint> SparklingSprinkling = new() { 36281 };
+        public static readonly HashSet<uint> SparklingSprinkling = [36281];
 
         /// <summary>
         /// RyoqorTerteh
         /// Ice Scream
         /// Avoids that happen all at the same time, so going to have to follow trusts
         /// </summary>
-        public static readonly HashSet<uint> IceScream = new() { 36270 };
+        public static readonly HashSet<uint> IceScream = [36270];
 
         /// <summary>
         /// RyoqorTerteh
         /// Snow Boulder
         /// Avoids that happen all at the same time, so going to have to follow trusts
         /// </summary>
-        public static readonly HashSet<uint> SnowBoulder = new() { 36278 };
+        public static readonly HashSet<uint> SnowBoulder = [36278];
 
         /// <summary>
         /// RyoqorTerteh
         /// Frozen Swirl
         /// Avoids that happen all at the same time, so going to have to follow trusts
         /// </summary>
-        public static readonly HashSet<uint> FrozenSwirl = new() { 36271, 36272 };
+        public static readonly HashSet<uint> FrozenSwirl = [36271, 36272];
 
         /// <summary>
         /// RyoqorTerteh
         /// Fluffle Up
         /// Causes the big bunnies to spawn
         /// </summary>
-        public static readonly HashSet<uint> FluffleUp = new() { 36265 };
+        public static readonly HashSet<uint> FluffleUp = [36265];
 
         /// <summary>
         /// Kahderyor
@@ -341,28 +341,28 @@ public class WorqorZormor : AbstractDungeon
         /// Allfire
         ///
         /// </summary>
-        public static readonly HashSet<uint> Allfire = new() { 36303, 36304, 36305 };
+        public static readonly HashSet<uint> Allfire = [36303, 36304, 36305];
 
         /// <summary>
         /// Gurfurlur
         /// Windswrath
         ///
         /// </summary>
-        public static readonly HashSet<uint> Windswrath = new() { 36310, 39074 };
+        public static readonly HashSet<uint> Windswrath = [36310, 39074];
 
         /// <summary>
         /// Gurfurlur
         /// Volcanic Drop
         ///
         /// </summary>
-        public static readonly HashSet<uint> VolcanicDrop = new() { 36306 };
+        public static readonly HashSet<uint> VolcanicDrop = [36306];
 
         /// <summary>
         /// Gurfurlur
         /// Great Flood
         ///
         /// </summary>
-        public static readonly HashSet<uint> GreatFlood = new() { 36307 };
+        public static readonly HashSet<uint> GreatFlood = [36307];
 
         /// <summary>
         /// Gurfurlur

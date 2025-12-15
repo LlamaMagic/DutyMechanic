@@ -24,16 +24,16 @@ public class DeadEnds : AbstractDungeon
     private const int Peacekeeper = 10315;
     private const int Rala = 10316;
 
-    private static readonly HashSet<uint> BossIds = new()
-    {
+    private static readonly HashSet<uint> BossIds =
+    [
         CausticGrebuloff, Peacekeeper, Rala,
-    };
+    ];
 
     /// <summary>
     /// Collection of Pestilent Sands environmental traps.
     /// </summary>
-    private readonly List<(float Radius, Vector3 Location)> pestilentSandsTraps = new()
-    {
+    private readonly List<(float Radius, Vector3 Location)> pestilentSandsTraps =
+    [
         (10f, new Vector3(384.6537f, 499.6f, 134.6268f)),
         (6f, new Vector3(393.4057f, 500.5982f, 108.7927f)),
         (6f, new Vector3(383.599f, 500.4645f, 84.56992f)),
@@ -68,10 +68,10 @@ public class DeadEnds : AbstractDungeon
         (5f, new Vector3(296.3872f, 502.5f, -25.8502f)),
         (5f, new Vector3(351.1416f, 500.6152f, 22.12455f)),
         (5f, new Vector3(351.6766f, 500.5081f, 5.411625f)),
-    };
+    ];
 
-    private readonly List<(float Radius, Vector3 Location)> peacekeeperRing = new()
-    {
+    private readonly List<(float Radius, Vector3 Location)> peacekeeperRing =
+    [
         (5f, new Vector3(-93.2f, 0.1995f, -193.8f)),
         (5f, new Vector3(-94.4f, 0.1995f, -193.0f)),
         (5f, new Vector3(-95.6f, 0.1995f, -192.3f)),
@@ -161,7 +161,7 @@ public class DeadEnds : AbstractDungeon
         (5f, new Vector3(-125.0f, 0.1995f, -210.7f)),
         (5f, new Vector3(-124.9f, 0.1995f, -212.1f)),
         (5f, new Vector3(-124.7f, 0.1995f, -213.5f)),
-    };
+    ];
 
     // Misc Spells
     //  Peacekeeper     25936   Decimation (AoE)
@@ -177,14 +177,14 @@ public class DeadEnds : AbstractDungeon
     //                  25944, //  Ra-La               Loving Embrace
 
     // GENERIC MECHANICS
-    private readonly HashSet<uint> spread = new()
-    {
+    private readonly HashSet<uint> spread =
+    [
         25923, // Caustic Grebuloff   Befoulment (Spread Mechanic)
         25947, // Ra-La               Still Embrace
-    };
+    ];
 
-    private readonly HashSet<uint> stack = new()
-    {
+    private readonly HashSet<uint> stack =
+    [
         25921, // Caustic Grebuloff   Blighted Water
 
         // 28360,
@@ -195,60 +195,60 @@ public class DeadEnds : AbstractDungeon
         25943,  // Ra-La - Loving Embrace
         25944,  // Ra-La - Loving Embrace
         27717,  // Xenoflora - Creeping Hush
-    };
+    ];
 
-    private readonly HashSet<uint> tankBusters = new()
-    {
+    private readonly HashSet<uint> tankBusters =
+    [
         25935, // Peacekeeper - Elimination (Tankbuster)
-    };
+    ];
 
     // CAUSTIC GREBULOFF SPELLS (B1)
-    private readonly HashSet<uint> miasmata = new()
-    {
+    private readonly HashSet<uint> miasmata =
+    [
         25916, // Caustic Grebuloff - Miasmata
-    };
+    ];
 
-    private readonly HashSet<uint> nausea = new()
-    {
+    private readonly HashSet<uint> nausea =
+    [
         28347, // Caustic Grebuloff - Wave of Nausea
-    };
+    ];
 
-    private readonly HashSet<uint> coughUp = new()
-    {
+    private readonly HashSet<uint> coughUp =
+    [
         25917, // Cough Up
-    };
+    ];
 
     // PEACEKEEPER SPELLS (B2)
-    private readonly HashSet<uint> peacefire = new()
-    {
+    private readonly HashSet<uint> peacefire =
+    [
         25933,
-    };
+    ];
 
-    private readonly HashSet<uint> noFuture = new()
-    {
+    private readonly HashSet<uint> noFuture =
+    [
         25925,
-    };
+    ];
 
-    private readonly HashSet<uint> electrorep = new()
-    {
+    private readonly HashSet<uint> electrorep =
+    [
         28360,
-    };
+    ];
 
-    private readonly HashSet<uint> orderToFire = new()
-    {
+    private readonly HashSet<uint> orderToFire =
+    [
         28351,
-    };
+    ];
 
     // RA-LA SPELLS (B3)
-    private readonly HashSet<uint> lifesbreath = new()
-    {
+    private readonly HashSet<uint> lifesbreath =
+    [
         25940, // Ra-La Lifesbreath
-    };
+    ];
 
-    private readonly HashSet<uint> prance = new()
-    {
+    private readonly HashSet<uint> prance =
+    [
         25937, // Ra-La Prance
-    };
+    ];
 
     private readonly Stopwatch noFutureTimer = new();
     private readonly Stopwatch erTimer = new();
@@ -271,7 +271,7 @@ public class DeadEnds : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+    protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -616,15 +616,15 @@ public class DeadEnds : AbstractDungeon
         }
     }
 
-    private void AvoidGrebuloffPillarsTraps()
+    private static void AvoidGrebuloffPillarsTraps()
     {
     }
 
-    private void HandleCausticGrebuloffMechanics()
+    private static void HandleCausticGrebuloffMechanics()
     {
     }
 
-    private void AvoidJudgmentDayTraps()
+    private static void AvoidJudgmentDayTraps()
     {
     }
 
@@ -684,14 +684,14 @@ public class DeadEnds : AbstractDungeon
         }
     }
 
-    private void HandleRalaMechanics()
+    private static void HandleRalaMechanics()
     {
     }
 
     // the point of these functions is to take your location and a 2nd location, then calculate a point a distance
     // behind the 2nd location, allowing you to guess the location of a trust member avoiding mechanics who is too
     // slow to follow safely.
-    private Vector3 CalculateLine(Vector3 x1, Vector3 x2, float distance)
+    private static Vector3 CalculateLine(Vector3 x1, Vector3 x2, float distance)
     {
         double length = Math.Sqrt(Squared(x2.X - (double)x1.X) + Squared(x2.Y - (double)x1.Y) + Squared(x2.Z - (double)x1.Z));
 
@@ -706,7 +706,7 @@ public class DeadEnds : AbstractDungeon
         return new Vector3((float)x, (float)y, (float)z);
     }
 
-    private double Squared(double x)
+    private static double Squared(double x)
     {
         return x * x;
     }
