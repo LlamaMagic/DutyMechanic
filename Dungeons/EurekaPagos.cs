@@ -46,14 +46,18 @@ public class EurekaPagos : AbstractDungeon
     {
         await FollowDodgeSpells();
 
-        GameObject sleepingDragon = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.FrozenVoidDragon)
-            .FirstOrDefault(bc => bc.Distance() < 29 && bc.IsVisible && bc.HasAura(EnemyAuras.Sleep));
+                Core.Me.SetWalk();
 
+
+        GameObject sleepingDragon = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.FrozenVoidDragon)
+            .FirstOrDefault(bc => bc.Distance() < 40 && bc.IsVisible && bc.HasAura(EnemyAuras.Sleep));
+
+        /*
         if (sleepingDragon != null)
         {
             if (!LlamaLibrary.Extensions.LocalPlayerExtensions.IsWalking)
             {
-                Logger.Information($"Setting Walking because dragon is nearby");
+                Logger.Information($"Setting Walking because dragon is nearby with stop");
                 Core.Me.SetWalk();
             }
         }
@@ -65,7 +69,7 @@ public class EurekaPagos : AbstractDungeon
                 Core.Me.SetRun();
             }
         }
-
+*/
         return false;
     }
 

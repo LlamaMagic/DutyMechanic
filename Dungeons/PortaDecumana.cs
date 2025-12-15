@@ -33,7 +33,14 @@ public class PortaDecumana : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
+<<<<<<< Updated upstream
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
+=======
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
+
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
+>>>>>>> Stashed changes
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -89,6 +96,15 @@ public class PortaDecumana : AbstractDungeon
             rotationDegrees: 0.0f,
             radius: 40.0f,
             arcDegrees: 180.0f);
+
+        // Magitek Ray
+        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.MagitekRay,
+            width: 10f,
+            length: 40f,
+            yOffset: 0f,
+            priority: AvoidancePriority.High);
 
         // The Ultima Weapon: Explosion
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -159,14 +175,16 @@ public class PortaDecumana : AbstractDungeon
         // Soak Aetheroplasms if you're not the tank
         if (!Core.Me.IsTank() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene && Core.Me.InCombat)
         {
-            BattleCharacter aetheroplasmSoak = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Aetheroplasm).OrderBy(bc => bc.Distance2D()).FirstOrDefault(bc => bc.IsVisible && bc.CurrentHealth > 0);
+            BattleCharacter aetheroplasmSoak = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Aetheroplasm).OrderBy(bc => bc.Distance2D()).LastOrDefault(bc => bc.IsVisible && bc.CurrentHealth > 0);
 
-            if (aetheroplasmSoak != null && PartyManager.IsInParty && !CommonBehaviors.IsLoading &&
-                !QuestLogManager.InCutscene && Core.Me.Location.Distance2D(aetheroplasmSoak.Location) > 1)
+            if (aetheroplasmSoak != null && PartyManager.IsInParty && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene)
             {
-                await aetheroplasmSoak.Follow(1F, 0, true);
-                await CommonTasks.StopMoving();
-                await Coroutine.Sleep(30);
+                AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
+                    canRun: () => Core.Player.InCombat && aetheroplasmSoak != null,
+                    objectSelector: c => c.ObjectId == aetheroplasmSoak.ObjectId,
+                    outerRadius: 40.0f,
+                    innerRadius: 3.0F,
+                    priority: AvoidancePriority.Medium);
             }
         }
 
@@ -249,7 +267,18 @@ public class PortaDecumana : AbstractDungeon
         /// </summary>
         public const uint CitadelBuster = 29020;
 
+<<<<<<< Updated upstream
         public static readonly HashSet<uint> CitadelBusterHash = [29020];
+=======
+        public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
+
+        /// <summary>
+        /// The Ultima Weapon
+        /// Magitek Ray
+        /// Straight line AOE
+        /// </summary>
+        public const uint MagitekRay = 29008;
+>>>>>>> Stashed changes
 
         /// <summary>
         /// The Ultima Weapon
