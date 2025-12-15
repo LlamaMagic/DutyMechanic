@@ -14,7 +14,7 @@ public abstract class AbstractTaskTag : ProfileBehavior
     public override bool IsDone => isDone;
 
     /// <inheritdoc/>
-    protected override Composite CreateBehavior()  // HACK: Must be protected to work with RB, despite CS0507
+    protected override Composite CreateBehavior()
     {
         return new PrioritySelector(
             new Decorator(
@@ -25,7 +25,7 @@ public abstract class AbstractTaskTag : ProfileBehavior
     }
 
     /// <inheritdoc/>
-    protected override void OnResetCachedDone()  // HACK: Must be protected to work with RB, despite CS0507
+    protected override void OnResetCachedDone()
     {
         isDone = false;
     }

@@ -18,7 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="LlamaLibrary" Version="25.1202.1704.59" />
-    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.785" />
+    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.785.1" />
   </ItemGroup>
   <PropertyGroup>
     <AddonType>Plugins</AddonType>
