@@ -33,14 +33,7 @@ public class PortaDecumana : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-<<<<<<< Updated upstream
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
-=======
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = new() { };
-
-    /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = new() { };
->>>>>>> Stashed changes
 
     /// <inheritdoc/>
     public override Task<bool> OnEnterDungeonAsync()
@@ -267,10 +260,7 @@ public class PortaDecumana : AbstractDungeon
         /// </summary>
         public const uint CitadelBuster = 29020;
 
-<<<<<<< Updated upstream
         public static readonly HashSet<uint> CitadelBusterHash = [29020];
-=======
-        public static readonly HashSet<uint> CitadelBusterHash = new() { 29020 };
 
         /// <summary>
         /// The Ultima Weapon
@@ -278,7 +268,6 @@ public class PortaDecumana : AbstractDungeon
         /// Straight line AOE
         /// </summary>
         public const uint MagitekRay = 29008;
->>>>>>> Stashed changes
 
         /// <summary>
         /// The Ultima Weapon
