@@ -498,5 +498,5 @@ public enum ZoneId : ushort
     /// <summary>
     /// Lv. 100.6: Mistwake
     /// </summary>
-    Mistwake = ushort.MaxValue, // TODO: Add Mistwake Zone ID
+    Mistwake = 1314,
 }

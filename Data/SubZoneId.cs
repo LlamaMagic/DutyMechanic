@@ -935,4 +935,19 @@ public enum SubZoneId : uint
     /// Lv. 100: The Meso Terminal > Non-volatile Memory, Immortal Remains
     /// </summary>
     NonvolatileMemory = 5272,
+
+    /// <summary>
+    /// Lv. 100: Mistwake > Shattered Lair, Treno Catoblepas
+    /// </summary>
+    ShatteredLair = 5354,
+
+    /// <summary>
+    /// Lv. 100: Mistwake > Overture Plaza, Amdusias
+    /// </summary>
+    OverturePlaza = 5355,
+
+    /// <summary>
+    /// Lv. 100: Mistwake > Town Round, Thundergust Griffin
+    /// </summary>
+    TownRound = 5356,
 }
