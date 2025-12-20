@@ -42,6 +42,7 @@ internal class DungeonManager
             { ZoneId.TheStoneVigil, typeof(StoneVigil) },
             { ZoneId.TheHowlingEye, typeof(HowlingEye) },
             { ZoneId.TheAurumVale, typeof(AurumVale) },
+            { ZoneId.TheAurumVale7_4, typeof(AurumVale7_4) },
             { ZoneId.CastrumMeridianum, typeof(CastrumMeridianum) },
             { ZoneId.TheWanderersPalace, typeof(WanderersPalace) },
             { ZoneId.PharosSirius, typeof(PharosSirius) },
