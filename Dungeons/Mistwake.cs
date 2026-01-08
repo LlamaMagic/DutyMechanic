@@ -39,8 +39,14 @@ public class Mistwake : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ThunderIII, EnemyAction.Shockbolt, EnemyAction.GoldenTalons];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [EnemyAction.ThunderIII, EnemyAction.Shockbolt, EnemyAction.GoldenTalons];
+    protected override HashSet<uint> SpellsToMitigate { get; } =
+    [
+        EnemyAction.RayOfLightning,
+        EnemyAction.AmdusiasThunderIII, EnemyAction.Rush
+    ];
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
@@ -90,10 +96,11 @@ public class Mistwake : AbstractDungeon
 
             AvoidanceHelpers.AddAvoidDonut(
                 canRun: () => Core.Player.InCombat && GameObjectManager.GetObjectsOfType<BattleCharacter>().Any(bc => bc.CastingSpellId == EnemyAction.BedevilingLight),
-                locationProducer: () => {
+                locationProducer: () =>
+                {
                     Vector3 nearestRock = GameObjectManager
-                            .GameObjects.OrderBy(obj => obj.Distance())
-                            .FirstOrDefault(obj => obj.NpcId == EnemyNpc.Stalagmite && obj.IsVisible).Location;
+                        .GameObjects.OrderBy(obj => obj.Distance())
+                        .FirstOrDefault(obj => obj.NpcId == EnemyNpc.Stalagmite && obj.IsVisible).Location;
 
                     return Clio.Common.MathEx.CalculatePointFrom(ArenaCenter.TrenoCatoblepas, nearestRock, -3f);
                 },
@@ -111,8 +118,11 @@ public class Mistwake : AbstractDungeon
             AvoidanceManager.AddAvoidObject<GameObject>(
                 canRun: () => Core.Player.InCombat && GameObjectManager.Attackers.Any(bc => bc.CastingSpellId is EnemyAction.ThunderIII && bc.SpellCastInfo.TargetId == Core.Player.ObjectId),
                 radius: 4f + StalagmiteRadius,
-                unitIds: [.. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
-                    .. GameObjectManager.GetObjectsByNPCId(EnemyNpc.Stalagmite).Select(obj => obj.ObjectId)]);
+                unitIds:
+                [
+                    .. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
+                    .. GameObjectManager.GetObjectsByNPCId(EnemyNpc.Stalagmite).Select(obj => obj.ObjectId)
+                ]);
 
             AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
                 canRun: () => Core.Player.InCombat,
@@ -334,7 +344,6 @@ public class Mistwake : AbstractDungeon
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
         /// </summary>
         /// public const uint ThunderclapConcerto2 = 45337;
-
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
         /// </summary>
@@ -344,7 +353,6 @@ public class Mistwake : AbstractDungeon
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
         /// </summary>
         /// public const uint ThunderclapConcerto4 = 45342;
-
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Burst.
         /// </summary>
