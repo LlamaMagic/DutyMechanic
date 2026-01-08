@@ -34,7 +34,8 @@ public class HallOfTheNoviceArena : AbstractDungeon
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.HallOfTheNoviceArena;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 

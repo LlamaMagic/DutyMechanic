@@ -38,7 +38,8 @@ public class HolminsterSwitch : AbstractDungeon
         Philia,
         IronChainObj,
     ];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static readonly HashSet<uint> Thumbscrew = [15814, 16850];
     private static readonly HashSet<uint> BrazenBull = [15817, 15820];
     private static readonly HashSet<uint> Exorcise = [15826, 15827];

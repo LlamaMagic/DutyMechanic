@@ -32,7 +32,8 @@ public class YuweyawataFieldStation : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.YuweyawataFieldStation;
 
     private AvoidInfo craterAvoid = default;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.BoulderDance,];
 

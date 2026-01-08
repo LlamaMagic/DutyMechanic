@@ -25,7 +25,8 @@ public class SouthHorn : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static uint? CurrentFateId =>
         FateManager.WithinFate && FateManager.ActiveFates.Any()
             ? FateManager.ActiveFates

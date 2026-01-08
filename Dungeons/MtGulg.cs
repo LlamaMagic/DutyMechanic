@@ -40,7 +40,8 @@ public class MtGulg : AbstractDungeon
         ForgivenRevelry,
         ForgivenDissonance,
     ];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static readonly HashSet<uint> LumenInfinitum = [16818];
     private static readonly HashSet<uint> Exegesis = [15622, 15623, 16987, 16988, 16989,];
     private static readonly HashSet<uint> RightPalm = [16247, 16248];

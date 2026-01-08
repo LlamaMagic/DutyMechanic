@@ -17,6 +17,8 @@ public class MatoyasRelict : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
+    ///     /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     public override async Task<bool> RunAsync()
     {
         await FollowDodgeSpells();

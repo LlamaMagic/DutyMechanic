@@ -25,7 +25,8 @@ public class WorqorLarDor : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static GameObject ArcaneSphere => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.ArcaneSphere)
         .FirstOrDefault(bc => bc.IsVisible); // +
 

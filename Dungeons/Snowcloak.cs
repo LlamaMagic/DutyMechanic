@@ -13,7 +13,8 @@ namespace DutyMechanic.Dungeons;
 public class Snowcloak : AbstractDungeon
 {
     private static readonly HashSet<uint> FrozenSpike = [30262];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static readonly int FrozenSpikeDuration = 10_000;
 
     /*

@@ -11,6 +11,7 @@ using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static DutyMechanic.Dungeons.PortaDecumana;
 
 namespace DutyMechanic.Dungeons;
 
@@ -19,6 +20,8 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Mistwake : AbstractDungeon
 {
+    private const float StalagmiteRadius = 2.5f;
+
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
     /// </summary>
@@ -30,18 +33,20 @@ public class Mistwake : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
     [
-        EnemyAction.BedevilingLight, EnemyAction.RayofLightning,
+        EnemyAction.RayOfLightning,
         EnemyAction.AmdusiasThunderIII, EnemyAction.Rush
     ];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ThunderIII, EnemyAction.Shockbolt, EnemyAction.GoldenTalons];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [EnemyAction.ThunderIII, EnemyAction.Shockbolt, EnemyAction.GoldenTalons];
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
         _ = await FollowDodgeSpells();
         _ = await TankBusterSpells();
+        _ = await DamageMitigationSpells();
 
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
@@ -70,31 +75,66 @@ public class Mistwake : AbstractDungeon
 
     private async Task<bool> HandleTrenoCatoblepas()
     {
-        SidestepPlugin.Enabled = true;
-
-        // Spread from other Party Members if casting Thunder III and we're tank
-        if (Core.Me.IsTank() && EnemyAction.ThunderIIIHash.IsCasting())
-        {
-            await MovementHelpers.Spread(6000, 5f);
-        }
+        SidestepPlugin.Enabled = false;
 
         if (lastSubZoneId is not SubZoneId.ShatteredLair)
         {
             uint currentSubZoneId = WorldManager.SubZoneId;
             Logger.Information(Translations.SUBZONE_CHANGED_ADDING_AVOIDS, (SubZoneId)currentSubZoneId);
 
+            // Add small static avoids on Stalagmites to help path around them
+            AvoidanceManager.AddAvoidObject<GameObject>(
+                canRun: () => Core.Player.InCombat,
+                radius: StalagmiteRadius,
+                unitIds: [.. GameObjectManager.GetObjectsByNPCId(EnemyNpc.Stalagmite).Select(obj => obj.ObjectId)]);
+
+            AvoidanceHelpers.AddAvoidDonut(
+                canRun: () => Core.Player.InCombat && GameObjectManager.GetObjectsOfType<BattleCharacter>().Any(bc => bc.CastingSpellId == EnemyAction.BedevilingLight),
+                locationProducer: () => {
+                    Vector3 nearestRock = GameObjectManager
+                            .GameObjects.OrderBy(obj => obj.Distance())
+                            .FirstOrDefault(obj => obj.NpcId == EnemyNpc.Stalagmite && obj.IsVisible).Location;
+
+                    return Clio.Common.MathEx.CalculatePointFrom(ArenaCenter.TrenoCatoblepas, nearestRock, -3f);
+                },
+                outerRadius: 90,
+                innerRadius: 1);
+
+            // Thunder III for non-tank/non-target: avoid the AoE buster target
             AvoidanceManager.AddAvoidObject<BattleCharacter>(
                 canRun: () => Core.Player.InCombat,
-                objectSelector: bc => bc.CastingSpellId is EnemyAction.ThunderII && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
-                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
-                locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
-
-            // Doing Seperate logic here for Thunder III as we don't want it running if we're the tank
-            AvoidanceManager.AddAvoidObject<BattleCharacter>(
-                canRun: () => Core.Player.InCombat && !Core.Me.IsTank(),
                 objectSelector: bc => bc.CastingSpellId is EnemyAction.ThunderIII && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
                 radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.1f,
                 locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
+
+            // Thunder III for tank/target: avoid hitting party AND Stalagmites
+            AvoidanceManager.AddAvoidObject<GameObject>(
+                canRun: () => Core.Player.InCombat && GameObjectManager.Attackers.Any(bc => bc.CastingSpellId is EnemyAction.ThunderIII && bc.SpellCastInfo.TargetId == Core.Player.ObjectId),
+                radius: 4f + StalagmiteRadius,
+                unitIds: [.. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
+                    .. GameObjectManager.GetObjectsByNPCId(EnemyNpc.Stalagmite).Select(obj => obj.ObjectId)]);
+
+            AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+                canRun: () => Core.Player.InCombat,
+                objectSelector: bc => bc.CastingSpellId == EnemyAction.Petribreath,
+                leashPointProducer: () => ArenaCenter.TrenoCatoblepas,
+                leashRadius: 40.0f,
+                rotationDegrees: 0.0f,
+                radius: 40.0f,
+                arcDegrees: 131f);
+
+            // Thunder II: Avoid hitting each other or stacking in static puddles
+            AvoidanceManager.AddAvoidObject<BattleCharacter>(
+                canRun: () => Core.Player.InCombat,
+                objectSelector: bc => (bc.CastingSpellId is EnemyAction.ThunderII_Targeted or EnemyAction.ThunderII_Ground) && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
+                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.1f,
+                locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
+
+            // Thunder II: Also avoid hitting Stalagmites
+            AvoidanceManager.AddAvoidObject<GameObject>(
+                canRun: () => Core.Player.InCombat && GameObjectManager.GetObjectsOfType<BattleCharacter>().Any(bc => (bc.CastingSpellId is EnemyAction.ThunderII_Targeted or EnemyAction.ThunderII_Ground)),
+                radius: 5f + StalagmiteRadius,
+                unitIds: [.. GameObjectManager.GetObjectsByNPCId(EnemyNpc.Stalagmite).Select(obj => obj.ObjectId)]);
 
             // Boss Arena
             AvoidanceHelpers.AddAvoidSquareDonut(
@@ -198,6 +238,11 @@ public class Mistwake : AbstractDungeon
         public const uint TrenoCatoblepas = 14270;
 
         /// <summary>
+        /// First Boss: Treno Catoblepas's Stalagmite
+        /// </summary>
+        public const uint Stalagmite = 108;
+
+        /// <summary>
         /// Second Boss: Amdusias.
         /// </summary>
         public const uint Amdusias = 14271;
@@ -231,77 +276,77 @@ public class Mistwake : AbstractDungeon
         public static readonly Vector3 ThundergustGriffin = new(281f, -115f, -620f);
     }
 
-    private static class MechanicLocation
-    {
-        public static readonly Vector3 Placeholder = new(0f, 0f, 0f);
-    }
-
-    private static class EnemyAura
-    {
-        /// <summary>
-        /// <see cref="EnemyNpc.Placeholder"/>'s Placeholder.
-        /// </summary>
-        public const uint Placeholder = uint.MaxValue;
-    }
-
     private static class EnemyAction
     {
         /// <summary>
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Earthquake.
+        /// Unavoidable raid-wide AoE damage.
+        /// </summary>
+        public const uint Earthquake = 43327;
+
+        /// <summary>
         /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Bedeviling Light.
+        /// AoE petrification. Break line of sight with <see cref="EnemyNpc.Stalagmite"/>.
         /// </summary>
         public const uint BedevilingLight = 43330;
 
         /// <summary>
         /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder III.
-        /// AoE Tank Buster
+        /// AoE Tank Buster. Avoid hitting other players and <see cref="EnemyNpc.Stalagmite"/>.
         /// </summary>
         public const uint ThunderIII = 43329;
 
         /// <summary>
-        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder III.
-        /// AoE Tank Buster
-        /// </summary>
-        public static readonly HashSet<uint> ThunderIIIHash = [43329];
-
-        /// <summary>
-        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder II.
-        /// Spread
-        /// </summary>
-        public const uint ThunderII = 43333;
-
-        /// <summary>
         /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Ray of Lightning.
-        /// Stack
+        /// Shared line AoE targeting a player.
         /// </summary>
-        public const uint RayofLightning = 44825;
+        public const uint RayOfLightning = 44825;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Petribreath.
+        /// Front-facing cone AoE.
+        /// </summary>
+        public const uint Petribreath = 43335;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder II, player-targeted.
+        /// Circle AoE targeting player. Spread without hitting <see cref="EnemyNpc.Stalagmite"/>.
+        /// </summary>
+        public const uint ThunderII_Targeted = 43333;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder II, ground-targeted.
+        /// Circle AoE targeting static location. Will unavoidably break some <see cref="EnemyNpc.Stalagmite"/>.
+        /// </summary>
+        public const uint ThunderII_Ground = 43332;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Thunder II, dummy cast.
+        /// </summary>
+        public const uint ThunderII_Dummy = 43331;
 
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
-        ///
         /// </summary>
         public const uint ThunderclapConcertoBehind = 45336;
 
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
-        ///
         /// </summary>
         /// public const uint ThunderclapConcerto2 = 45337;
 
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
-        ///
         /// </summary>
         public const uint ThunderclapConcertoFront = 45341;
 
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Thunderclap Concerto.
-        ///
         /// </summary>
         /// public const uint ThunderclapConcerto4 = 45342;
 
         /// <summary>
         /// <see cref="EnemyNpc.Amdusias"/>'s Burst.
-        ///
         /// </summary>
         public const uint Burst = 45349;
 
@@ -357,7 +402,7 @@ public class Mistwake : AbstractDungeon
     private static class PartyAura
     {
         /// <summary>
-        /// <see cref="EnemyNpc.Treno Catoblepas"/>'s Bedeviling Light.
+        /// <see cref="EnemyNpc.TrenoCatoblepas"/>'s Bedeviling Light.
         /// </summary>
         public const uint BedevilingLight = 43330;
     }

@@ -31,7 +31,8 @@ public class LunarSubterrane : AbstractDungeon
     private DateTime AntlionMarchEnds = DateTime.MinValue;
 
     private readonly Stopwatch AntlionMarchSw = new();
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
     [

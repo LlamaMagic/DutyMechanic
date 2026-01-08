@@ -34,7 +34,8 @@ public class MesoTerminal : AbstractDungeon
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.MesoTerminal;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } =
     [

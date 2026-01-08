@@ -35,7 +35,8 @@ public class Vanaspati : AbstractDungeon
     [
         25160, 25166,
     ];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private readonly HashSet<uint> magnet =
     [
         25143, 25146, 25148, 27852,

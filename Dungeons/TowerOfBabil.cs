@@ -29,7 +29,8 @@ public class TowerOfBabil : AbstractDungeon
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheTowerOfBabil;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.ShockingForce];
 

@@ -30,7 +30,8 @@ public class Vault : AbstractDungeon
     private const uint DimensionalCollapseLargeSpell = 4139;
     private const uint BlackKnightsTourSpell = 4153;
     private const uint WhiteKnightsTourSpell = 4152;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private const uint DawnKnightNpc = 3851;
     private const uint DuskKnightNpc = 3852;
     private const uint HolyFlame = 4400;

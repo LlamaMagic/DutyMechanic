@@ -15,7 +15,8 @@ namespace DutyMechanic.Dungeons;
 public class CastrumMeridianum : AbstractDungeon
 {
     private const int LiviaSasJunius = 2118;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static readonly Stopwatch StackStopwatch = new();
 
     // BOSS MECHANIC SPELLIDS

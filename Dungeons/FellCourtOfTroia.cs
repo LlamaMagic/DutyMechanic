@@ -50,7 +50,8 @@ public class FellCourtOfTroia : AbstractDungeon
     private static readonly Vector3 EvilDreamersArenaCenter = new(168f, -700f, 90f);
     private static readonly Vector3 BeatriceArenaCenter = new(0f, -698f, -148f);
     private static readonly Vector3 ScarmiglioneArenaCenter = new(-35.5f, 385f, -298.5f);
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private AvoidInfo blightedBedevilmentAvoid = default;
     private DateTime blightedBedevilmentEnds = DateTime.MinValue;
 

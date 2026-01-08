@@ -27,7 +27,8 @@ public class BrayfloxsLongstop : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {

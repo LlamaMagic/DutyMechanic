@@ -24,7 +24,8 @@ public class EurekaPagos : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private static readonly Dictionary<ClassJobType, uint> TankInvul = new()
     {
         { ClassJobType.Warrior, 43 }, // Holmgang

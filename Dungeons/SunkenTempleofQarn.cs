@@ -29,7 +29,8 @@ public class SunkenTemplofQarn : AbstractDungeon
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.Triclip, EnemyAction.LoomingJudgment];
 

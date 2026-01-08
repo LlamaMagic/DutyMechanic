@@ -25,7 +25,8 @@ public class TowerOfZot : AbstractDungeon
     private readonly Stopwatch daSw = new();
     private readonly Stopwatch tmSw = new();
     private readonly Stopwatch stSw = new();
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     // BOSS MECHANIC SPELLIDS
 
     // B1 - Minduruva

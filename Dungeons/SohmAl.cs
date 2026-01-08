@@ -37,7 +37,8 @@ public class SohmAl : AbstractDungeon
      * SpellName: Comet SpellId: 3814 SideStep
      *
      */
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private readonly HashSet<uint> MadDash = [3808,];
 
     private static readonly int MadDashDuration = 7_000;

@@ -23,7 +23,8 @@ public class StoneVigil : AbstractDungeon
 
     private const uint SwingeSpell = 903;
     private const uint LionsBreathSpell = 902;
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private const uint CauterizeSpell = 1026;
     private const uint FrostBreathSpell = 1022;
 

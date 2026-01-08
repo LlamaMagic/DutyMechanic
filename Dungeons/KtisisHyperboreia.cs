@@ -81,7 +81,8 @@ public class KtisisHyperboreia : AbstractDungeon
     private readonly HashSet<uint> quadruple = [25894];
     private readonly HashSet<uint> trueBravery = [25907];
     private readonly HashSet<uint> trismegistos = [25886];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private readonly HashSet<uint> anySpellAfterHermetica =
     [
         25891,

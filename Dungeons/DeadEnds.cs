@@ -28,7 +28,8 @@ public class DeadEnds : AbstractDungeon
     [
         CausticGrebuloff, Peacekeeper, Rala,
     ];
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <summary>
     /// Collection of Pestilent Sands environmental traps.
     /// </summary>

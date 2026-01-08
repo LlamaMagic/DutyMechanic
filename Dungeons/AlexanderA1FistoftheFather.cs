@@ -20,6 +20,8 @@ public class AlexanderA1FistoftheFather : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
+    ///     /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();

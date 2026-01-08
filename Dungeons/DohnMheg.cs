@@ -41,7 +41,8 @@ public class DohnMheg : AbstractDungeon
     private static readonly Vector3 LordOfLingeringGazeArenaCenter = new(0f, 6.85f, 30.16f);
     private static readonly Vector3 GriauleArenaCenter = new(7f, 23f, -339f);
     private static readonly Vector3 LordOfLengthsomeGaitArenaCenter = new(-128f, -144.5f, -244f);
-
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     private readonly Stopwatch laughingLeapSw = new();
 
     private readonly HashSet<uint> laughingLeap =

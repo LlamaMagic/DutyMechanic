@@ -36,6 +36,9 @@ public class Aetherfont : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
+    /// <inheritdoc/>
+    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+
     private static BattleCharacter Whirlwinds => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Whirlwind)
         .FirstOrDefault(bc => bc.IsTargetable);
 
