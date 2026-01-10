@@ -8,6 +8,7 @@ using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ namespace DutyMechanic.Dungeons;
 public class Mistwake : AbstractDungeon
 {
     private const float StalagmiteRadius = 2.5f;
+    private static DateTime BedevilingLightTimestamp = DateTime.MinValue;
 
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
@@ -155,6 +157,19 @@ public class Mistwake : AbstractDungeon
                 outerHeight: 90.0f,
                 collectionProducer: () => [ArenaCenter.TrenoCatoblepas],
                 priority: AvoidancePriority.High);
+        }
+
+        if (Core.Player.InCombat)
+        {
+            if (BedevilingLightTimestamp < DateTime.Now)
+            {
+                var trenoCatoblepas = GameObjectManager.GetObjectsOfType<BattleCharacter>().FirstOrDefault(bc => bc.CastingSpellId == EnemyAction.BedevilingLight);
+                if (trenoCatoblepas != default)
+                {
+                    BedevilingLightTimestamp = DateTime.Now;
+                    CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, trenoCatoblepas.SpellCastInfo.RemainingCastTime, $"Disallow combat routine movement while hiding from ({trenoCatoblepas.SpellCastInfo.ActionId}) {trenoCatoblepas.SpellCastInfo.Name} for {trenoCatoblepas.SpellCastInfo.RemainingCastTime}.");
+                }
+            }
         }
 
         return false;
