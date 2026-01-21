@@ -46,7 +46,7 @@ public class Mistwake : AbstractDungeon
     protected override HashSet<uint> SpellsToMitigate { get; } =
     [
         EnemyAction.RayOfLightning,
-        EnemyAction.AmdusiasThunderIII, EnemyAction.Rush
+        EnemyAction.AmdusiasThunderIII
     ];
 
     /// <inheritdoc/>
