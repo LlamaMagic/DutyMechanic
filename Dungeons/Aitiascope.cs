@@ -1,239 +1,344 @@
-﻿using Buddy.Coroutines;
-using Clio.Utilities;
+﻿using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
+using DutyMechanic.Localization;
+using DutyMechanic.Logging;
 using ff14bot;
-using ff14bot.Behavior;
 using ff14bot.Managers;
+using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
+using LlamaLibrary.Helpers;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
 
-/// <summary>
-/// Lv. 89.1: The Aitiascope dungeon logic.
-/// </summary>
 public class Aitiascope : AbstractDungeon
 {
-    // Boss Spells for this dungeon.
-
-    // Livia the Undeterred Ename: Livia the Undeterred NpcId: 10290  The Aitiascope Id: 978 Sub: 3992 Raw: 978
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Frustration] [Frustration] SpellId : 25672
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Aglaea Bite] [Aglaea Bite] SpellId : 25673
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Aglaea Climb] [Aglaea Climb] SpellId : 25668
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Aglaea Climb] [Aglaea Climb] SpellId : 25667
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Aglaea Climb] [Aglaea Climb] SpellId : 25666
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Aglaea Shot] [Aglaea Shot] SpellId : 25669
-    // Aethershot NpcId: 10291 CastingSpell [Aglaea Shot] [Aglaea Shot] SpellId : 25670
-    // Aethershot NpcId: 10291 CastingSpell [Aglaea Shot] [Aglaea Shot] SpellId : 25671
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Odi et Amo] [Odi et Amo] SpellId : 25675
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Ignis Amoris] [Ignis Amoris] SpellId : 25676 (stack ?)
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Odi et Amo] [Odi et Amo] SpellId : 25675
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Ignis Amoris] [Ignis Amoris] SpellId : 25676
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Ignis Odi] [Ignis Odi] SpellId : 25677 (stack ?)
-    // Livia the Undeterred NpcId: 10290 CastingSpell [Disparagement] [Disparagement] SpellId : 25674
-
-    // Rhitahtyn the Unshakable Ename: Rhitahtyn the Unshakable NpcId: 10292 The Aitiascope Id: 978 Sub: 3993 Raw: 978
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Tartarean Impact] [Tartarean Impact] SpellId : 25685 (raidwide)
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Tartarean Spark] [Tartarean Spark] SpellId : 25687
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Vexillatio] [Vexillatio] SpellId : 25678
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Impact] [Impact] SpellId : 25679
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Shield Skewer] [Shield Skewer] SpellId : 25680
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Anvil of Tartarus] [Anvil of Tartarus] SpellId : 25686 (TB)
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Shrapnel Shell] [Shrapnel Shell] SpellId : 25682
-    // Rhitahtyn the Unshakable NpcId: 10292 CastingSpell [Shrapnel Shell] [Shrapnel Shell] SpellId : 25684
-
-    // Amon the Undying Ename: Amon the Undying NpcId: 10293 The Aitiascope Id: 978 Sub: 3994 Raw: 978
-    // Amon the Undying NpcId: 10293 CastingSpell [Dark Forte] [Dark Forte] SpellId : 25700 (TB)
-    // Amon the Undying NpcId: 10293 CastingSpell [Thundaga Forte] [Thundaga Forte] SpellId : 25690
-    // Amon the Undying NpcId: 10293 CastingSpell [Thundaga Forte] [Thundaga Forte] SpellId : 25691
-    // Amon the Undying NpcId: 10293 CastingSpell [Thundaga Forte] [Thundaga Forte] SpellId : 25692
-    // Amon the Undying NpcId: 10293 CastingSpell [Strophe] [Strophe] SpellId : 25693
-    // Amon the Undying NpcId: 10293 CastingSpell [Antistrophe] [Antistrophe] SpellId : 25694
-    // Amon the Undying NpcId: 10293 CastingSpell [Epode] [Epode] SpellId : 25695
-    // Amon the Undying NpcId: 10293 CastingSpell [Left Firaga Forte] [Left Firaga Forte] SpellId : 25697
-    // Amon the Undying NpcId: 10293 CastingSpell [Entr'acte] [Entr'acte] SpellId : 25701
-    // Amon the Undying NpcId: 10293 CastingSpell [Curtain Call] [Curtain Call] SpellId : 25702
-    // Amon the Undying NpcId: 10293 CastingSpell [Eruption Forte] [Eruption Forte] SpellId : 25704
-    // Ysayle's Spirit NpcId: 10762 CastingSpell [Dreams of Ice] [Dreams of Ice] SpellId : 27756
-    // Amon the Undying NpcId: 10293 CastingSpell [Right Firaga Forte] [Right Firaga Forte] SpellId : 25696
-    private static readonly Vector3 LiviaArenaCenter = new(-6f, 164f, 471f);
-    private static readonly Vector3 RhitahtynArenaCenter = new(11f, -211.4f, 144f);
-    private static readonly Vector3 AmonArenaCenter = new(10f, -236f, -487f);
-
-    // Livia the Undeterred
-    private readonly HashSet<uint> aglaeaClimb = [25668, 25667, 25666];
-
-    // Rhitahtyn the Unshakable
-    private readonly HashSet<uint> vexillatio = [25678];
-    private readonly HashSet<uint> shieldSkewer = [25680];
-    private readonly HashSet<uint> sharpShell = [25682, 25684];
-
-    // Amon the Undying
-    private readonly HashSet<uint> thundagaForte = [25690, 25691, 25691];
-    private readonly HashSet<uint> curtainCall = [25702];
-    private readonly HashSet<uint> rightFiragaForte = [25696];
-    private readonly HashSet<uint> leftFiragaForte = [25697];
-
-    private readonly Stopwatch amonTimerOne = new();
-    private readonly Stopwatch amonTimerTwo = new();
+    /// <summary>
+    /// Tracks sub-zone since last tick for environmental decision making.
+    /// </summary>
+    private SubZoneId lastSubZoneId = SubZoneId.NONE;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.TheAitiascope;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } =
-    [
-        25234,
-        25233,
-        25250,
-        24145,
-        25180,
-        25742,
-        25677,
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [
+        EnemyAction.IgnisOdi,
+        EnemyAction.ShieldSkewer,
+        EnemyAction.ThundagaForteCenter
     ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.AglaeaBite,EnemyAction.AnvilofTartarus,EnemyAction.DarkForte];
+
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
-    /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
-    {
-        AvoidanceManager.AvoidInfos.Clear();
-
-        // Boss Arenas
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CentralObservatory,
-            () => LiviaArenaCenter,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SaltcrystalStrings,
-            () => RhitahtynArenaCenter,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.MidnightDownwell,
-            () => AmonArenaCenter,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
-        return Task.FromResult(false);
-    }
+    protected override HashSet<uint> SpellsToMitigate { get; } = [EnemyAction.IgnisOdi];
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
-        await FollowDodgeSpells();
+        _ = await FollowDodgeSpells();
+        _ = await TankBusterSpells();
+        _ = await DamageMitigationSpells();
 
-        if (!Core.Me.InCombat)
+        SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
+
+        if (lastSubZoneId != currentSubZoneId)
         {
-            CapabilityManager.Clear();
+            Logger.Information(Translations.SUBZONE_CHANGED_CLEARING_AVOIDS, currentSubZoneId);
+
+            SidestepPlugin.Enabled = true;
+
+            AvoidanceManager.RemoveAllAvoids(avoidInfo => true);
+            AvoidanceManager.ResetNavigation();
         }
 
-        // Livia The Undeterred
-        if (WorldManager.SubZoneId == (uint)SubZoneId.CentralObservatory)
+        bool result = currentSubZoneId switch
         {
-            if (aglaeaClimb.IsCasting())
-            {
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(2_500);
-                await MovementHelpers.GetClosestAlly.Follow();
-                await Coroutine.Sleep(1_000);
-                SidestepPlugin.Enabled = true;
-            }
-        }
+            SubZoneId.CentralObservatory => await HandleLiviatheUndeterred(),
+            SubZoneId.SaltcrystalStrings => await HandleRhitahtyntheUnshakable(),
+            SubZoneId.MidnightDownwell => await HandleAmontheUndying(),
+            _ => false,
+        };
 
-        // Rhitahtyn the Unshakable
-        if (WorldManager.SubZoneId == (uint)SubZoneId.SaltcrystalStrings)
+        lastSubZoneId = currentSubZoneId;
+
+        return result;
+    }
+
+    private async Task<bool> HandleLiviatheUndeterred()
+    {
+
+        if (lastSubZoneId is not SubZoneId.CentralObservatory)
         {
-            if (shieldSkewer.IsCasting())
-            {
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(6_000);
-                await MovementHelpers.GetFurthestAlly.Follow();
-                SidestepPlugin.Enabled = true;
-            }
+            uint currentSubZoneId = WorldManager.SubZoneId;
+            Logger.Information(Translations.SUBZONE_CHANGED_ADDING_AVOIDS, (SubZoneId)currentSubZoneId);
 
-            if (sharpShell.IsCasting())
-            {
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(3_000);
-                await MovementHelpers.GetFurthestAlly.Follow();
-                SidestepPlugin.Enabled = true;
-            }
-        }
-
-        // Amon the Undying
-        if (WorldManager.SubZoneId == (uint)SubZoneId.MidnightDownwell)
-        {
-            if (thundagaForte.IsCasting())
-            {
-                amonTimerTwo.Start();
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(1_000);
-                await MovementHelpers.GetFurthestAlly.Follow();
-
-                while (amonTimerTwo.ElapsedMilliseconds <= 14_000)
-                {
-                    await MovementHelpers.GetFurthestAlly.Follow();
-                    await Coroutine.Yield();
-                }
-
-                amonTimerTwo.Reset();
-                await Coroutine.Sleep(500);
-                SidestepPlugin.Enabled = true;
-            }
-
-            if (curtainCall.IsCasting())
-            {
-                if (!amonTimerOne.IsRunning)
-                {
-                    amonTimerOne.Restart();
-                }
-
-                if (amonTimerOne.ElapsedMilliseconds >= 20_000)
-                {
-                    SidestepPlugin.Enabled = false;
-                    AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                    CapabilityManager.Update(CapabilityHandle, CapabilityFlags.Movement, 10_000, "Hiding behind Shiva's ice");
-                    Vector3 location = new(11.26893f, -236f, -482.5912f);
-                    await CommonTasks.MoveTo(location);
-                }
-            }
-
-            if (rightFiragaForte.IsCasting())
-            {
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(1_200);
-                await MovementHelpers.GetClosestAlly.Follow();
-                SidestepPlugin.Enabled = true;
-            }
-
-            if (leftFiragaForte.IsCasting())
-            {
-                SidestepPlugin.Enabled = false;
-                AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-                await Coroutine.Sleep(1_200);
-                await MovementHelpers.GetClosestAlly.Follow();
-                SidestepPlugin.Enabled = true;
-            }
+            // Boss Arena
+            _ = AvoidanceHelpers.AddAvoidDonut(
+                () => Core.Player.InCombat,
+                () => ArenaCenter.Livia,
+                outerRadius: 90.0f,
+                innerRadius: 19.0f,
+                priority: AvoidancePriority.High);
         }
 
         return false;
+    }
+
+    private async Task<bool> HandleRhitahtyntheUnshakable()
+    {
+
+        if (lastSubZoneId is not SubZoneId.SaltcrystalStrings)
+        {
+
+            uint currentSubZoneId = WorldManager.SubZoneId;
+            Logger.Information(Translations.SUBZONE_CHANGED_ADDING_AVOIDS, (SubZoneId)currentSubZoneId);
+
+            Logger.Information("Removing Shield Skewer Avoid to allow for Follow-Dodge behavior.");
+            SideStep.Override(25680);
+
+            // Boss Arena
+            _ = AvoidanceHelpers.AddAvoidSquareDonut(
+                () => Core.Player.InCombat,
+                innerWidth: 39.0f,
+                innerHeight: 39.0f,
+                outerWidth: 90.0f,
+                outerHeight: 90.0f,
+                collectionProducer: () => [ArenaCenter.Rhitahty],
+                priority: AvoidancePriority.High);
+        }
+
+        return false;
+    }
+
+    private Task<bool> HandleAmontheUndying()
+    {
+
+        if (lastSubZoneId is not SubZoneId.MidnightDownwell)
+        {
+            uint currentSubZoneId = WorldManager.SubZoneId;
+            Logger.Information(Translations.SUBZONE_CHANGED_ADDING_AVOIDS, (SubZoneId)currentSubZoneId);
+
+            Logger.Information("Removing Thundaga Forte Avoid to allow for Follow-Dodge behavior.");
+            SideStep.Override(25690);
+
+            AvoidanceHelpers.AddAvoidDonut(
+                canRun: () => Core.Player.InCombat && GameObjectManager.GetObjectsOfType<BattleCharacter>().Any(bc => bc.CastingSpellId == EnemyAction.CurtainCall && bc.SpellCastInfo.RemainingCastTime.Milliseconds <= 3000),
+                locationProducer: () => ArenaCenter.CurtainCallSafeSpot,
+                outerRadius: 90,
+                innerRadius: 2);
+
+            AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+                canRun: () => Core.Player.InCombat,
+                objectSelector: bc => bc.CastingSpellId is EnemyAction.RightFiragaForte,
+                width: 20.0f,
+                length: 40f,
+                xOffset: 10f,
+                priority: AvoidancePriority.High);
+
+            AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+                canRun: () => Core.Player.InCombat,
+                objectSelector: bc => bc.CastingSpellId is EnemyAction.LeftFiragaForte,
+                width: 20.0f,
+                length: 40f,
+                xOffset: -10f,
+                priority: AvoidancePriority.High);
+
+            AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+                canRun: () => Core.Player.InCombat ,
+                objectSelector: bc => bc.CastingSpellId == EnemyAction.Epode,
+                width: 12f,
+                length: 120f,
+                yOffset: -60f,
+                priority: AvoidancePriority.High);
+
+            AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+                canRun: () => Core.Player.InCombat,
+                objectSelector: (bc) => bc.CastingSpellId == EnemyAction.ThundagaForteTriangle1,
+                leashPointProducer: () => ArenaCenter.Amon,
+                leashRadius: 40.0f,
+                rotationDegrees: 180.0f,
+                radius: 40.0f,
+                arcDegrees: 45f);
+
+            AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+                canRun: () => Core.Player.InCombat && !EnemyAction.ThundagaForteTriangle1Hash.IsCasting(),
+                objectSelector: (bc) => bc.CastingSpellId == EnemyAction.ThundagaForteTriangle2,
+                leashPointProducer: () => ArenaCenter.Amon,
+                leashRadius: 40.0f,
+                rotationDegrees: 180.0f,
+                radius: 40.0f,
+                arcDegrees: 45f);
+
+            // Boss Arena
+            _ = AvoidanceHelpers.AddAvoidDonut(
+                () => Core.Player.InCombat,
+                () => ArenaCenter.Amon,
+                outerRadius: 90.0f,
+                innerRadius: 19.0f,
+                priority: AvoidancePriority.High);
+        }
+
+        return Task.FromResult(false);
+    }
+
+    private static class EnemyNpc
+    {
+        /// <summary>
+        /// First Boss: Livia the Undeterred
+        /// </summary>
+        public const uint Livia = 10290;
+
+        /// <summary>
+        /// Second Boss: Rhitahtyn the Unshakable.
+        /// </summary>
+        public const uint Rhitahtyn = 10292;
+
+        /// <summary>
+        /// Final Boss: Amon the Undying.
+        /// </summary>
+        public const uint Amon = 10293;
+
+        /// <summary>
+        /// Final Boss: Amon the Undying.
+        /// Shiva's Ice
+        /// </summary>
+        public const uint ShivasIce = 108;
+    }
+
+    private static class ArenaCenter
+    {
+        /// <summary>
+        /// Boss 1: Livia the Undeterred.
+        /// </summary>
+        public static readonly Vector3 Livia = new(-6f, 164f, 471f);
+
+        /// <summary>
+        /// Boss 2: Rhitahtyn the Unshakable.
+        /// </summary>
+        public static readonly Vector3 Rhitahty = new(11f, -211.4f, 144f);
+
+        /// <summary>
+        /// Boss 3: Amon the Undying.
+        /// </summary>
+        public static readonly Vector3 Amon = new(11f, -236f, -490f);
+
+        /// <summary>
+        /// Boss 3: Thundaga Forte Safe Spot.
+        /// </summary>
+        public static readonly Vector3 ThundagaForteSafeSpot = new(10.796859f, -236f, -506.8239f);
+
+        /// <summary>
+        /// Boss 3: Curtain Call Safe Spot.
+        /// </summary>
+        public static readonly Vector3 CurtainCallSafeSpot = new(10.692489f, -236f, -480.21402f);
+    }
+
+    private static class EnemyAction
+    {
+        /// <summary>
+        /// <see cref="EnemyNpc.Livia"/>'s Aglaea Bite.
+        /// Tank Buster
+        /// </summary>
+        public const uint AglaeaBite = 25673;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Livia"/>'s Ignis Odi.
+        /// Stack
+        /// </summary>
+        public const uint IgnisOdi = 25677;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Rhitahtyn"/>'s Shrapnel Shell.
+        ///
+        /// </summary>
+        public const uint ShrapnelShell = 25684;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Rhitahtyn"/>'s Anvil of Tartarus.
+        ///
+        /// </summary>
+        public const uint AnvilofTartarus = 25686;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Rhitahtyn"/>'s Tartarean Spark .
+        /// Small straight line AOE
+        /// </summary>
+        public const uint TartareanSpark = 25687;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Rhitahtyn"/>'s Impact.
+        /// Move away from the sides of the arena
+        /// </summary>
+        public const uint Impact = 25679;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Rhitahtyn"/>'s Shield Skewer .
+        /// Follow dodge
+        /// </summary>
+        public const uint ShieldSkewer = 25680;
+        public static readonly HashSet<uint> ShieldSkewerHash = [25680];
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Dark Forte.
+        /// Tank Buster
+        /// </summary>
+        public const uint DarkForte = 25700;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Thundaga Forte.
+        /// Explosive from center of arena
+        /// </summary>
+        public const uint ThundagaForteCenter = 25690;
+        public static readonly HashSet<uint> ThundagaForteCenterHash = [25690];
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Thundaga Forte.
+        /// Explosive from center of arena
+        /// </summary>
+        public const uint ThundagaForteTriangle1 = 25691;
+        public static readonly HashSet<uint> ThundagaForteTriangle1Hash = [25691];
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Thundaga Forte.
+        /// Explosive from center of arena
+        /// </summary>
+        public const uint ThundagaForteTriangle2 = 25692;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Right Firaga Forte.
+        /// Takes over the right side of the arena
+        /// </summary>
+        public const uint RightFiragaForte = 25696;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Left Firaga Forte.
+        /// Takes over the left side of the arena
+        /// </summary>
+        public const uint LeftFiragaForte  = 25697;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Epode.
+        /// Straight line AOE
+        /// </summary>
+        public const uint Epode  = 25695;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Amon"/>'s Curtain Call.
+        /// Hide behind the ice
+        /// </summary>
+        public const uint CurtainCall  = 25702;
+
+    }
+
+    private static class PartyAura
+    {
+
     }
 }

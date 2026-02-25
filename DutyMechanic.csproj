@@ -17,8 +17,8 @@
     <OutputPath>bin\x64\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LlamaLibrary" Version="25.1202.1704.59" />
-    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.785.1" />
+    <PackageReference Include="LlamaLibrary" Version="26.223.46.23" />
+    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.818" />
   </ItemGroup>
   <PropertyGroup>
     <AddonType>Plugins</AddonType>
