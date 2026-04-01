@@ -3,13 +3,17 @@ using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Enums;
 using ff14bot.Managers;
+using ff14bot.NeoProfiles;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using ff14bot.RemoteWindows;
+using ff14bot.Settings;
+using LlamaLibrary.Helpers;
 using LlamaLibrary.RemoteWindows;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,6 +44,19 @@ public class PortaDecumana : AbstractDungeon
     public override Task<bool> OnEnterDungeonAsync()
     {
         AvoidanceManager.AvoidInfos.Clear();
+
+        Logger.Debug("SideStep: Removing Garuda's unavoidable abilities.");
+        SideStep.Override(28980); // Eye of the Storm
+        SideStep.Override(28510); // Headsman's Wind
+        Logger.Debug("SideStep: Removing Titan's unavoidable abilities.");
+        SideStep.Override(29435); // Earthen Eternity
+        SideStep.Override(28989); // Granite Sepulchre
+        Logger.Debug("SideStep: Removing Ifrit's unavoidable abilities.");
+        SideStep.Override(28990); // Radiant Blaze
+        SideStep.Override(28991); // Radiant Blaze
+        SideStep.Override(29003); // Vulcan Burst
+        SideStep.Override(29021); // Final Form ability where cars drop
+        SideStep.Override(29015); // Final Form ability where cars drop
 
         // General avoid while in combat to avoid standing on top of people
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
