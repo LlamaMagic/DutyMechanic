@@ -950,4 +950,19 @@ public enum SubZoneId : uint
     /// Lv. 100: Mistwake > Town Round, Thundergust Griffin
     /// </summary>
     TownRound = 5356,
+
+    /// <summary>
+    /// Lv. 100: Clyteum > Town Round, Eye of the Scorpion
+    /// </summary>
+    ForumFloricomum = 5507,
+
+    /// <summary>
+    /// Lv. 100: Clyteum > Town Round, Chort
+    /// </summary>
+    Stockyard = 5508,
+
+    /// <summary>
+    /// Lv. 100: Clyteum > Town Round, Malphas
+    /// </summary>
+    SecureTestSite = 5509,
 }

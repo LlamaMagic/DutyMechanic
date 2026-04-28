@@ -504,4 +504,9 @@ public enum ZoneId : ushort
     /// Lv. 100.6: Mistwake
     /// </summary>
     Mistwake = 1314,
+
+    /// <summary>
+    /// Lv. 100.7: Clyteum
+    /// </summary>
+    Clyteum = 1345,
 }
