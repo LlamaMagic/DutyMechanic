@@ -35,7 +35,7 @@ public class Clyteum : AbstractDungeon
     protected override HashSet<uint> SpellsToMitigate { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.PenetratorMissile, EnemyAction.BodyweightExorcismTowers, EnemyAction.ProfanePressure,EnemyAction.StringUp];
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.PenetratorMissile, EnemyAction.BodyweightExorcismTowers, EnemyAction.ProfanePressure,EnemyAction.StringUp,EnemyAction.GluttonousWire];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ShadowPlay];
@@ -153,15 +153,8 @@ public class Clyteum : AbstractDungeon
     private async Task<bool> Malphas()
     {
         // Avoid AoE tank buster
-        AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.ShadowPlay && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
-            radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.1f,
-            locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
-
-        // Avoid AoE tank buster
         AvoidanceManager.AddAvoidObject<GameObject>(
-            canRun: () => Core.Player.InCombat && GameObjectManager.Attackers.Any(bc => bc.CastingSpellId is EnemyAction.ShadowPlay && bc.SpellCastInfo.TargetId == Core.Player.ObjectId),
+            canRun: () => Core.Player.InCombat && Core.Me.IsTank() && EnemyAction.ShadowPlayHash.IsCasting(),
             radius: 5f,
             unitIds:
             [
@@ -272,6 +265,14 @@ public class Clyteum : AbstractDungeon
         /// Tank Buster
         /// </summary>
         public const uint ShadowPlay = 50314;
+        public static readonly HashSet<uint> ShadowPlayHash = [50314];
+
+        /// <summary>
+        /// Malphas
+        /// Gluttonous Wire
+        /// Stack
+        /// </summary>
+        public const uint GluttonousWire = 48930;
 
         /// <summary>
         /// Malphas
