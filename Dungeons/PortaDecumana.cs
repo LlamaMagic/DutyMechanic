@@ -184,6 +184,7 @@ public class PortaDecumana : AbstractDungeon
         }
 
         // Soak Aetheroplasms if you're not the tank
+        /*
         if (!Core.Me.IsTank() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene && Core.Me.InCombat)
         {
             BattleCharacter aetheroplasmSoak = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Aetheroplasm).OrderBy(bc => bc.Distance2D()).LastOrDefault(bc => bc.IsVisible && bc.CurrentHealth > 0);
@@ -198,6 +199,7 @@ public class PortaDecumana : AbstractDungeon
                     priority: AvoidancePriority.Medium);
             }
         }
+        */
 
         if (EnemyAction.LaserFocusHash.IsCasting() && Core.Me.IsAlive && !CommonBehaviors.IsLoading && !QuestLogManager.InCutscene)
         {
