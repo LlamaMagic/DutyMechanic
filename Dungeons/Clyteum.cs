@@ -21,7 +21,7 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Clyteum : AbstractDungeon
 {
-    private static BattleCharacter MotionScanner => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.MotionScanner).FirstOrDefault();
+    private static BattleCharacter MotionScanner => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(108).OrderBy(bc => bc.Distance()).FirstOrDefault(bc => bc.IsVisible);
 
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
@@ -45,6 +45,8 @@ public class Clyteum : AbstractDungeon
     {
         AvoidanceManager.AvoidInfos.Clear();
 
+        SideStep.Override(EnemyAction.BodyweightExorcism);
+        SideStep.Override(EnemyAction.BodyweightExorcismTowers);
         SideStep.Override(17995); // Skyshard LB
 
         // Boss 1: Petrifying Beam
@@ -52,7 +54,7 @@ public class Clyteum : AbstractDungeon
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ForumFloricomum,
             objectSelector: (bc) => bc.CastingSpellId is EnemyAction.PetrifyingBeam or EnemyAction.PetrifyingBeam2 or EnemyAction.PetrifyingBeam3,
             leashPointProducer: () => ArenaCenter.EyeoftheScorpion,
-            leashRadius: 40.0f,
+            leashRadius: 60.0f,
             rotationDegrees: 0.0f,
             radius: 40.0f,
             arcDegrees: 130.0f);
@@ -127,6 +129,13 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private static async Task<bool> EyeoftheScorpion()
     {
+        if (MotionScanner != null && Core.Me.Distance(MotionScanner.Location) <= 11f)
+        {
+            Logger.Debug("Standing still");
+            Core.Me.ClearTarget();
+            await Coroutine.Wait(5500, () => Core.Me.Distance(MotionScanner.Location) > 11f);
+        }
+
         return false;
     }
 
@@ -135,9 +144,6 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private static async Task<bool> Chort()
     {
-        SideStep.Override(EnemyAction.BodyweightExorcism);
-        SideStep.Override(EnemyAction.BodyweightExorcismTowers);
-
         return false;
     }
 
