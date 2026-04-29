@@ -107,6 +107,9 @@ internal static class PartyMembers
         PartyMemberId.GrahaTiaGameAfoot,
         PartyMemberId.WukLamat,
         PartyMemberId.Sphene,
+        PartyMemberId.Alisaie,
+        PartyMemberId.GrahaTia,
+        PartyMemberId.Thancred
     ];
 
     /// <summary>

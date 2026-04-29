@@ -21,8 +21,6 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Clyteum : AbstractDungeon
 {
-    private static BattleCharacter MotionScanner => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(108).OrderBy(bc => bc.Distance()).FirstOrDefault(bc => bc.IsVisible);
-
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
     /// </summary>
@@ -32,7 +30,7 @@ public class Clyteum : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Clyteum;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate { get; } = [];
+    protected override HashSet<uint> SpellsToMitigate { get; } = [EnemyAction.EyesOnMe];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.PenetratorMissile, EnemyAction.BodyweightExorcismTowers, EnemyAction.ProfanePressure,EnemyAction.StringUp,EnemyAction.GluttonousWire];
@@ -57,9 +55,9 @@ public class Clyteum : AbstractDungeon
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ForumFloricomum,
             objectSelector: (bc) => bc.CastingSpellId is EnemyAction.PetrifyingBeam or EnemyAction.PetrifyingBeam2 or EnemyAction.PetrifyingBeam3,
             leashPointProducer: () => ArenaCenter.EyeoftheScorpion,
-            leashRadius: 60.0f,
+            leashRadius: 80.0f,
             rotationDegrees: 0.0f,
-            radius: 40.0f,
+            radius: 80.0f,
             arcDegrees: 130.0f);
 
         // Boss 2: Bodyweight Exorcism
@@ -149,6 +147,7 @@ public class Clyteum : AbstractDungeon
     {
         await FollowDodgeSpells();
         await TankBusterSpells();
+        await DamageMitigationSpells();
 
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
@@ -170,11 +169,12 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private static async Task<bool> EyeoftheScorpion()
     {
-        if (MotionScanner != null && Core.Me.Distance(MotionScanner.Location) <= 11f)
+        if (Core.Me.HasAura(PlayerAura.MotionTracker))
         {
             Logger.Debug("Standing still");
+            ActionManager.StopCasting();
             Core.Me.ClearTarget();
-            await Coroutine.Wait(5500, () => Core.Me.Distance(MotionScanner.Location) > 11f);
+            await Coroutine.Wait(5000, () => !Core.Me.HasAura(PlayerAura.MotionTracker));
         }
 
         return false;
@@ -239,6 +239,14 @@ public class Clyteum : AbstractDungeon
 
     private static class EnemyAction
     {
+
+        /// <summary>
+        /// Eye of the Scorpion
+        /// Eyes On Me
+        /// Group wide unavoidable damage
+        /// </summary>
+        public const uint EyesOnMe = 48896;
+
         /// <summary>
         /// Eye of the Scorpion
         /// Anti-personnel Missile
@@ -346,5 +354,11 @@ public class Clyteum : AbstractDungeon
 
     private static class PlayerAura
     {
+        /// <summary>
+        /// Eye of the Scorpion
+        /// Motion Tracker
+        /// Don't move while you have the debuff
+        /// </summary>
+        public const uint MotionTracker = 5191;
     }
 }
