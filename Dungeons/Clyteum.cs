@@ -48,6 +48,9 @@ public class Clyteum : AbstractDungeon
         SideStep.Override(EnemyAction.BodyweightExorcism);
         SideStep.Override(EnemyAction.BodyweightExorcismTowers);
         SideStep.Override(17995); // Skyshard LB
+        // Third boss abilities that aren't handled properly by SideStep
+        SideStep.Override(EnemyAction.VoidDark);
+        SideStep.Override(EnemyAction.PuppetStrings);
 
         // Boss 1: Petrifying Beam
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -66,6 +69,44 @@ public class Clyteum : AbstractDungeon
             outerRadius: 40.0f,
             innerRadius: 3.0F,
             priority: AvoidancePriority.Medium);
+
+        // Boss 3: Void Dark
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SecureTestSite,
+            objectSelector: (bc) => bc.CastingSpellId is EnemyAction.VoidDark,
+            leashPointProducer: () => ArenaCenter.EyeoftheScorpion,
+            leashRadius: 60.0f,
+            rotationDegrees: 0.0f,
+            radius: 40.0f,
+            arcDegrees: 185.0f);
+
+        // Boss 3: Puppet Strings
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SecureTestSite,
+            objectSelector: (bc) => bc.CastingSpellId is EnemyAction.PuppetStrings,
+            leashPointProducer: () => ArenaCenter.EyeoftheScorpion,
+            leashRadius: 60.0f,
+            rotationDegrees: 0.0f,
+            radius: 40.0f,
+            arcDegrees: 90.0f);
+
+        // Boss 3: Avoid hitting other party members with AoE tank buster
+        AvoidanceManager.AddAvoidObject<GameObject>(
+            canRun: () => Core.Player.InCombat && Core.Me.IsTank() && EnemyAction.ShadowPlayHash.IsCasting(),
+            radius: 6.5f,
+            unitIds:
+            [
+                .. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
+            ]);
+
+        // Boss 3:
+        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SecureTestSite,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.Goekinesis,
+            width: 5f,
+            length: 80f,
+            yOffset: -20f,
+            priority: AvoidancePriority.High);
 
         // Boss 1: Antipersonnel Missile
         // Boss 2: Evil Emission
@@ -97,7 +138,7 @@ public class Clyteum : AbstractDungeon
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SecureTestSite,
             () => ArenaCenter.Malphas,
             outerRadius: 90.0f,
-            innerRadius: 14.2f,
+            innerRadius: 19f,
             priority: AvoidancePriority.High);
 
         return Task.FromResult(false);
@@ -152,15 +193,6 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private async Task<bool> Malphas()
     {
-        // Avoid AoE tank buster
-        AvoidanceManager.AddAvoidObject<GameObject>(
-            canRun: () => Core.Player.InCombat && Core.Me.IsTank() && EnemyAction.ShadowPlayHash.IsCasting(),
-            radius: 5f,
-            unitIds:
-            [
-                .. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
-            ]);
-
         return false;
     }
 
@@ -209,6 +241,13 @@ public class Clyteum : AbstractDungeon
     {
         /// <summary>
         /// Eye of the Scorpion
+        /// Anti-personnel Missile
+        /// Spread
+        /// </summary>
+        public const uint AntipersonnelMissile = 48899;
+
+        /// <summary>
+        /// Eye of the Scorpion
         /// Penetrator Missile
         /// Stack
         /// </summary>
@@ -223,13 +262,6 @@ public class Clyteum : AbstractDungeon
 
         public const uint PetrifyingBeam2 = 50177;
         public const uint PetrifyingBeam3 = 50178;
-
-        /// <summary>
-        /// Eye of the Scorpion
-        /// Anti-personnel Missile
-        /// Spread
-        /// </summary>
-        public const uint AntipersonnelMissile = 48899;
 
         /// <summary>
         /// Chort
@@ -247,25 +279,33 @@ public class Clyteum : AbstractDungeon
 
         /// <summary>
         /// Chort
-        /// Profane Pressure
-        /// Towers spawn and you need to stack on them
-        /// </summary>
-        public const uint ProfanePressure = 48887;
-
-        /// <summary>
-        /// Chort
         /// Evil Emission
         /// Spread
         /// </summary>
         public const uint EvilEmission = 48885;
 
         /// <summary>
-        /// Malphas
-        /// Shadow Play
-        /// Tank Buster
+        /// Chort
+        /// Profane Pressure
+        /// Towers spawn and you need to stack on them
         /// </summary>
-        public const uint ShadowPlay = 50314;
-        public static readonly HashSet<uint> ShadowPlayHash = [50314];
+        public const uint ProfanePressure = 48887;
+
+
+
+        /// <summary>
+        /// Malphas
+        /// Puppet Strings
+        /// 90 degree cone
+        /// </summary>
+        public const uint PuppetStrings = 48922;
+
+        /// <summary>
+        /// Malphas
+        /// Wrathful Wire
+        /// Spread
+        /// </summary>
+        public const uint WrathfulWire = 48928;
 
         /// <summary>
         /// Malphas
@@ -277,16 +317,31 @@ public class Clyteum : AbstractDungeon
         /// <summary>
         /// Malphas
         /// String up
-        /// TMove around to avoid becoming a puppet
+        /// Move around to avoid becoming a puppet
         /// </summary>
         public const uint StringUp = 48931;
 
         /// <summary>
         /// Malphas
-        /// Wrathful Wire
-        /// Spread
+        /// Goekinesis
+        /// Single line AoEs. Some are automatically dodged by Sidestep, some aren't.
         /// </summary>
-        public const uint WrathfulWire = 48928;
+        public const uint Goekinesis = 48933;
+
+        /// <summary>
+        /// Malphas
+        /// Void Dark
+        /// 180 degree cone
+        /// </summary>
+        public const uint VoidDark = 50313;
+
+        /// <summary>
+        /// Malphas
+        /// Shadow Play
+        /// Tank Buster
+        /// </summary>
+        public const uint ShadowPlay = 50314;
+        public static readonly HashSet<uint> ShadowPlayHash = [50314];
     }
 
     private static class PlayerAura
