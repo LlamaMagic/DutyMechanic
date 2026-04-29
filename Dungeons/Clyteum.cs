@@ -90,14 +90,14 @@ public class Clyteum : AbstractDungeon
 
         // Boss 3: Avoid hitting other party members with AoE tank buster
         AvoidanceManager.AddAvoidObject<GameObject>(
-            canRun: () => Core.Player.InCombat && Core.Me.IsTank() && EnemyAction.ShadowPlayHash.IsCasting(),
+            canRun: () => Core.Player.InCombat && EnemyAction.ShadowPlayHash.IsCasting(),
             radius: 6.5f,
             unitIds:
             [
                 .. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
             ]);
 
-        // Boss 3:
+        // Boss 3: Geokinesis
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.SecureTestSite,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.Goekinesis,
