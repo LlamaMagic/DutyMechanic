@@ -21,6 +21,10 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class Clyteum : AbstractDungeon
 {
+    private static BattleCharacter MotionScanner => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.MotionScanner).OrderBy(bc => bc.Distance()).FirstOrDefault(bc => bc.IsVisible);
+    private static float MotionScannerDistance = 15f;
+    private static int MotionScannerDuration = 5500;
+
     /// <summary>
     /// Tracks sub-zone since last tick for environmental decision making.
     /// </summary>
@@ -33,7 +37,7 @@ public class Clyteum : AbstractDungeon
     protected override HashSet<uint> SpellsToMitigate { get; } = [EnemyAction.EyesOnMe];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.PenetratorMissile, EnemyAction.BodyweightExorcismTowers, EnemyAction.ProfanePressure,EnemyAction.StringUp,EnemyAction.GluttonousWire];
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.PenetratorMissile, EnemyAction.BodyweightExorcismTowers, EnemyAction.ProfanePressure, EnemyAction.StringUp, EnemyAction.GluttonousWire];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ShadowPlay];
@@ -169,13 +173,28 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private static async Task<bool> EyeoftheScorpion()
     {
-        if (Core.Me.HasAura(PlayerAura.MotionTracker))
+        // Checking for the Aura alone didn't seem to work for Tanks, I kept retargetting the boss and initiaing combat again.
+        if (Core.Me.IsTank())
         {
-            Logger.Debug("Standing still");
-            ActionManager.StopCasting();
-            Core.Me.ClearTarget();
-            await Coroutine.Wait(5000, () => !Core.Me.HasAura(PlayerAura.MotionTracker));
+            if (MotionScanner != null && Core.Me.Distance(MotionScanner.Location) <= MotionScannerDistance)
+            {
+                Logger.Debug("Standing still");
+                ActionManager.StopCasting();
+                Core.Me.ClearTarget();
+                await Coroutine.Wait(MotionScannerDuration, () => Core.Me.Distance(MotionScanner.Location) > MotionScannerDistance);
+            }
         }
+        else
+        {
+            if (Core.Me.HasAura(PlayerAura.MotionTracker))
+            {
+                Logger.Debug("Standing still");
+                ActionManager.StopCasting();
+                Core.Me.ClearTarget();
+                await Coroutine.Wait(MotionScannerDuration, () => !Core.Me.HasAura(PlayerAura.MotionTracker));
+            }
+        }
+
 
         return false;
     }
@@ -239,7 +258,6 @@ public class Clyteum : AbstractDungeon
 
     private static class EnemyAction
     {
-
         /// <summary>
         /// Eye of the Scorpion
         /// Eyes On Me
@@ -300,7 +318,6 @@ public class Clyteum : AbstractDungeon
         public const uint ProfanePressure = 48887;
 
 
-
         /// <summary>
         /// Malphas
         /// Puppet Strings
@@ -349,6 +366,7 @@ public class Clyteum : AbstractDungeon
         /// Tank Buster
         /// </summary>
         public const uint ShadowPlay = 50314;
+
         public static readonly HashSet<uint> ShadowPlayHash = [50314];
     }
 
