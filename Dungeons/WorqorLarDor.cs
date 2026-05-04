@@ -31,9 +31,9 @@ public class WorqorLarDor : AbstractDungeon
         .FirstOrDefault(bc => bc.IsVisible); // +
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -45,7 +45,7 @@ public class WorqorLarDor : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Valigarmanda],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

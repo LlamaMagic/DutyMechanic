@@ -34,9 +34,9 @@ public class QitanaRavel : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1 Lozatl's Fury Right
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -100,7 +100,7 @@ public class QitanaRavel : AbstractDungeon
             priority: AvoidancePriority.High);
             */
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -26,9 +26,9 @@ public class GreatGubalLibrary : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Disclosure, avoid book closing
         /* It seems there's a tiny bit un un-meshed area between the back and front of the arena, preventing RB from moving between the sides on it's own.
@@ -73,7 +73,7 @@ public class GreatGubalLibrary : AbstractDungeon
             innerRadius: 22.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

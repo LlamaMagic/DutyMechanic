@@ -27,9 +27,9 @@ public class CastrumAbania : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 3: Ketu Cutter
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -64,7 +64,7 @@ public class CastrumAbania : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -31,9 +31,9 @@ public class BardamsMettle : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Bardam's Trial / Empty Gaze single-gaze attack
         // TODO: Since BattleCharacter.FaceAway() can't stay looking away for now,
@@ -82,7 +82,7 @@ public class BardamsMettle : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

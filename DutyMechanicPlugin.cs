@@ -23,8 +23,8 @@ namespace DutyMechanic;
 /// </summary>
 public class DutyMechanicPlugin : BotPlugin
 {
-    private Composite root;
-    private DungeonManager dungeonManager;
+    private Composite _root;
+    private readonly DungeonManager _dungeonManager = new DungeonManager();
 
     /// <inheritdoc/>
     public override string Author => "DW, Manta, Athlon";
@@ -56,7 +56,7 @@ public class DutyMechanicPlugin : BotPlugin
             plugin.Enabled = true;
         }
 
-        root = new Decorator(c => CanTrust(), new ActionRunCoroutine(r => RunTrust()));
+        _root = new Decorator(c => CanTrust(), new ActionRunCoroutine(r => RunTrust()));
     }
 
     /// <inheritdoc/>
@@ -71,7 +71,7 @@ public class DutyMechanicPlugin : BotPlugin
             AddHooks();
         }
 
-        dungeonManager = new DungeonManager();
+        
     }
 
     /// <inheritdoc/>
@@ -79,6 +79,7 @@ public class DutyMechanicPlugin : BotPlugin
     {
         TreeRoot.OnStart -= OnBotStart;
         TreeRoot.OnStop -= OnBotStop;
+        TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
         RemoveHooks();
     }
 
@@ -97,13 +98,13 @@ public class DutyMechanicPlugin : BotPlugin
     private void AddHooks()
     {
         Logger.Information("Adding DutyMechanic Hook");
-        TreeHooks.Instance.AddHook("TreeStart", root);
+        TreeHooks.Instance.AddHook("TreeStart", _root);
     }
 
     private void RemoveHooks()
     {
         Logger.Information("Removing DutyMechanic Hook");
-        TreeHooks.Instance.RemoveHook("TreeStart", root);
+        TreeHooks.Instance.RemoveHook("TreeStart", _root);
     }
 
     private void OnBotStop(BotBase bot)
@@ -147,7 +148,7 @@ public class DutyMechanicPlugin : BotPlugin
         // LoggingHelpers.LogAllSpellCasts();
         LoggingHelpers.LogZoneChanges();
 
-        return await dungeonManager.RunAsync();
+        return await _dungeonManager.RunAsync();
     }
 
     /// <summary>

@@ -25,9 +25,9 @@ public class AlexanderA3ArmoftheFather : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
@@ -37,7 +37,7 @@ public class AlexanderA3ArmoftheFather : AbstractDungeon
             innerRadius: 22.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

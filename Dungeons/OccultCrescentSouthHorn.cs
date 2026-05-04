@@ -51,9 +51,9 @@ public class SouthHorn : AbstractDungeon
     ];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Rough Waters (Fate ID: 1962)
         // Arena Boundary
@@ -388,7 +388,7 @@ public class SouthHorn : AbstractDungeon
             radiusProducer: bc => 11.0f,
             priority: AvoidancePriority.Low));
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

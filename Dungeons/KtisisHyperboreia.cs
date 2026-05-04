@@ -126,9 +126,9 @@ public class KtisisHyperboreia : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override async Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         if (hermesArenaEdge == default)
         {

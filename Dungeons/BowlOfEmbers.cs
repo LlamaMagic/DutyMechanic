@@ -29,9 +29,9 @@ public class BowlOfEmbers : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1
         // In general, if not tank stay out of the front to avoid AOE breath attack
@@ -45,7 +45,7 @@ public class BowlOfEmbers : AbstractDungeon
             radius: 15.0f,
             arcDegrees: 160.0f);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

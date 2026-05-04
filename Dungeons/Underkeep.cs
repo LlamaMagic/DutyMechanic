@@ -36,9 +36,9 @@ public class Underkeep : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.ThunderousSlash];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Sedimentary Debris
         // Boss 1: Foundational Debris
@@ -106,7 +106,7 @@ public class Underkeep : AbstractDungeon
             collectionProducer: () => [ArenaCenter.ValiaPira],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

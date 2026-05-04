@@ -34,9 +34,9 @@ public class LapisManalis : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Icy Throes
         AvoidanceManager.AddAvoidLocation(
@@ -280,7 +280,7 @@ public class LapisManalis : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Cagnazzo],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

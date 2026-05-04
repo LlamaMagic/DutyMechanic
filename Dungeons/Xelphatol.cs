@@ -27,9 +27,9 @@ public class Xelphatol : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 3 WickedWheel
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -68,7 +68,7 @@ public class Xelphatol : AbstractDungeon
             innerRadius: 19.5f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

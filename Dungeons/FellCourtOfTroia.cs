@@ -99,9 +99,9 @@ public class FellCourtOfTroia : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Unite-Mare's growing AOE
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -198,7 +198,7 @@ public class FellCourtOfTroia : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

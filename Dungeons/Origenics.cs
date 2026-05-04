@@ -39,9 +39,9 @@ public class Origenics : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Poison boils that form on the ground, want to avoid them
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(
@@ -124,7 +124,7 @@ public class Origenics : AbstractDungeon
             collectionProducer: () => [ArenaCenter.AmbrosetheUndeparted],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

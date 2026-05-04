@@ -47,9 +47,9 @@ public class FatherFirst : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Donut AOEs for towers. The Shade's tower always goes off first
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
@@ -144,7 +144,7 @@ public class FatherFirst : AbstractDungeon
             xOffset: 43f,
             yOffset: -45f);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

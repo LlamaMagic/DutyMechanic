@@ -57,9 +57,9 @@ public class UltimaThule : AbstractDungeon
     public static int ItemCount(uint ItemId) => (int)InventoryManager.FilledSlots.Where(i => i.RawItemId == ItemId).Sum(i => i.Count);
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Chi
         // AssaultCarapace
@@ -92,7 +92,7 @@ public class UltimaThule : AbstractDungeon
             radius: 60.0f,
             arcDegrees: -180f);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

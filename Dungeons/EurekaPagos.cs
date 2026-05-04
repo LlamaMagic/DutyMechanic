@@ -35,11 +35,11 @@ public class EurekaPagos : AbstractDungeon
     };
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

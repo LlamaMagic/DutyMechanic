@@ -22,10 +22,8 @@ public class AlexanderA1FistoftheFather : AbstractDungeon
     /// <inheritdoc/>
     ///     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
-
         ff14bot.Managers.AvoidanceManager.AddAvoidObject<BattleCharacter>(
             canRun: () => true,
             leashPointProducer: null,
@@ -33,7 +31,7 @@ public class AlexanderA1FistoftheFather : AbstractDungeon
             radiusProducer: u => 1f,
             objectSelector: u => u.NpcId == EnemyNpc.Pilon);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

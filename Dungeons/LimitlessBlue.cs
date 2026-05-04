@@ -28,9 +28,9 @@ public class LimitlessBlue : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Creating a small donut around Bismark's back so that casters are forced to move onto it's back
         /*
@@ -50,7 +50,7 @@ public class LimitlessBlue : AbstractDungeon
                     priority: AvoidancePriority.Medium);
         */
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

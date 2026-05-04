@@ -41,9 +41,9 @@ public class PortaDecumana : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         Logger.Debug("SideStep: Removing Garuda's unavoidable abilities.");
         SideStep.Override(28980); // Eye of the Storm
@@ -139,7 +139,7 @@ public class PortaDecumana : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

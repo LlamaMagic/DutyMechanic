@@ -48,9 +48,9 @@ public class Ihuykatumu : AbstractDungeon
         .FirstOrDefault(bc => bc.IsVisible); // +
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Decay
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
@@ -174,7 +174,7 @@ public class Ihuykatumu : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -67,9 +67,9 @@ public class MtGulg : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override async Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(

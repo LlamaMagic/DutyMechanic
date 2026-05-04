@@ -47,9 +47,9 @@ public class LunarSubterrane : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Stay out of the sand pit
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(
@@ -101,7 +101,7 @@ public class LunarSubterrane : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

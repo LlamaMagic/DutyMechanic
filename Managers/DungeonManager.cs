@@ -1,6 +1,7 @@
 ﻿using DutyMechanic.Data;
 using DutyMechanic.Dungeons;
 using DutyMechanic.Helpers;
+using ff14bot.Behavior;
 using ff14bot.Managers;
 using System;
 using System.Collections.Generic;
@@ -13,16 +14,8 @@ namespace DutyMechanic.Managers;
 /// </summary>
 internal class DungeonManager
 {
-    private readonly Dictionary<ZoneId, Type> availableDungeons;
-    private AbstractDungeon currentDungeon = default;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DungeonManager"/> class.
-    /// </summary>
-    public DungeonManager()
+    private readonly Dictionary<ZoneId, Type> _availableDungeons = new Dictionary<ZoneId, Type>()
     {
-        availableDungeons = new Dictionary<ZoneId, Type>()
-        {
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },
             { ZoneId.HallOfTheNoticeWesternLa, typeof(HallOfTheNoviceWesternLa) },
@@ -138,6 +131,14 @@ internal class DungeonManager
             { ZoneId.Mistwake, typeof(Mistwake) },
             { ZoneId.Clyteum, typeof(Clyteum) },
         };
+    private AbstractDungeon _currentDungeon = null;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DungeonManager"/> class.
+    /// </summary>
+    public DungeonManager()
+    {
+
     }
 
     /// <summary>
@@ -146,25 +147,25 @@ internal class DungeonManager
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
     public async Task<bool> RunAsync()
     {
+        await CommonTasks.HandleLoading();
+
         ZoneId currentZoneId = (ZoneId)WorldManager.ZoneId;
 
-        if (currentDungeon?.ZoneId != currentZoneId)
+        if (_currentDungeon?.ZoneId != currentZoneId)
         {
-            await (currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
+            await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
-            if (availableDungeons.TryGetValue((ZoneId)WorldManager.ZoneId, out Type newDungeon))
+            if (_availableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
             {
-                currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
-                await currentDungeon.OnEnterDungeonAsync();
+                _currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
+                await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
             else
             {
-                currentDungeon = default;
+                _currentDungeon = null;
             }
-
-            await LoadingHelpers.WaitForLoadingAsync();
         }
 
-        return await (currentDungeon?.RunAsync() ?? Task.FromResult(false));
+        return await (_currentDungeon?.RunAsync() ?? Task.FromResult(false));
     }
 }

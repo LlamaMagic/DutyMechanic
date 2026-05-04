@@ -29,9 +29,9 @@ public class ContainmentBayP1T6 : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Thunder III
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
@@ -68,7 +68,7 @@ public class ContainmentBayP1T6 : AbstractDungeon
             innerRadius: 14.9f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

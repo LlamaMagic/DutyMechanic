@@ -30,9 +30,9 @@ public class ContainmentBayS1T7 : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Avoid wind circle
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -49,7 +49,7 @@ public class ContainmentBayS1T7 : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

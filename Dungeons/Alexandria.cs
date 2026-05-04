@@ -44,9 +44,9 @@ public class Alexandria : AbstractDungeon
     private static bool InterfornPresent => InterferonC != null || InterferonR != null;
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Immune Response Front
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -248,7 +248,7 @@ public class Alexandria : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Eliminator],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

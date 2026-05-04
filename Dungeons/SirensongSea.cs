@@ -36,9 +36,9 @@ public class SirensongSea : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Blue puddles of fire that fall on the player between the first boss and the second
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(
@@ -84,7 +84,7 @@ public class SirensongSea : AbstractDungeon
             innerRadius: 15.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

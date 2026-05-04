@@ -35,9 +35,9 @@ public class SunkenTemplofQarn : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.Triclip, EnemyAction.LoomingJudgment];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -67,7 +67,7 @@ public class SunkenTemplofQarn : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Adjudicator],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

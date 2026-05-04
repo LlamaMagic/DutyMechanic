@@ -25,9 +25,9 @@ public class HaukkeManor : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 3: PetrifyingEye aoe-gaze attack
         // TODO: Since BattleCharacter.FaceAway() can't stay looking away for now,
@@ -38,7 +38,7 @@ public class HaukkeManor : AbstractDungeon
             radiusProducer: bc => 18.0f,
             priority: AvoidancePriority.High));
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

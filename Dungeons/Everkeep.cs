@@ -31,9 +31,9 @@ public class Everkeep : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Vorpal Trail
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -114,7 +114,7 @@ public class Everkeep : AbstractDungeon
             collectionProducer: () => [ArenaCenter.ZoraalJa],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

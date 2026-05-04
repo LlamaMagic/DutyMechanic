@@ -37,9 +37,9 @@ public class Emanation : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Blue puddles of fire
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(
@@ -71,7 +71,7 @@ public class Emanation : AbstractDungeon
             innerRadius: 17.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

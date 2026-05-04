@@ -32,9 +32,9 @@ public class SohrKai : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Bomb
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -91,7 +91,7 @@ public class SohrKai : AbstractDungeon
             innerRadius: 19f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

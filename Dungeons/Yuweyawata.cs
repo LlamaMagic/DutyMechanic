@@ -49,9 +49,9 @@ public class YuweyawataFieldStation : AbstractDungeon
     };
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Lightning Storm
         // Boss 3: Jagged Edge
@@ -112,7 +112,7 @@ public class YuweyawataFieldStation : AbstractDungeon
             innerRadius: 15.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

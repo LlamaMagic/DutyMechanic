@@ -24,9 +24,9 @@ public class StepsOfFaith : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Circle AOEs targeting characters or ground.
         AvoidanceManager.AddAvoidLocation(
@@ -73,7 +73,7 @@ public class StepsOfFaith : AbstractDungeon
             length: 60f,
             priority: AvoidancePriority.Medium);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

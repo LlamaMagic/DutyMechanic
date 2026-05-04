@@ -35,9 +35,9 @@ public class SyrcusTower : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // General avoid while in combat to avoid standing on top of people
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -104,7 +104,7 @@ public class SyrcusTower : AbstractDungeon
             innerRadius: 29.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -70,9 +70,9 @@ public class Aery : AbstractDungeon
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Levinbolt
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -186,7 +186,7 @@ public class Aery : AbstractDungeon
             innerRadius: 30.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

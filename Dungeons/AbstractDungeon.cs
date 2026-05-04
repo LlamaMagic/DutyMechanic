@@ -29,8 +29,8 @@ public sealed class DefensiveCooldown
 public abstract class AbstractDungeon
 {
     // Ordered list = priority order
-    private readonly List<DefensiveCooldown> defensiveCooldowns = new()
-    {
+    private static readonly List<DefensiveCooldown> DefensiveCooldowns =
+    [
         new DefensiveCooldown(7535, Core.Me.CurrentTarget), // Reprisal
         new DefensiveCooldown(7531, Core.Me), // Rampart
         // Paladin
@@ -45,20 +45,19 @@ public abstract class AbstractDungeon
         // Dark Knight
         new DefensiveCooldown(3634, Core.Me), // Dark Mind
         new DefensiveCooldown(7393, Core.Me), // The Blackest Night
-        new DefensiveCooldown(25754, Core.Me), // Oblation
-    };
+        new DefensiveCooldown(25754, Core.Me) // Oblation
+    ];
 
-    private readonly List<DefensiveCooldown> groupMitigations = new()
-    {
-        // Paladin
+    private static readonly List<DefensiveCooldown> GroupMitigations =
+    [
         new DefensiveCooldown(3540, Core.Me), // Divine Veil
         new DefensiveCooldown(7385, Core.Me), // Passage of Arms
         // Warrior
         new DefensiveCooldown(7388, Core.Me), // Shake It Off
         // Gunbreaker
-        new DefensiveCooldown(16160, Core.Me), // Heart of Light
+        new DefensiveCooldown(16160, Core.Me) // Heart of Light
 
-    };
+    ];
 
     private uint _lastLoggedTankbusterSpellId = 0;
     private uint _lastCasterNpcId = 0;
@@ -78,7 +77,7 @@ public abstract class AbstractDungeon
     /// <summary>
     /// Gets SideStep Plugin reference.
     /// </summary>
-    protected PluginContainer SidestepPlugin { get; } = PluginHelpers.GetSideStepPlugin();
+    protected static PluginContainer SidestepPlugin { get; } = PluginHelpers.GetSideStepPlugin();
 
     /// <summary>
     /// Gets spell IDs to follow-dodge while any contained spell is casting.
@@ -99,23 +98,43 @@ public abstract class AbstractDungeon
     /// Setup -- run once after entering the dungeon.
     /// </summary>
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    public virtual Task<bool> OnEnterDungeonAsync()
+    public Task<bool> OnEnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        AvoidanceManager.RemoveAllAvoids(info => true);
         SidestepPlugin.Enabled = true;
 
+        return EnterDungeonAsync();
+    }
+
+    /// <summary>
+    /// Setup -- run once after entering the dungeon.
+    /// </summary>
+    /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
+    protected virtual Task<bool> EnterDungeonAsync()
+    {
         return Task.FromResult(false);
+    }
+
+
+
+    /// <summary>
+    /// Tear-down -- run once after exiting the dungeon.
+    /// </summary>
+    /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
+    public Task<bool> OnExitDungeonAsync()
+    {
+        AvoidanceManager.RemoveAllAvoids(info => true);
+        SidestepPlugin.Enabled = true;
+
+        return ExitDungeonAsync();
     }
 
     /// <summary>
     /// Tear-down -- run once after exiting the dungeon.
     /// </summary>
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    public virtual Task<bool> OnExitDungeonAsync()
+    protected virtual Task<bool> ExitDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
-        SidestepPlugin.Enabled = true;
-
         return Task.FromResult(false);
     }
 
@@ -192,7 +211,7 @@ public abstract class AbstractDungeon
             _lastCasterNpcId = 0;
         }
 
-        foreach (var cd in defensiveCooldowns)
+        foreach (var cd in DefensiveCooldowns)
         {
             GameObject target = cd.TargetType;
 
@@ -267,7 +286,7 @@ public abstract class AbstractDungeon
             _lastMitigatedCasterNpcId = 0;
         }
 
-        foreach (var cd in groupMitigations)
+        foreach (var cd in GroupMitigations)
         {
             GameObject target = cd.TargetType;
 

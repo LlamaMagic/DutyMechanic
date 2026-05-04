@@ -59,9 +59,9 @@ public class MesoTerminal : AbstractDungeon
     };
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.NonvolatileMemory && EnemyAction.Impression1.IsCasting(),
@@ -105,7 +105,7 @@ public class MesoTerminal : AbstractDungeon
             collectionProducer: () => [ArenaCenter.ImmortalRemains],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

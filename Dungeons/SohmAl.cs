@@ -58,9 +58,9 @@ public class SohmAl : AbstractDungeon
     /// Executes dungeon logic.
     /// </summary>
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    public override async Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         AvoidanceManager.AddAvoidObject<GameObject>(() => Core.Player.InCombat, 6f, 2005287);
 

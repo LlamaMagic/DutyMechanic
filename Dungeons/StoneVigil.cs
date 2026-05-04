@@ -42,9 +42,9 @@ public class StoneVigil : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Swinge
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
@@ -147,7 +147,7 @@ public class StoneVigil : AbstractDungeon
             innerRadius: 23.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -37,9 +37,9 @@ public class WorqorZormor : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Earthen Shot
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -100,7 +100,7 @@ public class WorqorZormor : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Gurfurlur],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -28,9 +28,9 @@ public class AgelessNecropolis : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.BlueShockwave];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 1: Necron > GrandCross
         AvoidanceHelpers.AddAvoidDonut(
@@ -50,7 +50,7 @@ public class AgelessNecropolis : AbstractDungeon
             collectionProducer: () => [ArenaCenter.Necron],
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

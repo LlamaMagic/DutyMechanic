@@ -63,9 +63,9 @@ public class KeeperOfTheLake : AbstractDungeon
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Magitek Gunship Garlean Fire
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<GameObject>(
@@ -128,7 +128,7 @@ public class KeeperOfTheLake : AbstractDungeon
             innerRadius: 18.0f,
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>

@@ -43,9 +43,9 @@ public class Aetherfont : AbstractDungeon
         .FirstOrDefault(bc => bc.IsTargetable);
 
     /// <inheritdoc/>
-    public override Task<bool> OnEnterDungeonAsync()
+    protected override async Task<bool> EnterDungeonAsync()
     {
-        AvoidanceManager.AvoidInfos.Clear();
+        
 
         // Boss 2: Forked Fissures
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -144,7 +144,7 @@ public class Aetherfont : AbstractDungeon
             collectionProducer: () => new Vector3[] { ArenaCenter.Octomammoth, },
             priority: AvoidancePriority.High);
 
-        return Task.FromResult(false);
+        return false;
     }
 
     /// <inheritdoc/>
