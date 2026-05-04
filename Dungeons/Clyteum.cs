@@ -93,6 +93,7 @@ public class Clyteum : AbstractDungeon
             arcDegrees: 90.0f);
 
         // Boss 3: Avoid hitting other party members with AoE tank buster
+        /* Commenting this out until we can figure out why avoids stop working sometimes
         AvoidanceManager.AddAvoidObject<GameObject>(
             canRun: () => Core.Player.InCombat && EnemyAction.ShadowPlayHash.IsCasting(),
             radius: 6.5f,
@@ -100,6 +101,7 @@ public class Clyteum : AbstractDungeon
             [
                 .. PartyManager.VisibleMembers.Select(p => p.BattleCharacter.ObjectId),
             ]);
+            */
 
         // Boss 3: Geokinesis
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -212,6 +214,10 @@ public class Clyteum : AbstractDungeon
     /// </summary>
     private async Task<bool> Malphas()
     {
+        if (EnemyAction.ShadowPlayHash.IsCasting())
+        {
+            MovementHelpers.Spread(5500);
+        }
         return false;
     }
 
