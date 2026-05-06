@@ -191,6 +191,21 @@ public enum SubZoneId : uint
     TheEmperorsThrone = 1362,
 
     /// <summary>
+    /// Lv. 51: The Dusk Vigil > Gathering Hall, Towering Oliphant
+    /// </summary>
+    GatheringHall = 1534,
+
+    /// <summary>
+    /// Lv. 51: The Dusk Vigil > Lord Commander's Seat, Ser Yuhelmeric
+    /// </summary>
+    LordCommandersSeat = 1535,
+
+    /// <summary>
+    /// Lv. 51: The Dusk Vigil > Saint Guenriol's Chapel, Opinicus
+    /// </summary>
+    SaintGuenriolsChapel = 1536,
+
+    /// <summary>
     /// Lv. 55: The Aery > Akh Fahl Lye, Rangda
     /// </summary>
     AkhFahlLye = 1577,
@@ -234,6 +249,7 @@ public enum SubZoneId : uint
     /// Lv. 59 > The Great Gubal Lbrary > Rhapsodies Quadrangle,
     /// </summary>
     RhapsodiesQuadrangle = 1625,
+
 
     /// <summary>
     /// Lv. 60: Baelsar's Wall > Via Praetoria, Magitek Predator
@@ -344,6 +360,21 @@ public enum SubZoneId : uint
     /// Lv. 60: Xelphatol > The Vortex,Tozol Huatotl
     /// </summary>
     TheVortex = 1791,
+
+    /// <summary>
+    /// Lv. 63: Shisui of the Violet Tides > Harutsuge Gate, Amikiri
+    /// </summary>
+    HarutsugeGate = 1942,
+
+    /// <summary>
+    /// Lv. 63: Shisui of the Violet Tides > Akashio Hall, Ruby Princess
+    /// </summary>
+    AkashioHall = 1943,
+
+    /// <summary>
+    /// Lv. 63: Shisui of the Violet Tides > Shisui Gokagura, Shisui Yohi
+    /// </summary>
+    ShisuiGokagura = 1944,
 
     /// <summary>
     /// Lv. 65: Bardam's Mettle > Bardam's Hunt , Garula

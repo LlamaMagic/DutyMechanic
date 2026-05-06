@@ -156,6 +156,11 @@ public enum ZoneId : ushort
     TheStepsOfFaith = 1068,
 
     /// <summary>
+    /// Lv. 51: The Dusk Vigil
+    /// </summary>
+    DuskVigil = 1366,
+
+    /// <summary>
     /// Lv. 53: Sohm Al
     /// </summary>
     SohmAl = 1064,
@@ -234,6 +239,12 @@ public enum ZoneId : ushort
     /// Lv. 60.5: Baelsar's Wall
     /// </summary>
     BaelsarsWall = 1114,
+
+    /// <summary>
+    /// Lv. 60
+    /// </summary>
+    ShisuioftheVioletTides = 1367,
+
 
     /// <summary>
     /// Lv. 60: Limitless Blue

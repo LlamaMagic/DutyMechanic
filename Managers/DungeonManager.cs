@@ -50,6 +50,7 @@ internal class DungeonManager
             { ZoneId.SyrcusTower, typeof(SyrcusTower) },
 
             // 3.0 - Heavensward
+            { ZoneId.DuskVigil, typeof(DuskVigil) },
             { ZoneId.SohmAl, typeof(SohmAl) },
             { ZoneId.TheAery, typeof(Aery) },
             { ZoneId.TheVault, typeof(Vault) },
@@ -92,6 +93,7 @@ internal class DungeonManager
             { ZoneId.TheHeroesGauntlet, typeof(HeroesGauntlet) },
             { ZoneId.MatoyasRelict, typeof(MatoyasRelict) },
             { ZoneId.Paglthan, typeof(Paglthan) },
+            { ZoneId.ShisuioftheVioletTides, typeof(ShisuioftheVioletTides) },
             { ZoneId.EurekaAnemos, typeof(EurekaAnemos) },
             { ZoneId.EurekaPagos, typeof(EurekaPagos) },
             { ZoneId.EurekaPyros, typeof(EurekaPyros) },

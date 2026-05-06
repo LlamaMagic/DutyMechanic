@@ -45,7 +45,7 @@ public class Clyteum : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+
 
         SideStep.Override(EnemyAction.BodyweightExorcism);
         SideStep.Override(EnemyAction.BodyweightExorcismTowers);
@@ -367,7 +367,7 @@ public class Clyteum : AbstractDungeon
         /// </summary>
         public const uint ShadowPlay = 50314;
 
-        public static readonly HashSet<uint> ShadowPlayHash = [50314];
+        public static readonly HashSet<uint> ShadowPlayHash = [50314,50315];
     }
 
     private static class PlayerAura
