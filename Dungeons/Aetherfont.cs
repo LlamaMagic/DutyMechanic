@@ -5,6 +5,7 @@ using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
+using LlamaLibrary.Helpers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -34,7 +35,7 @@ public class Aetherfont : AbstractDungeon
     ];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.SonicBloop,EnemyAction.RipperClaw];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
@@ -45,7 +46,9 @@ public class Aetherfont : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+
+        SideStep.Override(EnemyAction.ExplosiveFrequency);
+        SideStep.Override(EnemyAction.ResonantFrequency);
 
         // Boss 2: Forked Fissures
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -151,6 +154,7 @@ public class Aetherfont : AbstractDungeon
     public override async Task<bool> RunAsync()
     {
         await FollowDodgeSpells();
+        await TankBusterSpells();
 
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
@@ -226,6 +230,13 @@ public class Aetherfont : AbstractDungeon
     private static class EnemyAction
     {
         /// <summary>
+        /// <see cref="EnemyNpc.Lyngbakr"/>'s Sonic Bloop.
+        ///
+        /// Tank Buster
+        /// </summary>
+        public const uint SonicBloop = 33345;
+
+        /// <summary>
         /// <see cref="EnemyNpc.Lyngbakr"/>'s Waterspout.
         ///
         /// Player-targeted spread circles.
@@ -252,6 +263,13 @@ public class Aetherfont : AbstractDungeon
         /// Player-targeted stack.
         /// </summary>
         public const uint Tidalspout = 33343;
+
+        /// <summary>
+        /// <see cref="EnemyNpc.Arkas"/>'s Ripper Claw .
+        ///
+        /// Tank buster
+        /// </summary>
+        public const uint RipperClaw = 33368;
 
         /// <summary>
         /// <see cref="EnemyNpc.Arkas"/>'s Lightning Claw.
