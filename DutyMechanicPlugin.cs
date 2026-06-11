@@ -24,7 +24,6 @@ namespace DutyMechanic;
 public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
-    private readonly DungeonManager _dungeonManager = new DungeonManager();
 
     /// <inheritdoc/>
     public override string Author => "DW, Manta, Athlon";
@@ -98,6 +97,7 @@ public class DutyMechanicPlugin : BotPlugin
     private void AddHooks()
     {
         Logger.Information("Adding DutyMechanic Hook");
+        DungeonManager.ClearCurrent();
         TreeHooks.Instance.AddHook("TreeStart", _root);
     }
 
@@ -105,6 +105,7 @@ public class DutyMechanicPlugin : BotPlugin
     {
         Logger.Information("Removing DutyMechanic Hook");
         TreeHooks.Instance.RemoveHook("TreeStart", _root);
+        DungeonManager.ClearCurrent();
     }
 
     private void OnBotStop(BotBase bot)
@@ -148,7 +149,7 @@ public class DutyMechanicPlugin : BotPlugin
         // LoggingHelpers.LogAllSpellCasts();
         LoggingHelpers.LogZoneChanges();
 
-        return await _dungeonManager.RunAsync();
+        return await DungeonManager.RunAsync();
     }
 
     /// <summary>

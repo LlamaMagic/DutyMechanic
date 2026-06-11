@@ -1,6 +1,7 @@
 ﻿using DutyMechanic.Data;
 using DutyMechanic.Dungeons;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot.Behavior;
 using ff14bot.Managers;
 using System;
@@ -12,9 +13,9 @@ namespace DutyMechanic.Managers;
 /// <summary>
 /// Maintains list of available dungeons and exposes dungeon logic handlers.
 /// </summary>
-internal class DungeonManager
+internal static class DungeonManager
 {
-    private readonly Dictionary<ZoneId, Type> _availableDungeons = new Dictionary<ZoneId, Type>()
+    private static readonly Dictionary<ZoneId, Type> AvailableDungeons = new Dictionary<ZoneId, Type>()
     {
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },
@@ -133,32 +134,32 @@ internal class DungeonManager
             { ZoneId.Mistwake, typeof(Mistwake) },
             { ZoneId.Clyteum, typeof(Clyteum) },
         };
-    private AbstractDungeon _currentDungeon = null;
+    private static AbstractDungeon _currentDungeon = null;
+    private static bool _clear = false;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DungeonManager"/> class.
-    /// </summary>
-    public DungeonManager()
+    internal static void ClearCurrent()
     {
-
+        _clear = true;
     }
 
     /// <summary>
     /// Executes dungeon logic for the current dungeon.
     /// </summary>
     /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    public async Task<bool> RunAsync()
+    public static async Task<bool> RunAsync()
     {
         await CommonTasks.HandleLoading();
 
         ZoneId currentZoneId = (ZoneId)WorldManager.ZoneId;
 
-        if (_currentDungeon?.ZoneId != currentZoneId)
+        if (_currentDungeon?.ZoneId != currentZoneId || _clear)
         {
+            Logger.Debug($"Current dungeon: {_currentDungeon?.ZoneId}, Current zone: {currentZoneId}, Clear flag: {_clear}");
             await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
-            if (_availableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
+            if (AvailableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
             {
+                Logger.Debug($"Instantiating dungeon class {newDungeon}");
                 _currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
                 await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
@@ -166,6 +167,8 @@ internal class DungeonManager
             {
                 _currentDungeon = null;
             }
+
+            _clear = false;
         }
 
         return await (_currentDungeon?.RunAsync() ?? Task.FromResult(false));
