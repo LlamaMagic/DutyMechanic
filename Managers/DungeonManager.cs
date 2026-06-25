@@ -154,12 +154,12 @@ internal static class DungeonManager
 
         if (_currentDungeon?.ZoneId != currentZoneId || _clear)
         {
-            Logger.Debug($"Current dungeon: {_currentDungeon?.ZoneId}, Current zone: {currentZoneId}, Clear flag: {_clear}");
+            //Logger.Debug($"Current dungeon: {_currentDungeon?.ZoneId}, Current zone: {currentZoneId}, Clear flag: {_clear}");
             await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
             if (AvailableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
             {
-                Logger.Debug($"Instantiating dungeon class {newDungeon}");
+                //Logger.Debug($"Instantiating dungeon class {newDungeon}");
                 _currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
                 await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
