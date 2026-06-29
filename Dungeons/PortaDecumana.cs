@@ -43,7 +43,7 @@ public class PortaDecumana : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+
 
         Logger.Debug("SideStep: Removing Garuda's unavoidable abilities.");
         SideStep.Override(28980); // Eye of the Storm
@@ -83,10 +83,10 @@ public class PortaDecumana : AbstractDungeon
         // Ultima Ifrit: Vulcan Burst
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
-            objectSelector: c => c.CastingSpellId == EnemyAction.VulcanBurst,
+            objectSelector: c => c.CastingSpellId is EnemyAction.VulcanBurst or EnemyAction.BurstFlare,
             outerRadius: 40.0f,
-            innerRadius: 3.0F,
-            priority: AvoidancePriority.Medium);
+            innerRadius: 2.0F,
+            priority: AvoidancePriority.High);
 
         // Boss 1
         // Let's avoid standing under the boss if we can help it.
@@ -124,6 +124,13 @@ public class PortaDecumana : AbstractDungeon
             radiusProducer: bc => 17.4f,
             priority: AvoidancePriority.High));
 
+        // Lahabrea - Fire Sphere
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
+            condition: () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
+            objectSelector: eo => eo.IsVisible && eo.NpcId == EnemyNpc.Firesphere,
+            radiusProducer: eo => 8.5f,
+            priority: AvoidancePriority.Medium));
+
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
@@ -137,6 +144,13 @@ public class PortaDecumana : AbstractDungeon
             () => ArenaCenter.UltimaArenaCenter2,
             outerRadius: 90.0f,
             innerRadius: 19.0f,
+            priority: AvoidancePriority.High);
+
+        AvoidanceHelpers.AddAvoidDonut(
+            () => Core.Player.InCombat && WorldManager.ZoneId == (uint)ZoneId.ThePortaDecumana,
+            () => ArenaCenter.Lahabrea,
+            outerRadius: 90.0f,
+            innerRadius: 15.0f,
             priority: AvoidancePriority.High);
 
         return false;
@@ -235,6 +249,16 @@ public class PortaDecumana : AbstractDungeon
         /// First Boss: Aetheroplasm
         /// </summary>
         public const uint Aetheroplasm = 2138;
+
+        /// <summary>
+        /// Solo Duty Boss: Lahabrea
+        /// </summary>
+        public const uint Lahabrea = 21343;
+
+        /// <summary>
+        /// Solo Duty Boss: Firesphere
+        /// </summary>
+        public const uint Firesphere = 4384;
     }
 
     internal static class ArenaCenter
@@ -248,6 +272,11 @@ public class PortaDecumana : AbstractDungeon
         /// First Boss: <see cref="EnemyNpc.UltimaWeapon"/>.
         /// </summary>
         public static readonly Vector3 UltimaArenaCenter1 = new(-771.9428f, -400.0628f, -600.3899f);
+
+        /// <summary>
+        /// First Boss: <see cref="EnemyNpc.Lahabrea"/>.
+        /// </summary>
+        public static readonly Vector3 Lahabrea = new(-704.0055f, -185.66042f, 479.9724f);
     }
 
     internal static class EnemyAction
@@ -390,6 +419,13 @@ public class PortaDecumana : AbstractDungeon
         /// Kill the boss before this move finishes or it's a wipe.
         /// </summary>
         public const uint Ultima = 29024;
+
+        /// <summary>
+        /// Lahabrea
+        /// Has two IDs 29757,29758. 58 is the correct one for dodging
+        /// Pushes you back, so stack on top of him.
+        /// </summary>
+        public const uint BurstFlare = 29758;
     }
 
     private static class PlayerAura
