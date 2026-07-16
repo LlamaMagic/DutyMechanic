@@ -1,10 +1,11 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
@@ -36,8 +37,7 @@ public class BowlOfEmbers : AbstractDungeon
         // Boss 1
         // In general, if not tank stay out of the front to avoid AOE breath attack
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.ZoneId == 1045 &&
-                          !Core.Me.IsTank(),
+            canRun: ShouldAvoidIfritCone,
             objectSelector: (bc) => bc.NpcId == IfritNPCID && bc.CanAttack,
             leashPointProducer: () => IfritArenaCenter,
             leashRadius: 40.0f,
@@ -48,6 +48,23 @@ public class BowlOfEmbers : AbstractDungeon
         return false;
     }
 
+    private static bool ShouldAvoidIfritCone()
+    {
+        if (!Core.Player.InCombat || WorldManager.ZoneId != 1045 || Core.Me.IsTank())
+        {
+            return false;
+        }
+
+        if (!PartyManager.IsInParty || PartyManager.NumMembers < 4)
+        {
+            return false;
+        }
+
+        var ifrit = GameObjectManager.GetObjectsOfType<BattleCharacter>()
+            .FirstOrDefault(bc => bc.NpcId == IfritNPCID && bc.CanAttack);
+
+        return ifrit?.CurrentTargetId != Core.Me.ObjectId;
+    }
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
