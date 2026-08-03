@@ -37,7 +37,7 @@ public class SunkenTemplofQarn : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidSquareDonut(
@@ -193,8 +193,10 @@ public class SunkenTemplofQarn : AbstractDungeon
         /// <summary>
         /// Teratotaur
         /// Aura Name: Doom, Aura Id: 1970
+        /// 8-2-26 Aura Name: Doom, Aura Id: 5187
+        ///
         /// Causes instant death if timer reaches 0. Stand on platform to dispel
         /// </summary>
-        public const uint Doom = 1970;
+        public const uint Doom = 5187;
     }
 }
