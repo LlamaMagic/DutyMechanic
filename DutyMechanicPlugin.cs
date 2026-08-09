@@ -25,6 +25,12 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
 
+    // The in-duty TreeStart decorator does not tick while the instance director is absent,
+    // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
+    // pulses continue during that interval; retaining this edge lets the next instance force
+    // a fresh dungeon object even when both duty runs use the same zone ID.
+    private bool _wasInInstance;
+
     /// <inheritdoc/>
     public override string Author => "DW, Manta, Athlon";
 
@@ -86,6 +92,22 @@ public class DutyMechanicPlugin : BotPlugin
     public override void OnShutdown()
     {
         OnDisabled();
+    }
+
+    /// <inheritdoc/>
+    public override void OnPulse()
+    {
+        bool isInInstance = LoadingHelpers.IsInInstance;
+
+        if (isInInstance && !_wasInInstance)
+        {
+            // Zone IDs identify duty maps, not individual duty sessions. Marking the manager
+            // stale on the entry edge ensures per-run avoids and state are rebuilt after a
+            // same-duty requeue without repeatedly clearing them on every plugin pulse.
+            DungeonManager.ClearCurrent();
+        }
+
+        _wasInInstance = isInInstance;
     }
 
     /// <inheritdoc/>
