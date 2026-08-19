@@ -354,7 +354,9 @@ public class SkydeepCenote : AbstractDungeon
     {
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
-        CaptureEncounterState(currentSubZoneId);
+        // The evidence capture remains available for scoped investigations, but keep it disabled
+        // during normal farming because actor and player snapshots generate high-volume RB logs.
+        // CaptureEncounterState(currentSubZoneId);
         UpdateFeatherRayArenaState();
 
         await FollowDodgeSpells();
