@@ -118,6 +118,7 @@ internal static class DungeonManager
 
             // 7.0 - Dawntrail
             { ZoneId.AFatherFirst, typeof(FatherFirst) },
+            { ZoneId.YakTel, typeof(FeatOfBrotherhood) },
             { ZoneId.Ihuykatumu, typeof(Ihuykatumu) },
             { ZoneId.WorqorZormor, typeof(WorqorZormor) },
             { ZoneId.WorqorLarDor, typeof(WorqorLarDor) },

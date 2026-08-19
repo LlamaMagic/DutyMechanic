@@ -452,6 +452,13 @@ public enum ZoneId : ushort
     AFatherFirst = 1170,
 
     /// <summary>
+    /// Yak T'el, including quest instances that retain the open-world territory ID such as
+    /// The Feat of the Brotherhood. DutyMechanic's instance-director gate prevents this handler
+    /// from running during ordinary open-world travel in the same territory.
+    /// </summary>
+    YakTel = 1189,
+
+    /// <summary>
     /// Lv. 93: Worqor Zormor
     /// </summary>
     WorqorZormor = 1193,
