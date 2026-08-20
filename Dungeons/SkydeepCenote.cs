@@ -45,10 +45,9 @@ public class SkydeepCenote : AbstractDungeon
     private const float FeatherRayRollingCurrentBubbleOffset = 8f;
     private const float FeatherRayLargeBubbleMinimumCombatReach = 1.5f;
     private const float FeatherRaySmallBubbleHitboxRadius = 1.1f;
-    // Small moving bubbles have a captured 1.1-yalm hitbox. Keep 0.65 yalm of current-position
-    // tolerance, then project their exact 2.2-yalm width five yalms forward. This matches the
-    // independent capsule model without restoring the old 2.5-yalm disks that closed valid lanes.
-    private const float FeatherRaySmallBubbleAvoidRadius = 1.75f;
+    // Small moving bubbles have a captured 1.1-yalm hitbox. Model one swept box from the rear of
+    // that hitbox through the next five yalms of travel; registering a second current-position
+    // circle made the avoidance solver alternate between overlapping owners during dense waves.
     private const float FeatherRaySmallBubblePredictionLength = 5f;
     private const float FeatherRayNuisanceSpreadRadius = 6f;
     // Nuisance's copied cone is 30 degrees wide. Sampling every five degrees is sufficient to
@@ -70,12 +69,15 @@ public class SkydeepCenote : AbstractDungeon
 
     // Maulskull's Impact helpers pair a ten-yalm lethal circle with a radial knockback. A normal
     // circle avoid exits by the shortest route, which live verification showed can put the player
-    // due north of the origin and knock them past Z=-410. Force a two-yalm safe disk on a computed
-    // diagonal instead; its center is 13 yalms out so even the near edge remains one yalm clear.
+    // due north of the origin and knock them past Z=-410. Keep a one-yalm computed safe disk for
+    // every Impact variant: live Viper verification showed that even the former 1.25-yalm
+    // Skullcrush tolerance survived, while the two-yalm Ringing/Colossal tolerance still allowed
+    // enough angular drift to make the resulting landing less predictable. A nonzero disk lets RB
+    // settle without requiring an exact floating-point coordinate while keeping all knockbacks tight.
     private const float MaulskullArenaHalfExtent = 20f;
     private const float MaulskullLandingInset = 1f;
     private const float MaulskullImpactPrepositionRadius = 13f;
-    private const float MaulskullImpactPositionTolerance = 2f;
+    private const float MaulskullImpactPositionTolerance = 1f;
     private const float MaulskullRingingLandingSafetyMargin = 1f;
     private const int MaulskullKnockbackDirectionSamples = 360;
 
@@ -95,6 +97,14 @@ public class SkydeepCenote : AbstractDungeon
     private const float MaulskullStonecarverTransitionTolerance = 1f;
     private const float MaulskullTowerPositionTolerance = 1.5f;
     private const float MaulskullStackPositionTolerance = 2f;
+    // Destructive Heat is a six-yalm spread that starts while duty-support members are still
+    // repositioning after Impact. Pick from a stable in-bounds ring, require one extra yalm of
+    // separation, and rescore only when another member actually invalidates the latched point.
+    private const float MaulskullDestructiveHeatSpreadRadius = 6f;
+    private const float MaulskullDestructiveHeatMinimumSeparation = 7f;
+    private const float MaulskullDestructiveHeatDestinationRadius = 15f;
+    private const float MaulskullDestructiveHeatPositionTolerance = 1.5f;
+    private const int MaulskullDestructiveHeatDirectionSamples = 72;
     // Landing's cast completion owns the damaging rock impact, but RB can declare its current
     // escape complete earlier. Keep combat-routine movement suppressed for a short visual grace
     // after the cast so it cannot immediately path back under a rock while the client resolves it.
@@ -125,6 +135,9 @@ public class SkydeepCenote : AbstractDungeon
     // positive-position tower. A dedicated handle lets the helper-expiry cleanup release that hold
     // without clearing Impact, Ringing Blows, or Landing leases stored on CapabilityHandle.
     private readonly CapabilityManagerHandle maulskullDeepThunderMovementHandle = CapabilityManager.CreateNewHandle();
+    // Destructive Heat uses the same scheduling split as Deep Thunder: encounter movement reaches
+    // and holds a semantic destination while the combat routine remains free to attack or mitigate.
+    private readonly CapabilityManagerHandle maulskullDestructiveHeatMovementHandle = CapabilityManager.CreateNewHandle();
     // Worrisome Wave needs a spread only until its copied cones resolve. Keep the exact avoid handle
     // encounter-local so Trouble Bubbles and aura consumption can remove it immediately instead of
     // inheriting MovementHelpers.Spread's duration, which RB reported as an incorrect 60 seconds.
@@ -132,6 +145,8 @@ public class SkydeepCenote : AbstractDungeon
     private bool featherRayNuisanceConeArmed;
     private bool featherRayNuisanceFacingOwned;
     private bool maulskullDeepThunderMovementOwned;
+    private bool maulskullDestructiveHeatMovementOwned;
+    private Vector3? maulskullDestructiveHeatDestination;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.SkydeepCenote;
@@ -148,25 +163,16 @@ public class SkydeepCenote : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
-
-        // Only the 1.1-reach Airy Bubbles are moving collision hazards. Large 2.2-reach Bubble Bomb
-        // actors are excluded here because their shifted six-yalm Burst areas are handled below;
-        // treating both sizes as 2.5-yalm circles closed every lane during dense moving-bubble waves.
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.UnsungElegy,
-            objectSelector: IsVisibleSmallFeatherRayBubble,
-            radiusProducer: _ => FeatherRaySmallBubbleAvoidRadius,
-            priority: AvoidancePriority.High));
-
-        // The 2026-08-19 death capture showed that current-position circles react only after a
-        // moving bubble has intercepted the player. Actor heading tracks bubble travel, so extend
-        // the captured 2.2-yalm collision width five yalms forward while retaining open side lanes.
+        // Only the 1.1-reach Airy Bubbles are moving collision hazards. Actor heading tracks travel,
+        // so one rectangle covers the full captured 2.2-yalm width from 1.1 yalms behind the actor
+        // through five yalms ahead. A single swept shape retains narrow side lanes and avoids the
+        // sub-second capability churn observed when a circle and forward rectangle overlapped.
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
             canRun: IsFeatherRayCombat,
             objectSelector: IsVisibleSmallFeatherRayBubble,
             width: FeatherRaySmallBubbleHitboxRadius * 2f,
-            length: FeatherRaySmallBubblePredictionLength,
+            length: FeatherRaySmallBubblePredictionLength + FeatherRaySmallBubbleHitboxRadius,
+            yOffset: -FeatherRaySmallBubbleHitboxRadius,
             priority: AvoidancePriority.High);
 
         // Worrisome Wave is the boss's visible 30-degree cone. Troublesome Tail is an unavoidable
@@ -308,6 +314,17 @@ public class SkydeepCenote : AbstractDungeon
             width: MaulskullStonecarverWidth,
             length: MaulskullStonecarverLength,
             priority: AvoidancePriority.High);
+
+        // Destructive Heat targets all four members with six-yalm circles. Keep geometric egress
+        // live around the other three members while Maulskull() supplies a stable positive spread
+        // destination; delaying both until Impact ends preserves the verified knockback positioning.
+        AvoidanceManager.AddAvoidObject<BattleCharacter>(
+            canRun: () => IsMaulskullCombat() &&
+                          EnemyAction.DestructiveHeat.IsCasting() &&
+                          !EnemyAction.Impact.IsCasting() &&
+                          !EnemyAction.ColossalImpact.IsCasting(),
+            objectSelector: IsOtherLivingPartyMember,
+            radiusProducer: _ => MaulskullDestructiveHeatSpreadRadius);
 
         // Maulwork drops several independent eight-yalm circles per wave. Their helper locations
         // match CastLocation in the live capture, so every active helper is a separate hazard.
@@ -759,6 +776,12 @@ public class SkydeepCenote : AbstractDungeon
             ReleaseMaulskullDeepThunderMovement("Deep Thunder tower helper ended");
         }
 
+        BattleCharacter destructiveHeatCaster = GetActiveMaulskullDestructiveHeatCaster();
+        if (destructiveHeatCaster == null)
+        {
+            ReleaseMaulskullDestructiveHeatMovement("Destructive Heat helper ended");
+        }
+
         BattleCharacter impactCaster = GetActiveMaulskullImpactCaster();
         if (impactCaster != null)
         {
@@ -772,7 +795,7 @@ public class SkydeepCenote : AbstractDungeon
                 $"Holding Maulskull knockback position for action {impactCaster.CastingSpellId}");
 
             // The inverted donut supplies path-safe geometry, while explicit positive movement
-            // stops RB as soon as it enters the two-yalm disk. Live Ringing Blows captures showed
+            // stops RB as soon as it enters the one-yalm disk. Live Ringing Blows captures showed
             // that releasing movement at the disk edge let navigation momentum carry the player
             // back out, causing repeated oscillation and an unstable knockback direction.
             return await MoveToMaulskullMechanicPosition(
@@ -872,9 +895,33 @@ public class SkydeepCenote : AbstractDungeon
                 MaulskullStackPositionTolerance);
         }
 
-        if (EnemyAction.DestructiveHeat.IsCasting() && !EnemyAction.Impact.IsCasting() && !EnemyAction.ColossalImpact.IsCasting())
+        if (destructiveHeatCaster != null && !EnemyAction.Impact.IsCasting() && !EnemyAction.ColossalImpact.IsCasting())
         {
-            await MovementHelpers.Spread(5_500, 6f);
+            Vector3 destination = GetMaulskullDestructiveHeatDestination();
+            bool hasArrived = Core.Player.Distance2D(destination) <= MaulskullDestructiveHeatPositionTolerance;
+            if (hasArrived && !AvoidanceManager.IsRunningOutOfAvoid)
+            {
+                MovementManager.MoveStop();
+                CapabilityManager.Update(
+                    maulskullDestructiveHeatMovementHandle,
+                    CapabilityFlags.Movement,
+                    destructiveHeatCaster.SpellCastInfo.RemainingCastTime,
+                    $"Holding Destructive Heat spread for action {destructiveHeatCaster.CastingSpellId} while allowing combat-routine actions");
+
+                if (!maulskullDestructiveHeatMovementOwned)
+                {
+                    maulskullDestructiveHeatMovementOwned = true;
+                    Logger.Information("[Skydeep] Destructive Heat destination reached; combat-routine movement is suppressed until the spread resolves.");
+                }
+
+                // Movement is already owned by the dedicated capability handle. Yield this tick so
+                // melee attacks and mitigation continue while the player holds the positive slot.
+                return false;
+            }
+
+            return await MoveToMaulskullMechanicPosition(
+                destination,
+                MaulskullDestructiveHeatPositionTolerance);
         }
 
         if (EnemyAction.WroughtFire.IsCasting() && Core.Player.IsTank())
@@ -903,6 +950,26 @@ public class SkydeepCenote : AbstractDungeon
             CapabilityFlags.Movement,
             reason);
         maulskullDeepThunderMovementOwned = false;
+    }
+
+    /// <summary>
+    /// Releases Destructive Heat's combat-routine movement lease and its latched spread destination.
+    /// </summary>
+    /// <param name="reason">Diagnostic reason recorded by <see cref="CapabilityManager"/>.</param>
+    private void ReleaseMaulskullDestructiveHeatMovement(string reason)
+    {
+        maulskullDestructiveHeatDestination = null;
+        if (!maulskullDestructiveHeatMovementOwned)
+        {
+            return;
+        }
+
+        CapabilityManager.Clear(
+            maulskullDestructiveHeatMovementHandle,
+            CapabilityFlags.Movement,
+            reason);
+        maulskullDestructiveHeatMovementOwned = false;
+        Logger.Information($"[Skydeep] Released Destructive Heat movement ownership: {reason}.");
     }
 
     /// <summary>
@@ -987,6 +1054,22 @@ public class SkydeepCenote : AbstractDungeon
     private static bool IsOtherFeatherRayNuisanceConeSource(BattleCharacter actor)
     {
         if (actor == null || !actor.IsValid || !actor.IsAlive || actor.IsMe || !HasFeatherRayNuisanceLockOn(actor))
+        {
+            return false;
+        }
+
+        return PartyManager.VisibleMembers.Any(member =>
+            member.BattleCharacter != null && member.BattleCharacter.ObjectId == actor.ObjectId);
+    }
+
+    /// <summary>
+    /// Identifies another living party member for encounter-local spread avoidance.
+    /// </summary>
+    /// <param name="actor">Candidate battle character supplied by the avoidance manager.</param>
+    /// <returns><see langword="true"/> when the actor is a living visible party member other than the player.</returns>
+    private static bool IsOtherLivingPartyMember(BattleCharacter actor)
+    {
+        if (actor == null || !actor.IsValid || !actor.IsAlive || actor.IsMe)
         {
             return false;
         }
@@ -1301,6 +1384,20 @@ public class SkydeepCenote : AbstractDungeon
             .FirstOrDefault();
 
     /// <summary>
+    /// Locates the active Destructive Heat helper, preferring the helper targeted at the player.
+    /// </summary>
+    /// <returns>The player's six-yalm spread helper, another active helper as fallback, or <see langword="null"/>.</returns>
+    private static BattleCharacter GetActiveMaulskullDestructiveHeatCaster() =>
+        GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(actor => actor.IsValid &&
+                            actor.IsCasting &&
+                            actor.SpellCastInfo.IsValid &&
+                            EnemyAction.DestructiveHeat.Contains(actor.CastingSpellId))
+            .OrderByDescending(actor => actor.SpellCastInfo.TargetId == Core.Player.ObjectId)
+            .ThenBy(actor => actor.SpellCastInfo.RemainingCastTime)
+            .FirstOrDefault();
+
+    /// <summary>
     /// Resolves Building Heat's selected stack target from its hidden helper cast.
     /// </summary>
     /// <returns>The selected battle character, or <see langword="null"/> when the stack is inactive or unresolved.</returns>
@@ -1317,9 +1414,95 @@ public class SkydeepCenote : AbstractDungeon
     }
 
     /// <summary>
+    /// Selects and latches an in-bounds Destructive Heat position farthest from the live party.
+    /// </summary>
+    /// <returns>A point on the 15-yalm ring around the verified Maulskull arena center.</returns>
+    /// <remarks>
+    /// Duty-support actors choose their own spread positions after Impact, so fixed role slots are
+    /// not reliable across player jobs. Sampling the known arena instead preserves the mechanic's
+    /// six-yalm semantics without guessing those NPC decisions. The point remains stable until a
+    /// party member moves within the seven-yalm safety threshold, preventing per-tick oscillation.
+    /// </remarks>
+    private Vector3 GetMaulskullDestructiveHeatDestination()
+    {
+        BattleCharacter[] partyMembers = PartyManager.VisibleMembers
+            .Select(member => member.BattleCharacter)
+            .Where(actor => actor != null && actor.IsValid && actor.IsAlive && !actor.IsMe)
+            .ToArray();
+
+        if (partyMembers.Length == 0)
+        {
+            // Losing party visibility removes the evidence needed to choose a new formation. Hold
+            // the current position rather than manufacturing a slot from stale or absent actors.
+            maulskullDestructiveHeatDestination = Core.Player.Location;
+            return maulskullDestructiveHeatDestination.Value;
+        }
+
+        if (maulskullDestructiveHeatDestination.HasValue &&
+            GetMinimumMaulskullDestructiveHeatSeparation(maulskullDestructiveHeatDestination.Value, partyMembers) >=
+            MaulskullDestructiveHeatMinimumSeparation)
+        {
+            return maulskullDestructiveHeatDestination.Value;
+        }
+
+        Vector3 center = ArenaCenter.Maulskull;
+        Vector3 playerLocation = Core.Player.Location;
+        Vector3 bestDestination = playerLocation;
+        float bestMinimumSeparation = float.MinValue;
+        float bestTravelDistance = float.MaxValue;
+
+        for (int index = 0; index < MaulskullDestructiveHeatDirectionSamples; index++)
+        {
+            double angle = index * Math.PI * 2d / MaulskullDestructiveHeatDirectionSamples;
+            Vector3 candidate = new(
+                center.X + (float)Math.Cos(angle) * MaulskullDestructiveHeatDestinationRadius,
+                center.Y,
+                center.Z + (float)Math.Sin(angle) * MaulskullDestructiveHeatDestinationRadius);
+            float minimumSeparation = GetMinimumMaulskullDestructiveHeatSeparation(candidate, partyMembers);
+            float travelDistance = GetPlanarDistance(candidate, playerLocation);
+
+            if (minimumSeparation > bestMinimumSeparation ||
+                (minimumSeparation == bestMinimumSeparation && travelDistance < bestTravelDistance))
+            {
+                bestDestination = candidate;
+                bestMinimumSeparation = minimumSeparation;
+                bestTravelDistance = travelDistance;
+            }
+        }
+
+        maulskullDestructiveHeatDestination = bestDestination;
+        Logger.Information($"[Skydeep] Selected Destructive Heat destination {bestDestination} with {bestMinimumSeparation:F1} yalms minimum live-party separation.");
+        return maulskullDestructiveHeatDestination.Value;
+    }
+
+    /// <summary>
+    /// Measures the nearest living party member to a candidate Destructive Heat destination.
+    /// </summary>
+    /// <param name="destination">The in-bounds point being scored.</param>
+    /// <param name="partyMembers">Other living party members from the current bot-thread snapshot.</param>
+    /// <returns>The shortest planar distance to another member.</returns>
+    private static float GetMinimumMaulskullDestructiveHeatSeparation(
+        Vector3 destination,
+        IEnumerable<BattleCharacter> partyMembers) =>
+        partyMembers.Min(member => GetPlanarDistance(destination, member.Location));
+
+    /// <summary>
+    /// Measures horizontal distance without depending on vertical arena offsets.
+    /// </summary>
+    /// <param name="first">First world-space point.</param>
+    /// <param name="second">Second world-space point.</param>
+    /// <returns>Distance in the X/Z plane.</returns>
+    private static float GetPlanarDistance(Vector3 first, Vector3 second)
+    {
+        float deltaX = first.X - second.X;
+        float deltaZ = first.Z - second.Z;
+        return (float)Math.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
+    }
+
+    /// <summary>
     /// Moves to a positive mechanic destination without competing with active geometric avoidance.
     /// </summary>
-    /// <param name="destination">The tower center or selected stack target.</param>
+    /// <param name="destination">The tower center, selected stack target, or latched spread position.</param>
     /// <param name="tolerance">Distance at which movement stops and the position is held.</param>
     /// <param name="holdOnArrivalWhileAvoidanceActive">
     /// Whether a verified positive-position destination may stop movement on AvoidanceManager's
