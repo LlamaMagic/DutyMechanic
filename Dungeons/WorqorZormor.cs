@@ -179,23 +179,38 @@ public class WorqorZormor : AbstractDungeon
     private const float GurfurlurSpreadAcquisitionDistance = 7.25f;
     private const float GurfurlurSpreadRetentionDistance = 6.25f;
     private const float GurfurlurSpreadCandidateStep = 1f;
-    // Long Windswrath stages inside eight yalms, then commits to an alternating-row safe wedge.
+    // Require the complete four-tornado set before final-position planning.
     private const int GurfurlurLongWindswrathExpectedTornadoCount = 4;
     private const float GurfurlurLongWindswrathEarlyRadius = 8f;
     private const float GurfurlurLongWindswrathEarlyTargetRadius = 7.5f;
-    private const float GurfurlurLongWindswrathFinalRadius = 5f;
-    private const float GurfurlurLongWindswrathFinalTargetRadius = 3.5f;
-    private const float GurfurlurLongWindswrathFinalWindowSeconds = 3f;
-    private const float GurfurlurLongWindswrathWedgeHalfAngleDegrees = 15f;
-    private const float GurfurlurLongWindswrathPatternRowTolerance = 0.75f;
-    private const float GurfurlurLongWindswrathFinalArrivalDistance = 0.35f;
+    // A 2.25-yalm grid minimum keeps the 0.25-yalm stop tolerance inside the two-yalm bound.
+    private const float GurfurlurLongWindswrathCandidateRadius = 2.5f;
+    private const float GurfurlurLongWindswrathMinimumSourceDistance = 2f;
+    private const float GurfurlurLongWindswrathCandidateMinimumSourceDistance = 2.25f;
+    private const float GurfurlurLongWindswrathGridStep = 0.5f;
+    // Start final planning at six seconds; registered avoids continue to own moving tornadoes.
+    private const float GurfurlurLongWindswrathPlanningWindowSeconds = 6f;
+    private const float GurfurlurLongWindswrathArrivalLeadSeconds = 0.75f;
+    private const float GurfurlurLongWindswrathFinalArrivalDistance = 0.25f;
+    // Sweep the observed 2.4-to-4-yalm-per-second range to cover actor-update variance.
+    private const float GurfurlurLongWindswrathMinimumTornadoSpeed = 2.4f;
+    // The 0.25-yalm margin covers the six-yalm body without erasing valid alternating-row landings.
+    private const float GurfurlurLongWindswrathTornadoClearance = 6.25f;
+    private const float GurfurlurLongWindswrathTimeMarginSeconds = 0.75f;
+    private const float GurfurlurLongWindswrathPostImpactSeconds = 1.5f;
+    private const float GurfurlurLongWindswrathClearanceTie = 0.25f;
+    private const float GurfurlurLongWindswrathPreImpactCaptureSeconds = 1f;
+    // A 100-ms cadence covers the observed 210-ms valid planning window.
+    private static readonly TimeSpan GurfurlurLongWindswrathRecheckInterval =
+        TimeSpan.FromMilliseconds(100);
     private const float GurfurlurAuraSphereInterceptOffset = 2f;
     private const float GurfurlurSledgehammerStackDistance = 2f;
     // Retain Sledgehammer's stack point through its two no-cast follow-up hits.
     private static readonly TimeSpan GurfurlurSledgehammerFollowupGrace = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan GurfurlurDestinationRecheckInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan GurfurlurSpreadImpactGrace = TimeSpan.FromMilliseconds(750);
-    private static readonly TimeSpan GurfurlurWindswrathImpactGrace = TimeSpan.FromMilliseconds(750);
+    // Two seconds covers the observed 1.037-second post-cast effect delay.
+    private static readonly TimeSpan GurfurlurWindswrathImpactGrace = TimeSpan.FromSeconds(2);
 
     private readonly GurfurlurMovementLease gurfurlurGreatFloodMovement = new();
     private readonly GurfurlurMovementLease gurfurlurVolcanicDropMovement = new();
@@ -214,11 +229,12 @@ public class WorqorZormor : AbstractDungeon
     private uint gurfurlurWindswrathCasterId;
     private Vector3 gurfurlurWindswrathDestination;
     private bool gurfurlurWindswrathDestinationLatched;
+    private DateTime gurfurlurWindswrathNextRecheckUtc;
     private DateTime gurfurlurWindswrathHoldUntilUtc;
     private bool gurfurlurLongWindswrathActive;
-    private bool gurfurlurWindswrathDestinationReached;
-    private bool gurfurlurWindswrathRouteCommitted;
-    private GurfurlurWindswrathPattern gurfurlurWindswrathPattern;
+    private Vector3 gurfurlurWindswrathPreImpactPosition;
+    private bool gurfurlurWindswrathPreImpactPositionValid;
+    private uint gurfurlurWindswrathResolvedCasterId;
     private uint gurfurlurSledgehammerCasterId;
     private uint gurfurlurSledgehammerTargetId;
     private Vector3 gurfurlurSledgehammerFallbackDestination;
@@ -243,7 +259,6 @@ public class WorqorZormor : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        // Publish only the next Fluffle Up activation wave.
         AvoidanceManager.AddAvoidPolygon<RyoqorFluffleAoe>(
             condition: IsRyoqorTertehCombat,
             leashPointProducer: () => ArenaCenter.RyoqorTerteh,
@@ -258,7 +273,6 @@ public class WorqorZormor : AbstractDungeon
             ignoreIfBlocking: false,
             priority: AvoidancePriority.High);
 
-        // Use the constructor overload that exposes High priority.
         AvoidanceManager.AddAvoid(new AvoidLocationInfo<RyoqorFluffleAoe>(
             condition: IsRyoqorTertehCombat,
             locationProducer: aoe => aoe.Location,
@@ -304,8 +318,6 @@ public class WorqorZormor : AbstractDungeon
             radiusProducer: _ => 6f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
 
-        // Wind Shot planning combines crystal safe zones with every allied donut.
-
         // Earthen Shot hard avoids remain active until the combined planner latches a point.
         AvoidanceManager.AddAvoidLocation<KahderyorCrystalSource>(
             canRun: () => IsKahderyorEarthenShotActive() && !kahderyorEarthenDestinationLatched,
@@ -331,15 +343,12 @@ public class WorqorZormor : AbstractDungeon
             ignoreIfBlocking: false,
             priority: AvoidancePriority.High);
 
-        // The gaze handler owns Stalagmite Circle and Cyclonic Ring movement.
-
-        // Center elemental squares on their cast location and publish only the next Allfire wave.
+        // Tile helpers are offset from their ground impacts, so use the cast locations.
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
             canRun: IsGurfurlurCombat,
             objectSelector: actor => IsCastingAction(actor, EnemyAction.LithicImpact),
             width: GurfurlurLithicImpactWidth + GurfurlurTileEdgeMargin * 2f,
             length: GurfurlurLithicImpactLength + GurfurlurTileEdgeMargin * 2f,
-            // Center the expanded Lithic Impact square on the helper.
             yOffset: -(GurfurlurLithicImpactLength / 2f + GurfurlurTileEdgeMargin),
             priority: AvoidancePriority.High,
             locationProducer: GetGurfurlurTileImpactLocation);
@@ -355,7 +364,7 @@ public class WorqorZormor : AbstractDungeon
 
         // Biting Wind publishes its body and short forward path as hard avoids.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: IsGurfurlurBitingWindBodyAvoidActive,
+            condition: IsGurfurlurCombat,
             objectSelector: IsGurfurlurBitingWind,
             radiusProducer: _ => GurfurlurBitingWindAvoidRadius,
             leashPointSelector: () => ArenaCenter.Gurfurlur,
@@ -363,13 +372,12 @@ public class WorqorZormor : AbstractDungeon
             priority: AvoidancePriority.High));
 
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: IsGurfurlurBitingWindProjectionAvoidActive,
+            canRun: IsGurfurlurCombat,
             objectSelector: IsGurfurlurBitingWind,
             width: GurfurlurBitingWindProjectionWidth,
             length: GurfurlurBitingWindProjectionLength,
             priority: AvoidancePriority.High);
 
-        // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Calmgrounds,
             () => ArenaCenter.RyoqorTerteh,
@@ -1834,40 +1842,25 @@ public class WorqorZormor : AbstractDungeon
 
         if (IsGurfurlurLongWindswrathImpactHoldActive())
         {
-            ReleaseGurfurlurBitingWindForecast("Long Windswrath impact grace has priority");
-            if (!gurfurlurWindswrathDestinationReached)
-            {
-                // Release an unreached wedge when the knockback helper disappears.
-                gurfurlurLongWindswrathActive = false;
-                gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
-                gurfurlurWindswrathDestinationLatched = false;
-                gurfurlurWindswrathRouteCommitted = false;
-                ReleaseGurfurlurMovement(
-                    gurfurlurWindswrathMovement,
-                    "Long Windswrath ended before the pattern wedge was reached");
-                return false;
-            }
-
-            if (gurfurlurWindswrathDestinationReached &&
-                Core.Player.Distance2D(gurfurlurWindswrathDestination) >=
+            if (gurfurlurWindswrathPreImpactPositionValid &&
+                Core.Player.Distance2D(gurfurlurWindswrathPreImpactPosition) >=
                 GurfurlurWindswrathResolvedDisplacementDistance)
             {
-                // Release the wedge after knockback displacement is observed.
-                gurfurlurLongWindswrathActive = false;
-                gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
-                ReleaseGurfurlurMovement(
-                    gurfurlurWindswrathMovement,
-                    "Long Windswrath knockback displacement observed");
-                return false;
+                uint resolvedCasterId = gurfurlurWindswrathCasterId;
+                ResetGurfurlurWindswrathState("Long Windswrath knockback displacement observed");
+                gurfurlurWindswrathResolvedCasterId = resolvedCasterId;
+                return bitingWinds.Length > 0
+                    ? await HandleGurfurlurBitingWindForecast(bitingWinds, TimeSpan.FromSeconds(2))
+                    : false;
             }
 
+            // Hold ownership through delayed displacement without overriding registered tornado avoids.
             return await MoveToGurfurlurPosition(
                 gurfurlurWindswrathMovement,
-                gurfurlurWindswrathDestination,
+                Core.Player.Location,
                 GurfurlurLongWindswrathFinalArrivalDistance,
                 gurfurlurWindswrathHoldUntilUtc - DateTime.UtcNow,
-                "Holding the committed Long Windswrath wedge through server resolution",
-                yieldToAvoidance: false);
+                "Holding Long Windswrath ownership through server-side displacement");
         }
 
         if (sledgehammer != null || IsGurfurlurSledgehammerFollowupActive())
@@ -1890,18 +1883,8 @@ public class WorqorZormor : AbstractDungeon
         GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.Gurfurlur)
             .Any(actor => actor.IsValid && actor.IsAlive);
 
-    private bool IsGurfurlurBitingWindBodyAvoidActive() =>
-        IsGurfurlurCombat() &&
-        (!gurfurlurLongWindswrathActive || !gurfurlurWindswrathRouteCommitted);
-
-    private bool IsGurfurlurBitingWindProjectionAvoidActive() =>
-        IsGurfurlurCombat() &&
-        GetActiveCaster(EnemyAction.WindswrathLong) == null &&
-        !IsGurfurlurLongWindswrathImpactHoldActive();
-
     private bool IsGurfurlurLongWindswrathImpactHoldActive() =>
         gurfurlurLongWindswrathActive &&
-        gurfurlurWindswrathDestinationLatched &&
         DateTime.UtcNow <= gurfurlurWindswrathHoldUntilUtc;
 
     private static bool IsGurfurlurAllfireAvoidActive() =>
@@ -2119,9 +2102,10 @@ public class WorqorZormor : AbstractDungeon
         {
             gurfurlurLongWindswrathActive = false;
             gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
-            gurfurlurWindswrathDestinationReached = false;
-            gurfurlurWindswrathRouteCommitted = false;
-            gurfurlurWindswrathPattern = GurfurlurWindswrathPattern.None;
+            gurfurlurWindswrathNextRecheckUtc = DateTime.MinValue;
+            gurfurlurWindswrathPreImpactPosition = default;
+            gurfurlurWindswrathPreImpactPositionValid = false;
+            gurfurlurWindswrathResolvedCasterId = 0;
             ReleaseGurfurlurBitingWindForecast("Short Windswrath center staging has priority");
 
             if (gurfurlurWindswrathCasterId != caster.ObjectId)
@@ -2139,121 +2123,163 @@ public class WorqorZormor : AbstractDungeon
                 $"Staging for short Windswrath helper 0x{caster.ObjectId:X8}");
         }
 
+        DateTime now = DateTime.UtcNow;
         float remainingSeconds = Math.Max(0f, (float)caster.SpellCastInfo.RemainingCastTime.TotalSeconds);
-        gurfurlurLongWindswrathActive = true;
-        gurfurlurWindswrathHoldUntilUtc =
-            DateTime.UtcNow + caster.SpellCastInfo.RemainingCastTime + GurfurlurWindswrathImpactGrace;
-        ReleaseGurfurlurBitingWindForecast("Long Windswrath pattern staging has priority");
+        bool newLongCast = gurfurlurWindswrathCasterId != caster.ObjectId;
 
-        if (gurfurlurWindswrathCasterId != caster.ObjectId)
+        if (gurfurlurWindswrathResolvedCasterId == caster.ObjectId)
+        {
+            // EffectResult can leave the helper flagged as casting for one final frame. Do not
+            // reacquire the completed Long lease or walk back toward its pre-knockback point.
+            return bitingWinds.Count > 0
+                ? await HandleGurfurlurBitingWindForecast(bitingWinds, TimeSpan.FromSeconds(2))
+                : false;
+        }
+
+        if (!newLongCast &&
+            gurfurlurWindswrathPreImpactPositionValid &&
+            Core.Player.Distance2D(gurfurlurWindswrathPreImpactPosition) >=
+            GurfurlurWindswrathResolvedDisplacementDistance)
+        {
+            ResetGurfurlurWindswrathState(
+                "Long Windswrath knockback displacement observed during the final casting frame");
+            gurfurlurWindswrathResolvedCasterId = caster.ObjectId;
+            return bitingWinds.Count > 0
+                ? await HandleGurfurlurBitingWindForecast(bitingWinds, TimeSpan.FromSeconds(2))
+                : false;
+        }
+
+        gurfurlurLongWindswrathActive = true;
+
+        DateTime observedResolutionEnd =
+            now + caster.SpellCastInfo.RemainingCastTime + GurfurlurWindswrathImpactGrace;
+        if (observedResolutionEnd > gurfurlurWindswrathHoldUntilUtc)
+        {
+            // Keep the deadline monotonic when RemainingCastTime reaches zero with polling jitter.
+            gurfurlurWindswrathHoldUntilUtc = observedResolutionEnd;
+        }
+
+        if (newLongCast)
         {
             gurfurlurWindswrathCasterId = caster.ObjectId;
             gurfurlurWindswrathDestinationLatched = false;
-            gurfurlurWindswrathDestinationReached = false;
-            gurfurlurWindswrathRouteCommitted = false;
-            gurfurlurWindswrathPattern = GurfurlurWindswrathPattern.None;
+            gurfurlurWindswrathNextRecheckUtc = DateTime.MinValue;
+            gurfurlurWindswrathPreImpactPosition = default;
+            gurfurlurWindswrathPreImpactPositionValid = false;
+            gurfurlurWindswrathResolvedCasterId = 0;
+            ReleaseGurfurlurBitingWindForecast("Long Windswrath positioning has priority");
         }
 
-        if (!gurfurlurWindswrathRouteCommitted)
+        // BattleCharacter wrappers are frame-scoped. Copy the live geometry before the first await
+        // so planning never retains an object whose backing memory belongs to another RB frame.
+        GurfurlurBitingWindSnapshot[] windSnapshots = bitingWinds
+            .Select(wind => new GurfurlurBitingWindSnapshot(
+                wind.Location,
+                DirectionFromHeading(wind.Heading)))
+            .ToArray();
+
+        // Freeze the final pre-impact sample when the helper disappears.
+        if (remainingSeconds <= GurfurlurLongWindswrathPreImpactCaptureSeconds)
         {
-            GurfurlurWindswrathPattern observedPattern =
-                DetectGurfurlurLongWindswrathPattern(bitingWinds);
-            if (observedPattern != GurfurlurWindswrathPattern.None &&
-                observedPattern != gurfurlurWindswrathPattern)
+            gurfurlurWindswrathPreImpactPosition = Core.Player.Location;
+            gurfurlurWindswrathPreImpactPositionValid = true;
+        }
+
+        bool hasCompleteWindSet =
+            windSnapshots.Length >= GurfurlurLongWindswrathExpectedTornadoCount;
+        bool canPlanFinalPosition =
+            remainingSeconds <= GurfurlurLongWindswrathPlanningWindowSeconds &&
+            hasCompleteWindSet;
+
+        if (canPlanFinalPosition &&
+            now >= gurfurlurWindswrathNextRecheckUtc)
+        {
+            gurfurlurWindswrathNextRecheckUtc = now + GurfurlurLongWindswrathRecheckInterval;
+            bool currentPlanSafe =
+                gurfurlurWindswrathDestinationLatched &&
+                IsGurfurlurLongWindswrathResolutionPositionSafe(
+                    gurfurlurWindswrathDestination,
+                    caster.Location,
+                    windSnapshots,
+                    remainingSeconds);
+            bool currentPlanReachable =
+                gurfurlurWindswrathDestinationLatched &&
+                (Core.Player.Distance2D(gurfurlurWindswrathDestination) <=
+                     GurfurlurLongWindswrathFinalArrivalDistance ||
+                 Core.Player.Distance2D(gurfurlurWindswrathDestination) / GurfurlurPlayerRunSpeed <=
+                     remainingSeconds - GurfurlurLongWindswrathArrivalLeadSeconds);
+
+            bool needsReplacement =
+                !gurfurlurWindswrathDestinationLatched ||
+                !currentPlanSafe ||
+                !currentPlanReachable;
+            if (needsReplacement &&
+                TryFindGurfurlurLongWindswrathDestination(
+                    caster.Location,
+                    windSnapshots,
+                    remainingSeconds,
+                    out Vector3 destination))
             {
-                gurfurlurWindswrathPattern = observedPattern;
+                gurfurlurWindswrathDestination = destination;
+                gurfurlurWindswrathDestinationLatched = true;
+            }
+            else if (needsReplacement && !currentPlanSafe)
+            {
+                // Drop an unsafe latch so neutral staging and registered tornado avoids can take over.
+                gurfurlurWindswrathDestinationLatched = false;
             }
         }
 
-        if (remainingSeconds > GurfurlurLongWindswrathFinalWindowSeconds)
+        if (gurfurlurWindswrathDestinationLatched)
         {
-            gurfurlurWindswrathDestinationLatched = false;
-            gurfurlurWindswrathDestinationReached = false;
-            gurfurlurWindswrathRouteCommitted = false;
-            gurfurlurWindswrathDestination =
-                GetGurfurlurLongWindswrathEarlyDestination(caster.Location);
+            float arrivalDistance = GurfurlurLongWindswrathFinalArrivalDistance;
+            if (hasCompleteWindSet &&
+                Core.Player.Distance2D(gurfurlurWindswrathDestination) <= arrivalDistance)
+            {
+                if (IsGurfurlurLongWindswrathResolutionPositionSafe(
+                        Core.Player.Location,
+                        caster.Location,
+                        windSnapshots,
+                        remainingSeconds))
+                {
+                    // Rebase the knockback proof to the position RB actually reached. This avoids
+                    // treating the stop tolerance as if it shared the exact candidate's direction.
+                    gurfurlurWindswrathDestination = Core.Player.Location;
+                }
+                else
+                {
+                    // Require the reached position itself to pass the radial proof.
+                    arrivalDistance = 0f;
+                }
+            }
 
             return await MoveToGurfurlurPosition(
                 gurfurlurWindswrathMovement,
                 gurfurlurWindswrathDestination,
-                GurfurlurLongWindswrathFinalArrivalDistance,
+                arrivalDistance,
                 caster.SpellCastInfo.RemainingCastTime,
-                $"Holding inside Long Windswrath's eight-yalm staging circle for helper 0x{caster.ObjectId:X8}");
+                $"Holding Long Windswrath's resolution-validated knockback start for helper 0x{caster.ObjectId:X8}");
         }
 
-        if (!gurfurlurWindswrathDestinationLatched)
+        Vector3 stagingDestination;
+        if (remainingSeconds > GurfurlurLongWindswrathPlanningWindowSeconds)
         {
-            GurfurlurWindswrathPattern selectionPattern = gurfurlurWindswrathPattern;
-            if (selectionPattern == GurfurlurWindswrathPattern.None)
-            {
-                // Use EWEW when the alternating-row pattern was not observed in time.
-                selectionPattern = GurfurlurWindswrathPattern.Ewew;
-            }
-
-            if (!TrySelectGurfurlurLongWindswrathWedge(
-                    caster.Location,
-                    selectionPattern,
-                    bitingWinds,
-                    out Vector3 wedge))
-            {
-                // Fall back to the first authored in-bounds wedge.
-                float fallbackHeading = selectionPattern == GurfurlurWindswrathPattern.Wewe
-                    ? DegreesToRadians(GurfurlurLongWindswrathWedgeHalfAngleDegrees)
-                    : DegreesToRadians(-GurfurlurLongWindswrathWedgeHalfAngleDegrees);
-                Vector3 fallbackDirection = DirectionFromHeading(fallbackHeading);
-                wedge = caster.Location + fallbackDirection * GurfurlurLongWindswrathFinalTargetRadius;
-            }
-
-            gurfurlurWindswrathPattern = selectionPattern;
-            gurfurlurWindswrathDestination = wedge;
-            gurfurlurWindswrathDestinationLatched = true;
-            gurfurlurWindswrathDestinationReached = false;
-            gurfurlurWindswrathRouteCommitted = true;
+            stagingDestination = GetGurfurlurLongWindswrathEarlyDestination(caster.Location);
         }
-
-        if (Core.Player.Distance2D(gurfurlurWindswrathDestination) <=
-            GurfurlurLongWindswrathFinalArrivalDistance)
+        else if (!TryFindGurfurlurLongWindswrathNeutralDestination(
+                     caster.Location,
+                     out stagingDestination))
         {
-            gurfurlurWindswrathDestinationReached = true;
+            // The early 7.5-yalm fallback can land outside the arena; hold and re-probe instead.
+            stagingDestination = Core.Player.Location;
         }
 
         return await MoveToGurfurlurPosition(
             gurfurlurWindswrathMovement,
-            gurfurlurWindswrathDestination,
+            stagingDestination,
             GurfurlurLongWindswrathFinalArrivalDistance,
             caster.SpellCastInfo.RemainingCastTime,
-            $"Holding Long Windswrath's pattern-specific knockback wedge for helper 0x{caster.ObjectId:X8}",
-            yieldToAvoidance: false);
-    }
-
-    private static GurfurlurWindswrathPattern DetectGurfurlurLongWindswrathPattern(
-        IEnumerable<BattleCharacter> bitingWinds)
-    {
-        BattleCharacter[] orderedWinds = bitingWinds.OrderBy(wind => wind.ObjectId).ToArray();
-        if (orderedWinds.Length < GurfurlurLongWindswrathExpectedTornadoCount)
-        {
-            return GurfurlurWindswrathPattern.None;
-        }
-
-        GurfurlurWindswrathPattern pattern = GurfurlurWindswrathPattern.None;
-        float northPatternRow = ArenaCenter.Gurfurlur.Z + 15f;
-        float southPatternRow = ArenaCenter.Gurfurlur.Z - 15f;
-
-        foreach (BattleCharacter wind in orderedWinds)
-        {
-            if (Math.Abs(wind.Location.Z - northPatternRow) <=
-                GurfurlurLongWindswrathPatternRowTolerance)
-            {
-                pattern = GurfurlurWindswrathPattern.Ewew;
-            }
-            else if (Math.Abs(wind.Location.Z - southPatternRow) <=
-                     GurfurlurLongWindswrathPatternRowTolerance)
-            {
-                pattern = GurfurlurWindswrathPattern.Wewe;
-            }
-        }
-
-        return pattern;
+            $"Staging for a structurally in-bounds Long Windswrath landing for helper 0x{caster.ObjectId:X8}");
     }
 
     private static Vector3 GetGurfurlurLongWindswrathEarlyDestination(Vector3 source)
@@ -2273,109 +2299,279 @@ public class WorqorZormor : AbstractDungeon
             source.Z + deltaZ / (float)distance * GurfurlurLongWindswrathEarlyTargetRadius);
     }
 
-    private static bool TrySelectGurfurlurLongWindswrathWedge(
+    // Select a knockback start only when its forced path clears every time-expanded tornado corridor.
+    private static bool TryFindGurfurlurLongWindswrathDestination(
         Vector3 source,
-        GurfurlurWindswrathPattern pattern,
-        IReadOnlyCollection<BattleCharacter> bitingWinds,
+        IReadOnlyCollection<GurfurlurBitingWindSnapshot> bitingWinds,
+        float remainingSeconds,
         out Vector3 destination)
     {
         destination = default;
-        bool foundSafeDestination = false;
-        double bestSafeScore = double.MaxValue;
-        double bestFallbackScore = double.MinValue;
-        Vector3 fallbackDestination = default;
-        bool foundStructuralCandidate = false;
-        float baseDegrees = pattern == GurfurlurWindswrathPattern.Wewe
-            ? GurfurlurLongWindswrathWedgeHalfAngleDegrees
-            : -GurfurlurLongWindswrathWedgeHalfAngleDegrees;
+        List<(Vector3 Destination, float Clearance, float Travel, float EdgeClearance)> safeCandidates = [];
+        List<Vector3> candidates = [];
 
-        for (int wedgeIndex = 0; wedgeIndex < 4; wedgeIndex++)
+        if (Core.Player.Location.Distance2D(source) >= GurfurlurLongWindswrathMinimumSourceDistance &&
+            Core.Player.Location.Distance2D(source) <= GurfurlurLongWindswrathCandidateRadius)
         {
-            float heading = DegreesToRadians(baseDegrees + wedgeIndex * 90f);
-            Vector3 direction = DirectionFromHeading(heading);
-            Vector3 candidate =
-                source + direction * GurfurlurLongWindswrathFinalTargetRadius;
-            Vector3 candidateLanding = PredictRadialKnockbackLanding(
-                candidate,
-                source,
-                GurfurlurWindswrathDistance);
-            if (candidate.Distance2D(source) > GurfurlurLongWindswrathFinalRadius ||
-                !IsInsideGurfurlurArena(candidate) ||
-                !IsInsideGurfurlurArena(candidateLanding))
+            candidates.Add(Core.Player.Location);
+        }
+
+        candidates.AddRange(GetGurfurlurLongWindswrathCandidates(source));
+
+        foreach (Vector3 candidate in candidates)
+        {
+            if (!IsGurfurlurLongWindswrathCandidateSafe(
+                    candidate,
+                    source,
+                    bitingWinds,
+                    remainingSeconds,
+                    out float tornadoClearance))
             {
                 continue;
             }
 
-            foundStructuralCandidate = true;
-            float clearance = GetGurfurlurLongWindswrathWedgeClearance(
+            Vector3 landing = PredictRadialKnockbackLanding(
                 candidate,
-                candidateLanding,
-                bitingWinds);
-            bool outsideCurrentAvoids =
-                !AvoidanceManager.Avoids.Any(avoid =>
-                    avoid.IsPointInAvoid(candidate) || avoid.IsPointInAvoid(candidateLanding));
-            bool safe = outsideCurrentAvoids && clearance >= 0f;
-            double travel = Core.Player.Distance2D(candidate);
-
-            if (safe && travel < bestSafeScore)
-            {
-                bestSafeScore = travel;
-                destination = candidate;
-                foundSafeDestination = true;
-            }
-
-            double fallbackScore = clearance * 10d - travel;
-            if (fallbackScore > bestFallbackScore)
-            {
-                bestFallbackScore = fallbackScore;
-                fallbackDestination = candidate;
-            }
-        }
-
-        if (foundSafeDestination)
-        {
-            return true;
-        }
-
-        if (foundStructuralCandidate)
-        {
-            destination = fallbackDestination;
-        }
-
-        return foundStructuralCandidate;
-    }
-
-    private static float GetGurfurlurLongWindswrathWedgeClearance(
-        Vector3 destination,
-        Vector3 landing,
-        IEnumerable<BattleCharacter> bitingWinds)
-    {
-        float wallClearance = Math.Min(
-            GurfurlurArenaMovementHalfWidth -
-            Math.Max(
-                Math.Abs(destination.X - ArenaCenter.Gurfurlur.X),
-                Math.Abs(destination.Z - ArenaCenter.Gurfurlur.Z)),
-            GurfurlurArenaMovementHalfWidth -
-            Math.Max(
+                source,
+                GurfurlurWindswrathDistance);
+            float travel = Core.Player.Distance2D(candidate);
+            float edgeClearance = GurfurlurArenaMovementHalfWidth - Math.Max(
                 Math.Abs(landing.X - ArenaCenter.Gurfurlur.X),
-                Math.Abs(landing.Z - ArenaCenter.Gurfurlur.Z)));
-        float tornadoClearance = float.PositiveInfinity;
-
-        foreach (BattleCharacter wind in bitingWinds)
-        {
-            tornadoClearance = Math.Min(
-                tornadoClearance,
-                Math.Min(
-                    destination.Distance2D(wind.Location),
-                    landing.Distance2D(wind.Location)) -
-                GurfurlurBitingWindAvoidRadius);
+                Math.Abs(landing.Z - ArenaCenter.Gurfurlur.Z));
+            safeCandidates.Add((candidate, tornadoClearance, travel, edgeClearance));
         }
 
-        return Math.Min(wallClearance, tornadoClearance);
+        if (safeCandidates.Count == 0)
+        {
+            return false;
+        }
+
+        // Select from one fixed global clearance band. Comparing each replacement to the previous
+        // winner would otherwise allow a chain of 0.25-yalm losses to end far below the true maximum.
+        float maximumClearance = safeCandidates.Max(candidate => candidate.Clearance);
+        float bestTravel = float.PositiveInfinity;
+        float bestEdgeClearance = float.NegativeInfinity;
+        foreach (var candidate in safeCandidates.Where(candidate =>
+                     candidate.Clearance >= maximumClearance - GurfurlurLongWindswrathClearanceTie))
+        {
+            bool shorter = candidate.Travel < bestTravel - 0.1f;
+            bool similarTravel = Math.Abs(candidate.Travel - bestTravel) <= 0.1f;
+            if (shorter || similarTravel && candidate.EdgeClearance > bestEdgeClearance)
+            {
+                destination = candidate.Destination;
+                bestTravel = candidate.Travel;
+                bestEdgeClearance = candidate.EdgeClearance;
+            }
+        }
+
+        return true;
     }
 
-    private static float DegreesToRadians(float degrees) =>
-        degrees * (float)Math.PI / 180f;
+    // Re-prove the reached arrival disc before accepting the stop tolerance.
+    private static bool IsGurfurlurLongWindswrathResolutionPositionSafe(
+        Vector3 position,
+        Vector3 source,
+        IReadOnlyCollection<GurfurlurBitingWindSnapshot> bitingWinds,
+        float remainingSeconds) =>
+        IsGurfurlurLongWindswrathPositionSafe(
+            position,
+            source,
+            bitingWinds,
+            remainingSeconds,
+            GurfurlurLongWindswrathMinimumSourceDistance - GurfurlurLongWindswrathFinalArrivalDistance,
+            GurfurlurLongWindswrathCandidateRadius + GurfurlurLongWindswrathFinalArrivalDistance,
+            out _);
+
+    private static bool IsGurfurlurLongWindswrathCandidateSafe(
+        Vector3 candidate,
+        Vector3 source,
+        IReadOnlyCollection<GurfurlurBitingWindSnapshot> bitingWinds,
+        float remainingSeconds,
+        out float minimumClearance)
+        => IsGurfurlurLongWindswrathPositionSafe(
+            candidate,
+            source,
+            bitingWinds,
+            remainingSeconds,
+            GurfurlurLongWindswrathMinimumSourceDistance,
+            GurfurlurLongWindswrathCandidateRadius,
+            out minimumClearance);
+
+    // Acquisition targets and reached positions use different radial bounds but the same impact proof.
+    private static bool IsGurfurlurLongWindswrathPositionSafe(
+        Vector3 candidate,
+        Vector3 source,
+        IReadOnlyCollection<GurfurlurBitingWindSnapshot> bitingWinds,
+        float remainingSeconds,
+        float minimumSourceDistance,
+        float maximumSourceDistance,
+        out float minimumClearance)
+    {
+        minimumClearance = float.NegativeInfinity;
+        float sourceDistance = candidate.Distance2D(source);
+        if (bitingWinds.Count < GurfurlurLongWindswrathExpectedTornadoCount ||
+            sourceDistance < minimumSourceDistance ||
+            sourceDistance > maximumSourceDistance ||
+            !IsInsideGurfurlurArena(candidate))
+        {
+            return false;
+        }
+
+        Vector3 landing = PredictRadialKnockbackLanding(
+            candidate,
+            source,
+            GurfurlurWindswrathDistance);
+        float routeDistance = Core.Player.Distance2D(candidate);
+        float travelSeconds = routeDistance / GurfurlurPlayerRunSpeed;
+        if (!IsInsideGurfurlurArena(landing) ||
+            (routeDistance > GurfurlurLongWindswrathFinalArrivalDistance &&
+             travelSeconds > remainingSeconds - GurfurlurLongWindswrathArrivalLeadSeconds))
+        {
+            return false;
+        }
+
+        minimumClearance = GetGurfurlurLongWindswrathMinimumTornadoClearance(
+            candidate,
+            source,
+            bitingWinds,
+            remainingSeconds);
+        return minimumClearance >= 0f;
+    }
+
+    // Measure the forced segment against every plausible tornado position during resolution.
+    private static float GetGurfurlurLongWindswrathMinimumTornadoClearance(
+        Vector3 destination,
+        Vector3 source,
+        IReadOnlyCollection<GurfurlurBitingWindSnapshot> bitingWinds,
+        float remainingSeconds)
+    {
+        float minimumClearance = float.PositiveInfinity;
+        Vector3 landing = PredictRadialKnockbackLanding(
+            destination,
+            source,
+            GurfurlurWindswrathDistance);
+        float knockbackDistance = destination.Distance2D(landing);
+        int knockbackSamples = Math.Max(1, (int)Math.Ceiling(
+            knockbackDistance / GurfurlurBitingWindForecastPathSampleStep));
+        for (int sampleIndex = 0; sampleIndex <= knockbackSamples; sampleIndex++)
+        {
+            float progress = sampleIndex / (float)knockbackSamples;
+            Vector3 sample = InterpolateGurfurlurPoint(destination, landing, progress);
+            foreach (GurfurlurBitingWindSnapshot wind in bitingWinds)
+            {
+                minimumClearance = Math.Min(
+                    minimumClearance,
+                    GetPointClearanceFromBitingWindBetween(
+                        sample,
+                        wind,
+                        remainingSeconds - GurfurlurLongWindswrathTimeMarginSeconds,
+                        remainingSeconds + GurfurlurLongWindswrathPostImpactSeconds));
+            }
+        }
+
+        return minimumClearance;
+    }
+
+    // Neutral staging is structurally valid but remains preemptible until a final path is proven.
+    private static bool TryFindGurfurlurLongWindswrathNeutralDestination(
+        Vector3 source,
+        out Vector3 destination)
+    {
+        destination = Core.Player.Location;
+        float bestTravel = float.PositiveInfinity;
+        float bestEdgeClearance = float.NegativeInfinity;
+        bool found = false;
+
+        foreach (Vector3 candidate in GetGurfurlurLongWindswrathCandidates(source))
+        {
+            Vector3 landing = PredictRadialKnockbackLanding(
+                candidate,
+                source,
+                GurfurlurWindswrathDistance);
+            if (!IsInsideGurfurlurArena(landing) ||
+                !IsGurfurlurSpreadRouteSafe(candidate))
+            {
+                continue;
+            }
+
+            float travel = Core.Player.Distance2D(candidate);
+            float edgeClearance = GurfurlurArenaMovementHalfWidth - Math.Max(
+                Math.Abs(landing.X - ArenaCenter.Gurfurlur.X),
+                Math.Abs(landing.Z - ArenaCenter.Gurfurlur.Z));
+            if (!found ||
+                travel < bestTravel - 0.1f ||
+                Math.Abs(travel - bestTravel) <= 0.1f && edgeClearance > bestEdgeClearance)
+            {
+                found = true;
+                destination = candidate;
+                bestTravel = travel;
+                bestEdgeClearance = edgeClearance;
+            }
+        }
+
+        return found;
+    }
+
+    // Exclude the source so every candidate has a stable radial knockback direction.
+    private static IEnumerable<Vector3> GetGurfurlurLongWindswrathCandidates(Vector3 source)
+    {
+        for (float xOffset = -GurfurlurLongWindswrathCandidateRadius;
+             xOffset <= GurfurlurLongWindswrathCandidateRadius;
+             xOffset += GurfurlurLongWindswrathGridStep)
+        {
+            for (float zOffset = -GurfurlurLongWindswrathCandidateRadius;
+                 zOffset <= GurfurlurLongWindswrathCandidateRadius;
+                 zOffset += GurfurlurLongWindswrathGridStep)
+            {
+                Vector3 candidate = new(
+                    source.X + xOffset,
+                    ArenaCenter.Gurfurlur.Y,
+                    source.Z + zOffset);
+                float sourceDistance = candidate.Distance2D(source);
+                if (sourceDistance >= GurfurlurLongWindswrathCandidateMinimumSourceDistance &&
+                    sourceDistance <= GurfurlurLongWindswrathCandidateRadius &&
+                    IsInsideGurfurlurArena(candidate))
+                {
+                    yield return candidate;
+                }
+            }
+        }
+    }
+
+    // Sweep the lower and upper speed bounds without retaining frame-scoped actors.
+    private static float GetPointClearanceFromBitingWindBetween(
+        Vector3 point,
+        GurfurlurBitingWindSnapshot wind,
+        float startSeconds,
+        float endSeconds)
+    {
+        float boundedStart = Math.Max(0f, startSeconds);
+        float boundedEnd = Math.Max(boundedStart, endSeconds);
+        Vector3 segmentStart = wind.Location + wind.Direction *
+            (GurfurlurLongWindswrathMinimumTornadoSpeed * boundedStart);
+        Vector3 segmentEnd = wind.Location + wind.Direction *
+            (GurfurlurBitingWindSpeed * boundedEnd);
+        float segmentX = segmentEnd.X - segmentStart.X;
+        float segmentZ = segmentEnd.Z - segmentStart.Z;
+        float segmentLengthSquared = segmentX * segmentX + segmentZ * segmentZ;
+        float projection = segmentLengthSquared < 0.0001f
+            ? 0f
+            : ((point.X - segmentStart.X) * segmentX + (point.Z - segmentStart.Z) * segmentZ) /
+              segmentLengthSquared;
+        projection = Math.Max(0f, Math.Min(1f, projection));
+        float closestX = segmentStart.X + segmentX * projection;
+        float closestZ = segmentStart.Z + segmentZ * projection;
+        float deltaX = point.X - closestX;
+        float deltaZ = point.Z - closestZ;
+        return (float)Math.Sqrt(deltaX * deltaX + deltaZ * deltaZ) -
+            GurfurlurLongWindswrathTornadoClearance;
+    }
+
+    private static Vector3 InterpolateGurfurlurPoint(Vector3 start, Vector3 end, float progress) =>
+        new(
+            start.X + (end.X - start.X) * progress,
+            ArenaCenter.Gurfurlur.Y,
+            start.Z + (end.Z - start.Z) * progress);
 
     private async Task<bool> HandleGurfurlurBitingWindForecast(
         IReadOnlyCollection<BattleCharacter> bitingWinds,
@@ -2734,14 +2930,7 @@ public class WorqorZormor : AbstractDungeon
 
         if (windswrath == null && !IsGurfurlurLongWindswrathImpactHoldActive())
         {
-            ReleaseGurfurlurMovement(gurfurlurWindswrathMovement, "Windswrath cast ended");
-            gurfurlurWindswrathCasterId = 0;
-            gurfurlurWindswrathDestinationLatched = false;
-            gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
-            gurfurlurLongWindswrathActive = false;
-            gurfurlurWindswrathDestinationReached = false;
-            gurfurlurWindswrathRouteCommitted = false;
-            gurfurlurWindswrathPattern = GurfurlurWindswrathPattern.None;
+            ResetGurfurlurWindswrathState("Windswrath cast and resolution window ended");
         }
 
         if (sledgehammer == null && !IsGurfurlurSledgehammerFollowupActive())
@@ -2758,22 +2947,29 @@ public class WorqorZormor : AbstractDungeon
         ReleaseGurfurlurMovement(gurfurlurAuraSphereMovement, reason);
         ReleaseGurfurlurMovement(gurfurlurGreatFloodMovement, reason);
         ReleaseGurfurlurVolcanicDrop(reason);
-        ReleaseGurfurlurMovement(gurfurlurWindswrathMovement, reason);
+        ResetGurfurlurWindswrathState(reason);
         ReleaseGurfurlurMovement(gurfurlurSledgehammerMovement, reason);
         ReleaseGurfurlurBitingWindForecast(reason);
         gurfurlurAuraSphereId = 0;
         gurfurlurGreatFloodCasterId = 0;
         gurfurlurGreatFloodAllfireCount = 0;
-        gurfurlurWindswrathCasterId = 0;
-        gurfurlurWindswrathDestinationLatched = false;
-        gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
-        gurfurlurLongWindswrathActive = false;
-        gurfurlurWindswrathDestinationReached = false;
-        gurfurlurWindswrathRouteCommitted = false;
-        gurfurlurWindswrathPattern = GurfurlurWindswrathPattern.None;
         gurfurlurSledgehammerCasterId = 0;
         gurfurlurSledgehammerTargetId = 0;
         gurfurlurSledgehammerHoldUntilUtc = DateTime.MinValue;
+    }
+
+    // Reset Windswrath without clearing the independent Biting Wind avoidance owner.
+    private void ResetGurfurlurWindswrathState(string reason)
+    {
+        ReleaseGurfurlurMovement(gurfurlurWindswrathMovement, reason);
+        gurfurlurWindswrathCasterId = 0;
+        gurfurlurWindswrathDestinationLatched = false;
+        gurfurlurWindswrathNextRecheckUtc = DateTime.MinValue;
+        gurfurlurWindswrathHoldUntilUtc = DateTime.MinValue;
+        gurfurlurLongWindswrathActive = false;
+        gurfurlurWindswrathPreImpactPosition = default;
+        gurfurlurWindswrathPreImpactPositionValid = false;
+        gurfurlurWindswrathResolvedCasterId = 0;
     }
 
     private void ReleaseGurfurlurVolcanicDrop(string reason)
@@ -2930,15 +3126,8 @@ public class WorqorZormor : AbstractDungeon
         public const uint Sledgehammer = 36313;
     }
 
-    // Alternating endpoint-row patterns inferred from tornado creation order.
-    private enum GurfurlurWindswrathPattern
-    {
-        None,
-
-        Ewew,
-
-        Wewe,
-    }
+    // Scalar snapshots prevent frame-scoped BattleCharacter wrappers from escaping the bot tick.
+    private readonly record struct GurfurlurBitingWindSnapshot(Vector3 Location, Vector3 Direction);
 
     // Independent leases prevent one mechanic from releasing another's movement hold.
     private sealed class GurfurlurMovementLease
