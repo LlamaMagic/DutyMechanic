@@ -25,6 +25,10 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
 
+    // Developer-only high-volume diagnostics. Published builds must keep this compile-time
+    // switch false so customer logs do not collect encounter cast and status traffic.
+    private const bool EnableMechanicDiagnostics = false;
+
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
     // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
     // pulses continue during that interval; retaining this edge lets the next instance force
@@ -86,6 +90,7 @@ public class DutyMechanicPlugin : BotPlugin
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
         RemoveHooks();
+        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     /// <inheritdoc/>
@@ -133,6 +138,7 @@ public class DutyMechanicPlugin : BotPlugin
     private void OnBotStop(BotBase bot)
     {
         RemoveHooks();
+        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     private void OnBotStart(BotBase bot)
@@ -168,6 +174,8 @@ public class DutyMechanicPlugin : BotPlugin
 
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
 
+        // RB object and aura wrappers are frame-scoped, so diagnostics run on TreeStart's bot thread.
+        LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         LoggingHelpers.LogZoneChanges();
 
         return await DungeonManager.RunAsync();
