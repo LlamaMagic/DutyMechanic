@@ -28,7 +28,7 @@ public class SkydeepCenote : AbstractDungeon
     // Feather Ray uses conventional geometry for its cast-time attacks, but Rolling Current is a
     // semantic exception: the 68x32 helper only moves large bubbles eight yalms and never damages
     // the player. The six-yalm explosions at their destinations are the actual hazards. These values
-    // are corroborated by the live RB casts and both BossMod implementations inspected for Skydeep.
+    // are corroborated by the live RB casts and independent encounter data inspected for Skydeep.
     private const float FeatherRayWorrisomeWaveRadius = 24f;
     private const float FeatherRayWorrisomeWaveArcDegrees = 30f;
     // Feather Ray's normal platform is a 30x30 square. Keep the same half-yalm wall inset used by
@@ -63,7 +63,7 @@ public class SkydeepCenote : AbstractDungeon
 
     // Thunderlight Burst traces an eight-yalm-wide laser through one or more mirrors, then detonates
     // the struck edge orb in a 35-yalm circle. Live helper headings match the late orange telegraphs;
-    // BossMod independently records the four segment lengths and the same terminal circle radius.
+    // Independent encounter data records the four segment lengths and the same terminal radius.
     private const float FirearmsThunderlightBurstWidth = 8f;
     private const float FirearmsThunderlightBurstCircleRadius = 35f;
 
@@ -82,7 +82,7 @@ public class SkydeepCenote : AbstractDungeon
     private const int MaulskullKnockbackDirectionSamples = 360;
 
     // These dimensions are full widths/lengths for DutyMechanic's rectangle helper. They
-    // are corroborated by the captured effect ranges and BossMod's half-width geometry. Maulwork's
+    // are corroborated by the captured effect ranges and independently recorded half-widths. Maulwork's
     // side casters report Heading=0 in RB even though the network cast rotations are fixed at
     // -17/+17 degrees, so preserve the action-specific rotations instead of trusting Heading.
     private const float MaulskullStonecarverWidth = 20f;
@@ -345,7 +345,7 @@ public class SkydeepCenote : AbstractDungeon
             length: MaulskullShatterCenterLength,
             priority: AvoidancePriority.High);
 
-        // RB exposes both side helpers with Heading=0. BossModReborn records their actual fixed cast
+        // RB exposes both side helpers with Heading=0. Network cast data records their fixed cast
         // rotations as -17 degrees for the west helper and +17 for the east helper. Polygon rotation
         // is the inverse of FFXIV heading in AddAvoidRectangle, hence the signs below.
         AddMaulskullShatterSideRectangle(EnemyAction.ShatterSideWest, MaulskullShatterSideRotation);
@@ -1202,7 +1202,7 @@ public class SkydeepCenote : AbstractDungeon
     /// Switches Feather Ray between its normal rectangular platform and Hydro Ring's reduced circle.
     /// </summary>
     /// <remarks>
-    /// BossMod identifies the authoritative transition as map-effect index 19, but RebornBuddy's
+    /// Encounter event data identifies the authoritative transition as map-effect index 19, but RebornBuddy's
     /// encounter surface does not expose that event here. The live capture provides a conservative
     /// substitute: Hydro Ring starts the wall, and the associated Blowing Bubbles or Trouble Bubbles
     /// sequence owns visible small Airy Bubbles until the wall clears. If the wave is interrupted or
@@ -1292,7 +1292,7 @@ public class SkydeepCenote : AbstractDungeon
             return Array.Empty<Vector3>();
         }
 
-        // BossMod's action-specific movement and the live east-current capture agree that 36737
+        // Action-specific movement data and the live east-current capture agree that 36737
         // shifts bubbles toward negative world X; 36736 is the mirrored positive-X variant.
         float xOffset = caster.CastingSpellId == EnemyAction.RollingCurrentEast
             ? -FeatherRayRollingCurrentBubbleOffset
@@ -1721,7 +1721,7 @@ public class SkydeepCenote : AbstractDungeon
         /// Third Boss: Maulskull.
         /// </summary>
         // Maulskull's 40x40 platform is centered at Z=-430: the previously correct live overlay,
-        // the duty-support formation near Z=-430.015, and BossMod's independent arena definition
+        // the duty-support formation near Z=-430.015, and independent arena measurements
         // agree on this point. Impact helpers can spawn ten or more yalms away from center and must
         // not be reused as the boundary anchor.
         public static readonly Vector3 Maulskull = new(100f, -192f, -430f);
@@ -1931,7 +1931,7 @@ public class SkydeepCenote : AbstractDungeon
     {
         /// <summary>
         /// Nuisance overhead lock-on observed on all three Duty Support actors immediately before
-        /// the copied special attack; BossMod independently identifies it as icon ID 514.
+        /// the copied special attack; independent encounter data identifies it as icon ID 514.
         /// </summary>
         public const ulong NuisanceLockOn = 514;
     }

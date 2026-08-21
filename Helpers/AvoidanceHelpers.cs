@@ -54,8 +54,12 @@ public static class AvoidanceHelpers
     /// <param name="yOffset">Front/back offset from caster's center.</param>
     /// <param name="rotationProducer">(Optional) Rotation function that returns radians to rotate the avoid by. 0 rad = True South. Defaults to spell target's facing.</param>
     /// <param name="priority">Avoidance priority. Higher is scarier.</param>
-    /// <returns><see cref="AvoidInfo"/> for the new donut.</returns>
-    public static AvoidInfo AddAvoidRectangle<T>(Func<bool> canRun, Predicate<T> objectSelector, float width, float length, float xOffset = 0.0f, float yOffset = 0.0f, Func<T, float> rotationProducer = null, AvoidancePriority priority = AvoidancePriority.Medium)
+    /// <param name="locationProducer">
+    /// Optional world origin override. Ground-authored helper casts can expose a landing location
+    /// distinct from the helper actor, while actor-relative attacks should retain the default.
+    /// </param>
+    /// <returns><see cref="AvoidInfo"/> for the new rectangle.</returns>
+    public static AvoidInfo AddAvoidRectangle<T>(Func<bool> canRun, Predicate<T> objectSelector, float width, float length, float xOffset = 0.0f, float yOffset = 0.0f, Func<T, float> rotationProducer = null, AvoidancePriority priority = AvoidancePriority.Medium, Func<T, Vector3> locationProducer = null)
         where T : GameObject
     {
         Vector2[] rectangle = GenerateRectangle(width, length, xOffset, yOffset);
@@ -68,7 +72,7 @@ public static class AvoidanceHelpers
             scaleProducer: t => 1.0f,
             heightProducer: t => 15.0f,
             pointsProducer: t => rectangle,
-            locationProducer: t => t.Location,
+            locationProducer: locationProducer ?? (t => t.Location),
             collectionProducer: () => GameObjectManager.GetObjectsOfType<T>(allowInheritance: true).Where(t => objectSelector(t)),
             priority: priority);
     }

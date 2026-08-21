@@ -168,7 +168,6 @@ public class DutyMechanicPlugin : BotPlugin
 
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
 
-        // LoggingHelpers.LogAllSpellCasts();
         LoggingHelpers.LogZoneChanges();
 
         return await DungeonManager.RunAsync();
