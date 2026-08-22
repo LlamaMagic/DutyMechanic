@@ -30,6 +30,13 @@ public static class LoggingHelpers
     private static uint lastSubZoneId = 0;
 
     /// <summary>
+    /// Gets whether the compile-time developer diagnostic collector is currently active on the
+    /// bot thread. Encounter-local capture code uses this runtime state so high-volume evidence
+    /// remains behind the same non-persisted switch and is cleared by the existing stop lifecycle.
+    /// </summary>
+    internal static bool MechanicDiagnosticsEnabled => mechanicDiagnosticsWereEnabled;
+
+    /// <summary>
     /// Updates optional encounter diagnostics on the bot thread. The bounded cast history correlates
     /// helper and NPC actions with later vulnerability gains or player deaths without retaining
     /// frame-scoped RB wrappers.

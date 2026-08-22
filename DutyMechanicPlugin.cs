@@ -25,8 +25,9 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
 
-    // Developer-only high-volume diagnostics. Published builds must keep this compile-time
-    // switch false so customer logs do not collect encounter cast and status traffic.
+    // Developer-only high-volume diagnostics must default off in every committed build so customer
+    // logs do not collect encounter cast, status, director, movement-anchor, and arena-object
+    // traffic. Live investigations may toggle this locally, but the push invariant requires false.
     private const bool EnableMechanicDiagnostics = false;
 
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
@@ -50,8 +51,9 @@ public class DutyMechanicPlugin : BotPlugin
     public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
 
     /// <inheritdoc/>
-    /// Using Major/Minor as Current Global Game version, Build = date.
-    public override Version Version => new(7, 5, 04282015);
+    /// Using Major/Minor as Current Global Game version, Build = date. Revision advances this
+    /// net10-compatible release without changing the historical game-version/date identity.
+    public override Version Version => new(7, 5, 04282015, 1);
 
     /// <inheritdoc/>
     public override bool WantButton => false;

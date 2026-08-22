@@ -130,6 +130,9 @@ internal static class DungeonManager
             { ZoneId.YuweyawataFieldStation, typeof(YuweyawataFieldStation) },
             { ZoneId.SouthHorn, typeof(SouthHorn) },
             { ZoneId.Underkeep, typeof(Underkeep) },
+            // Normal Recollection has a dedicated territory, so it can be registered without
+            // risking activation in the separate Extreme encounter.
+            { ZoneId.Recollection, typeof(Recollection) },
             { ZoneId.MesoTerminal, typeof(MesoTerminal) },
             { ZoneId.AgelessNecropolis, typeof(AgelessNecropolis) },
             { ZoneId.Mistwake, typeof(Mistwake) },

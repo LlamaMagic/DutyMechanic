@@ -509,6 +509,12 @@ public enum ZoneId : ushort
     Underkeep = 1266,
 
     /// <summary>
+    /// Lv. 100 trial: Recollection. TerritoryType 1270 is the normal encounter; the Extreme
+    /// version uses a separate territory and must not activate this handler.
+    /// </summary>
+    Recollection = 1270,
+
+    /// <summary>
     /// Lv. 100.4: The Meso Terminal
     /// </summary>
     MesoTerminal = 1292,

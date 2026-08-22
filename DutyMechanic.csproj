@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- RebornBuddy 1.0.9037-rc.1 publishes the current merged net10 API for this exact TFM. Keeping the
+         plugin aligned prevents restore from selecting a legacy or inferred reference set. -->
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
     <OutputType>Library</OutputType>
     <LangVersion>default</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -17,8 +19,10 @@
     <OutputPath>bin\x64\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LlamaLibrary" Version="26.611.6.59" />
-    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.880" />
+    <PackageReference Include="LlamaLibrary" Version="26.816.935.23" />
+    <!-- RebornBuddy supplies these assemblies at runtime; the package is the official compile-only
+         contract and must not be replaced with loose host binaries. -->
+    <PackageReference Include="RebornBuddy.ReferenceAssemblies" Version="1.0.9037-rc.1" />
   </ItemGroup>
   <PropertyGroup>
     <AddonType>Plugins</AddonType>
