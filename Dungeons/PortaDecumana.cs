@@ -36,7 +36,7 @@ public class PortaDecumana : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+    protected override HashSet<uint> SpellsToMitigate { get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
@@ -170,7 +170,9 @@ public class PortaDecumana : AbstractDungeon
         // Handle Tank Buster
         if (EnemyAction.HomingLasers.IsCasting())
         {
-            await CombatHelpers.HandleTankBuster();
+            // Pass the confirmed encounter action so the shared helper can bind mitigation state to
+            // the real caster instead of retaining whichever target happened to be selected.
+            await CombatHelpers.HandleTankBuster(EnemyAction.HomingLasers);
         }
 
         // Handle LB3

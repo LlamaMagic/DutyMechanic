@@ -1,8 +1,6 @@
-﻿using Buddy.Coroutines;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
-using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -11,58 +9,16 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
-public sealed class DefensiveCooldown
-{
-    public uint SpellId { get; }
-    public GameObject TargetType { get; }
-
-    public DefensiveCooldown(uint spellId, GameObject targetType)
-    {
-        SpellId = spellId;
-        TargetType = targetType;
-    }
-}
 
 /// <summary>
 /// Abstract starting point for implementing specialized dungeon logic.
 /// </summary>
 public abstract class AbstractDungeon
 {
-    // Ordered list = priority order
-    private static readonly List<DefensiveCooldown> DefensiveCooldowns =
-    [
-        new DefensiveCooldown(7535, Core.Me.CurrentTarget), // Reprisal
-        new DefensiveCooldown(7531, Core.Me), // Rampart
-        // Paladin
-        new DefensiveCooldown(36920, Core.Me), // Guardian
-        new DefensiveCooldown(22, Core.Me), // Bulwark
-        // Warrior
-        new DefensiveCooldown(44, Core.Me), // Vengeance
-        new DefensiveCooldown(36923, Core.Me), // Damnation
-        // Gunbreaker
-        new DefensiveCooldown(36935, Core.Me), // Great Nebula
-        new DefensiveCooldown(16140, Core.Me), // Camouflage
-        // Dark Knight
-        new DefensiveCooldown(3634, Core.Me), // Dark Mind
-        new DefensiveCooldown(7393, Core.Me), // The Blackest Night
-        new DefensiveCooldown(25754, Core.Me) // Oblation
-    ];
-
-    private static readonly List<DefensiveCooldown> GroupMitigations =
-    [
-        new DefensiveCooldown(3540, Core.Me), // Divine Veil
-        new DefensiveCooldown(7385, Core.Me), // Passage of Arms
-        // Warrior
-        new DefensiveCooldown(7388, Core.Me), // Shake It Off
-        // Gunbreaker
-        new DefensiveCooldown(16160, Core.Me) // Heart of Light
-
-    ];
-
-    private uint _lastLoggedTankbusterSpellId = 0;
-    private uint _lastCasterNpcId = 0;
-    private uint _lastLoggedMitigatedSpellId = 0;
-    private uint _lastMitigatedCasterNpcId = 0;
+    // These state roots retain scalar cast identity only. Keeping them on the dungeon instance makes
+    // wipe/re-entry cleanup explicit and prevents one configured cast from suppressing another duty.
+    private readonly MitigationCastState _tankBusterMitigationState = new();
+    private readonly MitigationCastState _groupMitigationState = new();
 
     /// <summary>
     /// Gets zone ID for this dungeon.
@@ -85,12 +41,12 @@ public abstract class AbstractDungeon
     protected abstract HashSet<uint> SpellsToFollowDodge { get; }
 
     /// <summary>
-    /// Gets spell IDs for tank busting
+    /// Gets spell IDs for tank busting.
     /// </summary>
     protected abstract HashSet<uint> SpellsToTankBust { get; }
 
     /// <summary>
-    /// Gets spell IDs for mitigating group wide damage
+    /// Gets spell IDs for mitigating group-wide damage.
     /// </summary>
     protected abstract HashSet<uint> SpellsToMitigate { get; }
 
@@ -102,6 +58,8 @@ public abstract class AbstractDungeon
     {
         AvoidanceManager.RemoveAllAvoids(info => true);
         SidestepPlugin.Enabled = true;
+        _tankBusterMitigationState.Reset();
+        _groupMitigationState.Reset();
 
         return EnterDungeonAsync();
     }
@@ -115,8 +73,6 @@ public abstract class AbstractDungeon
         return Task.FromResult(false);
     }
 
-
-
     /// <summary>
     /// Tear-down -- run once after exiting the dungeon.
     /// </summary>
@@ -125,6 +81,8 @@ public abstract class AbstractDungeon
     {
         AvoidanceManager.RemoveAllAvoids(info => true);
         SidestepPlugin.Enabled = true;
+        _tankBusterMitigationState.Reset();
+        _groupMitigationState.Reset();
 
         return ExitDungeonAsync();
     }
@@ -170,152 +128,34 @@ public abstract class AbstractDungeon
     }
 
     /// <summary>
-    /// Uses defensive cooldowns to mitigate damage from Tank Busters <see cref="SpellsToTankBust"/>.
+    /// Uses one job-appropriate defensive cooldown for a configured tank buster.
     /// </summary>
-    /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    protected async Task<bool> TankBusterSpells()
+    /// <remarks>
+    /// Cooldown selection resolves live player/caster wrappers on the bot thread and never sleeps,
+    /// allowing the combat routine and encounter movement to resume on the next scheduler path.
+    /// </remarks>
+    /// <returns><see langword="true"/> only when RebornBuddy accepted a mitigation action this tick.</returns>
+    protected Task<bool> TankBusterSpells()
     {
-        if (SpellsToTankBust == null || SpellsToTankBust.Count == 0 || !Core.Me.IsTank())
-        {
-            return false;
-        }
-
-        BattleCharacter caster = GameObjectManager
-            .GetObjectsOfType<BattleCharacter>(true, false)
-            .FirstOrDefault(bc => SpellsToTankBust.Contains(bc.CastingSpellId));
-
-        if (caster == null)
-        {
-            return false;
-
-        }
-
-        bool castAny = false;
-        if (caster.IsCasting)
-        {
-            if (caster.CastingSpellId != 0 &&
-                (caster.CastingSpellId != _lastLoggedTankbusterSpellId ||
-                 caster.NpcId != _lastCasterNpcId))
-            {
-                _lastLoggedTankbusterSpellId = caster.CastingSpellId;
-                _lastCasterNpcId = caster.NpcId;
-
-                Logger.Information(
-                    $"Tankbuster detected: NPC {caster.Name} casting spell {caster.SpellCastInfo.Name} {caster.CastingSpellId}");
-            }
-        }
-        else
-        {
-            // Reset once the cast finishes
-            _lastLoggedTankbusterSpellId = 0;
-            _lastCasterNpcId = 0;
-        }
-
-        foreach (var cd in DefensiveCooldowns)
-        {
-            GameObject target = cd.TargetType;
-
-            // If Reprisal is first but we don't have a valid target, skip it
-            if (target == null)
-            {
-                continue;
-            }
-
-            if (!ActionManager.CanCast(cd.SpellId, target))
-            {
-                continue;
-            }
-
-            SpellData action = DataManager.GetSpellData(cd.SpellId);
-            if (action == null)
-            {
-                continue;
-            }
-
-            Logger.Information($"Casting {action.Name} ({action.Id}) on {cd.TargetType}");
-            ActionManager.DoAction(action, target);
-
-            castAny = true;
-
-            // Prevent action spam in the same tick
-            await Coroutine.Sleep(150);
-        }
-
-        return castAny;
+        bool actionAccepted = CombatHelpers.TryHandleTankBuster(
+            SpellsToTankBust,
+            _tankBusterMitigationState);
+        return Task.FromResult(actionAccepted);
     }
 
     /// <summary>
-    /// Uses defensive cooldowns to mitigate damage group wide damage <see cref="SpellsToMitigate"/>.
+    /// Uses one tank party-mitigation action for configured group-wide damage.
     /// </summary>
-    /// <returns><see langword="true"/> if this behavior expected/handled execution.</returns>
-    protected async Task<bool> DamageMitigationSpells()
+    /// <remarks>
+    /// Group mitigation shares the same one-action and scalar-lifecycle guarantees as tank-buster
+    /// handling, while remaining independently releasable when the two casts overlap.
+    /// </remarks>
+    /// <returns><see langword="true"/> only when RebornBuddy accepted a mitigation action this tick.</returns>
+    protected Task<bool> DamageMitigationSpells()
     {
-        if (SpellsToTankBust == null || SpellsToTankBust.Count == 0)
-        {
-            return false;
-        }
-
-        BattleCharacter caster = GameObjectManager
-            .GetObjectsOfType<BattleCharacter>(true, false)
-            .FirstOrDefault(bc => SpellsToMitigate.Contains(bc.CastingSpellId));
-
-        if (caster == null)
-        {
-            return false;
-
-        }
-
-        bool castAny = false;
-        if (caster.IsCasting)
-        {
-            if (caster.CastingSpellId != 0 &&
-                (caster.CastingSpellId != _lastLoggedMitigatedSpellId ||
-                 caster.NpcId != _lastMitigatedCasterNpcId))
-            {
-                _lastLoggedMitigatedSpellId = caster.CastingSpellId;
-                _lastMitigatedCasterNpcId = caster.NpcId;
-
-                Logger.Information(
-                    $"Group wide damage detected: NPC {caster.Name} casting spell {caster.SpellCastInfo.Name} {caster.CastingSpellId}");
-            }
-        }
-        else
-        {
-            // Reset once the cast finishes
-            _lastLoggedMitigatedSpellId = 0;
-            _lastMitigatedCasterNpcId = 0;
-        }
-
-        foreach (var cd in GroupMitigations)
-        {
-            GameObject target = cd.TargetType;
-
-            // If Reprisal is first but we don't have a valid target, skip it
-            if (target == null)
-            {
-                continue;
-            }
-
-            if (!ActionManager.CanCast(cd.SpellId, target))
-            {
-                continue;
-            }
-
-            SpellData action = DataManager.GetSpellData(cd.SpellId);
-            if (action == null)
-            {
-                continue;
-            }
-
-            Logger.Information($"Casting {action.Name} ({action.Id}) on {cd.TargetType}");
-            ActionManager.DoAction(action, target);
-
-            castAny = true;
-
-            // Prevent action spam in the same tick
-            await Coroutine.Sleep(150);
-        }
-
-        return castAny;
+        bool actionAccepted = CombatHelpers.TryHandleGroupMitigation(
+            SpellsToMitigate,
+            _groupMitigationState);
+        return Task.FromResult(actionAccepted);
     }
 }

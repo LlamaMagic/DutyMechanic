@@ -33,7 +33,7 @@ public class YuweyawataFieldStation : AbstractDungeon
 
     private AvoidInfo craterAvoid = default;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+    protected override HashSet<uint> SpellsToMitigate { get; } = [];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.BoulderDance,];
 
@@ -51,7 +51,7 @@ public class YuweyawataFieldStation : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+
 
         // Boss 1: Lightning Storm
         // Boss 3: Jagged Edge
@@ -190,7 +190,9 @@ public class YuweyawataFieldStation : AbstractDungeon
 
         if (EnemyAction.DarkSouls.IsCasting())
         {
-            await CombatHelpers.HandleTankBuster();
+            // The action allowlist lets the shared helper resolve the live caster and suppress
+            // duplicate cooldown requests for this cast without storing a frame-scoped wrapper.
+            await CombatHelpers.HandleTankBuster(EnemyAction.DarkSouls);
         }
 
         return false;
@@ -240,7 +242,7 @@ public class YuweyawataFieldStation : AbstractDungeon
 
         if (EnemyAction.Slabber.IsCasting())
         {
-            await CombatHelpers.HandleTankBuster();
+            await CombatHelpers.HandleTankBuster(EnemyAction.Slabber);
         }
 
         return false;
