@@ -14,6 +14,11 @@ namespace DutyMechanic.Helpers;
 /// </summary>
 public static class AvoidanceHelpers
 {
+    // AvoidanceManager rejects leash radii below ten yalms. Small encounter circles still need
+    // their authored geometry unchanged, so clamp only the pathfinding search leash that wraps it.
+    private const float MinimumPathfindingLeashRadius = 10f;
+    private const float DonutLeashRadiusMultiplier = 1.5f;
+
     /// <summary>
     /// Creates a rectangular avoid attached to a <see cref="BattleCharacter"/> for the duration of its current spell cast.
     /// </summary>
@@ -123,7 +128,7 @@ public static class AvoidanceHelpers
         return AvoidanceManager.AddAvoidPolygon(
             condition: () => caster.IsValid && caster.CastingSpellId == cachedSpellId,
             leashPointProducer: () => caster.Location,
-            leashRadius: (float)outerRadius * 1.5f,
+            leashRadius: GetDonutLeashRadius(outerRadius),
             rotationProducer: bc => 0.0f,
             scaleProducer: bc => 1.0f,
             heightProducer: bc => 15.0f,
@@ -152,7 +157,7 @@ public static class AvoidanceHelpers
         return AvoidanceManager.AddAvoidPolygon<T>(
             condition: canRun,
             leashPointProducer: null,
-            leashRadius: (float)outerRadius * 1.5f,
+            leashRadius: GetDonutLeashRadius(outerRadius),
             rotationProducer: t => 0.0f,
             scaleProducer: t => 1.0f,
             heightProducer: t => 15.0f,
@@ -202,7 +207,7 @@ public static class AvoidanceHelpers
         return AvoidanceManager.AddAvoidPolygon(
             condition: canRun,
             leashPointProducer: () => Core.Player.Location,
-            leashRadius: (float)outerRadius * 1.5f,
+            leashRadius: GetDonutLeashRadius(outerRadius),
             rotationProducer: location => 0.0f,
             scaleProducer: location => 1.0f,
             heightProducer: location => 15.0f,
@@ -279,6 +284,9 @@ public static class AvoidanceHelpers
 
         return cross;
     }
+
+    private static float GetDonutLeashRadius(double outerRadius) =>
+        Math.Max(MinimumPathfindingLeashRadius, (float)outerRadius * DonutLeashRadiusMultiplier);
 
     private static Vector2[] GenerateDonut(double outerRadius, double innerRadius, int pointCount = 64)
     {
