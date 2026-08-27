@@ -1,5 +1,5 @@
-﻿using DutyMechanic.Logging;
-using Clio.Utilities;
+﻿using Clio.Utilities;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -19,6 +19,7 @@ public static class LoggingHelpers
     // the current bot frame.
     private static readonly Dictionary<uint, uint> TrackedMechanicCastsByCaster = [];
     private static readonly Dictionary<uint, int> TrackedVulnerabilityStacksByAura = [];
+    private static readonly Dictionary<string, string> TrackedActorSignalSignatures = [];
     private static readonly Queue<RecentMechanicCast> RecentMechanicCasts = [];
     private const int MechanicContextWindowSeconds = 12;
     private const int MechanicContextMaximumEntries = 24;
@@ -31,8 +32,8 @@ public static class LoggingHelpers
 
     /// <summary>
     /// Gets whether the compile-time developer diagnostic collector is currently active on the
-    /// bot thread. Encounter-local capture code uses this runtime state so high-volume evidence
-    /// remains behind the same non-persisted switch and is cleared by the existing stop lifecycle.
+    /// bot thread. Encounter-local capture code uses this runtime state so expensive evidence
+    /// gathering remains behind the same non-persisted switch and shared stop lifecycle.
     /// </summary>
     internal static bool MechanicDiagnosticsEnabled => mechanicDiagnosticsWereEnabled;
 
@@ -51,7 +52,7 @@ public static class LoggingHelpers
         {
             if (mechanicDiagnosticsWereEnabled)
             {
-                Logger.Information("[MechanicDiag] Disabled; transient cast and vulnerability history cleared.");
+                Logger.Information("[MechanicDiag] Disabled; transient cast, vulnerability, and actor-watch history cleared.");
             }
 
             ResetMechanicDiagnosticState();
@@ -63,13 +64,15 @@ public static class LoggingHelpers
         {
             ResetMechanicDiagnosticState();
             mechanicDiagnosticsWereEnabled = true;
-            Logger.Information("[MechanicDiag] Enabled; recording encounter casts, vulnerability gains, and deaths.");
+            Logger.Information(
+                "[MechanicDiag] Enabled; recording encounter casts, vulnerability gains, deaths, and registered actor watches.");
         }
 
         if (Core.Player == null || !Core.Player.IsValid)
         {
             TrackedMechanicCastsByCaster.Clear();
             TrackedVulnerabilityStacksByAura.Clear();
+            TrackedActorSignalSignatures.Clear();
             RecentMechanicCasts.Clear();
             diagnosticPlayerWasAlive = false;
             return;
@@ -79,6 +82,7 @@ public static class LoggingHelpers
         {
             TrackedMechanicCastsByCaster.Clear();
             TrackedVulnerabilityStacksByAura.Clear();
+            TrackedActorSignalSignatures.Clear();
             RecentMechanicCasts.Clear();
             diagnosticZoneId = WorldManager.ZoneId;
             diagnosticSubZoneId = WorldManager.SubZoneId;
@@ -93,6 +97,56 @@ public static class LoggingHelpers
         LogMechanicCastStarts(nowUtc);
         LogVulnerabilityChanges(nowUtc);
         LogPlayerDeath(nowUtc);
+    }
+
+    /// <summary>
+    /// Logs a change-only snapshot of selected actors under the shared mechanic-diagnostic switch.
+    /// </summary>
+    /// <remarks>
+    /// Duty handlers provide only a stable scope and actor selector. This method owns current-frame
+    /// enumeration, scalar serialization, party context, deduplication, and lifecycle cleanup so
+    /// investigations can inspect targets, statuses, VFX, tethers, and transforms without retaining
+    /// RB object wrappers. Callers should keep the observation window encounter-bounded because actor
+    /// transforms can legitimately change every tick.
+    /// </remarks>
+    /// <param name="scope">Stable encounter-specific label used to deduplicate this actor watch.</param>
+    /// <param name="actorSelector">Selects the current-frame actors whose mechanic state should be captured.</param>
+    internal static void LogActorSignalChanges(string scope, Func<BattleCharacter, bool> actorSelector)
+    {
+        if (!mechanicDiagnosticsWereEnabled || Core.Player == null || !Core.Player.IsValid)
+        {
+            return;
+        }
+
+        string signature = string.Join("; ", GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(actor => actor != null && actor.IsValid)
+            .Where(actorSelector)
+            .OrderBy(actor => actor.ObjectId)
+            .Select(DescribeActorSignal));
+        if (TrackedActorSignalSignatures.TryGetValue(scope, out string previousSignature) &&
+            signature == previousSignature)
+        {
+            return;
+        }
+
+        TrackedActorSignalSignatures[scope] = signature;
+        string party = string.Join("; ", PartyManager.VisibleMembers
+            .Select(member => member.BattleCharacter)
+            .Where(actor => actor != null && actor.IsValid)
+            .OrderBy(actor => actor.ObjectId)
+            .Select(actor => $"0x{actor.ObjectId:X8}@{Format(actor.Location)}"));
+        Logger.Information(
+            $"[MechanicDiag] ACTOR_STATE scope={scope} actors=[{signature}] " +
+            $"player={Format(Core.Player.Location)} party=[{party}].");
+    }
+
+    /// <summary>
+    /// Clears one reusable actor watch when its encounter-specific observation window closes.
+    /// </summary>
+    /// <param name="scope">The same stable label passed to <see cref="LogActorSignalChanges"/>.</param>
+    internal static void ClearActorSignalWatch(string scope)
+    {
+        TrackedActorSignalSignatures.Remove(scope);
     }
 
     /// <summary>
@@ -287,6 +341,7 @@ public static class LoggingHelpers
     {
         TrackedMechanicCastsByCaster.Clear();
         TrackedVulnerabilityStacksByAura.Clear();
+        TrackedActorSignalSignatures.Clear();
         RecentMechanicCasts.Clear();
         diagnosticPlayerWasAlive = false;
         diagnosticZoneId = 0;
@@ -313,6 +368,41 @@ public static class LoggingHelpers
     private static string Format(float value)
     {
         return value.ToString("F3", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Copies all generally useful actor-side mechanic signals into one stable scalar description.
+    /// </summary>
+    /// <param name="actor">Valid current-frame actor selected by a duty diagnostic watch.</param>
+    /// <returns>A diffable actor description that does not retain any frame-scoped wrappers.</returns>
+    private static string DescribeActorSignal(BattleCharacter actor)
+    {
+        string auras = actor.Auras == null || !actor.Auras.IsValid
+            ? "invalid"
+            : string.Join(",", actor.Auras
+                .OrderBy(aura => aura.Id)
+                .Select(aura => $"{aura.Id}:{aura.Value}:0x{aura.CasterId:X8}"));
+        string vfx = actor.VfxContainer.IsValid
+            ? string.Join(",", actor.VfxContainer.Vfx
+                .Where(entry => entry != null && entry.IsValid)
+                .OrderBy(entry => entry.Id)
+                .Select(entry => entry.Id.ToString(CultureInfo.InvariantCulture)))
+            : "invalid";
+        string tethers = actor.VfxContainer.IsValid
+            ? string.Join(",", (actor.VfxContainer.Tethers ?? [])
+                .OrderBy(tether => tether.Id)
+                .ThenBy(tether => tether.TargetId)
+                .Select(tether => $"{tether.Id}:0x{tether.TargetId:X8}:{tether.Progress}"))
+            : "invalid";
+
+        return $"0x{actor.ObjectId:X8}/0x{actor.BaseId:X} " +
+            $"loc={Format(actor.Location)} heading={Format(actor.Heading)} " +
+            $"target=0x{actor.CurrentTargetId:X8} visible={actor.IsVisible} targetable={actor.IsTargetable} " +
+            $"status=0x{Convert.ToUInt64(actor.StatusFlags, CultureInfo.InvariantCulture):X} " +
+            $"character=0x{Convert.ToUInt64(actor.CharacterStatusFlags, CultureInfo.InvariantCulture):X} " +
+            $"cast={actor.CastingSpellId} avfx={Format(actor.AVFX.Center)} " +
+            $"omen={Format(actor.OmenMatrix.Center)} lockOn={Format(actor.LockOn.Center)} " +
+            $"auras=[{auras}] vfx=[{vfx}] tethers=[{tethers}]";
     }
 
     /// <summary>

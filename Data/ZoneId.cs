@@ -257,6 +257,12 @@ public enum ZoneId : ushort
     TheSirensongSea = 1142,
 
     /// <summary>
+    /// Lv. 63 normal trial: The Pool of Tribute. Content Finder row 243 maps the story encounter
+    /// to TerritoryType 674; the separate Extreme encounter uses TerritoryType 677.
+    /// </summary>
+    ThePoolOfTribute = 674,
+
+    /// <summary>
     /// Lv. 65: Bardam's Mettle
     /// </summary>
     BardamsMettle = 1143,
@@ -528,6 +534,12 @@ public enum ZoneId : ushort
     /// Lv. 100.6: Mistwake
     /// </summary>
     Mistwake = 1314,
+
+    /// <summary>
+    /// Lv. 100 normal trial: Hell on Rails. Content Finder row 1076 maps the story encounter to
+    /// TerritoryType 1307; the separate Extreme territory must not activate this handler.
+    /// </summary>
+    HellOnRails = 1307,
 
     /// <summary>
     /// Lv. 100.7: Clyteum

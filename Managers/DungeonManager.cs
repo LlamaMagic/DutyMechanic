@@ -72,6 +72,9 @@ internal static class DungeonManager
 
             // 4.0 - Stormblood
             { ZoneId.TheSirensongSea, typeof(SirensongSea) },
+            // The story trial has a dedicated territory, preventing this conservative normal-mode
+            // action set from activating in the mechanically different Extreme encounter.
+            { ZoneId.ThePoolOfTribute, typeof(PoolOfTribute) },
             { ZoneId.BardamsMettle, typeof(BardamsMettle) },
             { ZoneId.DomaCastle, typeof(DomaCastle) },
             { ZoneId.Emanation, typeof(Emanation) },
@@ -136,6 +139,9 @@ internal static class DungeonManager
             { ZoneId.MesoTerminal, typeof(MesoTerminal) },
             { ZoneId.AgelessNecropolis, typeof(AgelessNecropolis) },
             { ZoneId.Mistwake, typeof(Mistwake) },
+            // The normal trial has a dedicated territory, so its elevation-aware movement cannot
+            // leak into the mechanically different Extreme encounter.
+            { ZoneId.HellOnRails, typeof(HellOnRails) },
             { ZoneId.Clyteum, typeof(Clyteum) },
         };
     private static AbstractDungeon _currentDungeon = null;

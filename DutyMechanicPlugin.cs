@@ -82,7 +82,7 @@ public class DutyMechanicPlugin : BotPlugin
             AddHooks();
         }
 
-        
+
     }
 
     /// <inheritdoc/>
