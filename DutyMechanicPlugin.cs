@@ -104,6 +104,15 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // Enabled plugins pulse on the bot thread even while OrderBot's cutscene/profile
+        // coroutine owns TreeStart. RB's native QTE API supplies one input per frame without
+        // keyboard simulation or a blocking coroutine. Keep this outside CanTrust so solo
+        // story QTEs do not require a registered dungeon or an instance-director match.
+        if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot && ff14bot.RemoteWindows.QTE.IsOpen)
+        {
+            ff14bot.RemoteWindows.QTE.Pulse();
+        }
+
         bool isInInstance = LoadingHelpers.IsInInstance;
 
         if (isInInstance && !_wasInInstance)
