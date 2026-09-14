@@ -69,6 +69,9 @@ public class PortaDecumana : AbstractDungeon
     private double unsafeSince;
     private Point? recoveryDestination;
     private readonly Planner.NavigationResetLatch navigationReset = new();
+    // Preserve facing across brief mechanic interruptions, but clear it on encounter reset.
+    private Point? tankDestination;
+    private double tankPositionResumeAt;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.ThePortaDecumana;
@@ -177,6 +180,7 @@ public class PortaDecumana : AbstractDungeon
             goalKey = nextKey;
         }
         plan = next;
+        UpdateTankPosition(boss, party, now);
         LogPlan(now);
         await TankBusterSpells();
         await DamageMitigationSpells();
@@ -238,6 +242,39 @@ public class PortaDecumana : AbstractDungeon
             if (!Planner.KeepAfterDisappearance(pair.Value, now, ownerAlive))
                 casts.Remove(pair.Key);
         }
+    }
+
+    private void UpdateTankPosition(BattleCharacter boss, Point[] party, double now)
+    {
+        // Porta has one tank. Use the currently engaged, attackable boss rather than an
+        // aggro-role assignment; hidden helpers share its NPC name row during choreography.
+        if (!Core.Player.IsTank() || !boss.CanAttack || !boss.IsTargetable || !boss.IsVisible
+            || Core.Player.CurrentTarget?.ObjectId != boss.ObjectId)
+            return;
+
+        // Never trade a mechanic destination for facing. Include unresolved casts and all
+        // observed orbs, even when the planner cannot yet find a destination for them.
+        // Waiting through every boss cast also prevents sweeping a directional attack.
+        if (boss.IsCasting || casts.Count > 0 || orbMotion.Count > 0 || recovering
+            || AvoidanceManager.IsRunningOutOfAvoid || !plan.Feasible || plan.Goals.Length > 0
+            || !Planner.Safe(Xz(Core.Player.Location), Xz(arena), plan.Hazards))
+        {
+            tankPositionResumeAt = now + 0.75;
+            return;
+        }
+        if (now < tankPositionResumeAt)
+            return;
+
+        // Standard melee reach is three yalms beyond the hitbox; keep one yalm of slack.
+        // The routine retains facing and all action choices. Only movement is leased.
+        Point? destination = Planner.TankDestination(Xz(arena), Xz(boss.Location), Xz(Core.Player.Location),
+            boss.CombatReach + 2f, party, tankDestination);
+        if (!destination.HasValue)
+            return;
+        tankDestination = destination;
+        goalKey = $"TankPosition:{boss.ObjectId}";
+        plan = new(plan.Hazards, [new(Planner.GoalKind.TankPosition, boss.ObjectId, destination.Value, 0.1f,
+            double.PositiveInfinity)], destination, "Tank facing away from party", true);
     }
 
     // Keep observation separate from selection: every visible orb needs motion and proximity
@@ -466,6 +503,8 @@ public class PortaDecumana : AbstractDungeon
 
     private void Reset(string reason)
     {
+        tankDestination = null;
+        tankPositionResumeAt = 0;
         active = false;
         casts.Clear();
         plan = new([], [], null, "idle", true);

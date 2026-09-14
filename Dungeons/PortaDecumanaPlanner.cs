@@ -73,7 +73,7 @@ internal static class PortaDecumanaPlanner
     internal enum Shape { Circle, Donut, Rectangle }
 
     /// <summary>Required positive positioning; unlike an AOE, these regions must be entered.</summary>
-    internal enum GoalKind { Stack, Knockback, Orb }
+    internal enum GoalKind { Stack, Knockback, Orb, TankPosition }
 
     /// <summary>Stable cast identity and geometry copied from one bot-thread frame.</summary>
     /// <param name="Owner">Caster object ID, also used for deterministic ordering.</param>
@@ -148,6 +148,53 @@ internal static class PortaDecumanaPlanner
 
     // RB's world heading differs from the mathematical angle used to draw a circle above.
     internal static Vector2 Forward(float heading) => new(MathF.Sin(heading), MathF.Cos(heading));
+
+    /// <summary>
+    /// Picks a melee position opposite the party, facing toward the wall. This is an idle
+    /// preference only; the adapter must suspend it for casts, orbs, recovery, and avoidance.
+    /// </summary>
+    internal static Vector2? TankDestination(Vector2 arena, Vector2 boss, Vector2 player,
+        float meleeRange, Vector2[] party, Vector2? previous)
+    {
+        if (party.Length == 0 || !Safe(player, arena, []) || !float.IsFinite(meleeRange) || meleeRange < 1f)
+            return null;
+
+        // Average directions, not positions, so one distant ranged player cannot outweigh
+        // the rest of the group. Ignore allies inside the boss center, whose bearing is unstable.
+        Vector2[] bearings = party.Select(p => p - boss).Where(p => p.Length() >= 2f)
+            .Select(Vector2.Normalize).ToArray();
+        if (bearings.Length == 0)
+            return null;
+        Vector2 mean = bearings.Aggregate(Vector2.Zero, (sum, direction) => sum + direction) / bearings.Length;
+        // Scattered allies have no useful shared rear. Leave positioning to the routine.
+        if (mean.Length() < 0.5f)
+            return null;
+        Vector2 away = -Vector2.Normalize(mean);
+
+        // Preserve a valid anchor within 45 degrees of the desired facing. Small party steps
+        // must not rotate the boss continuously. Recheck reach when the boss itself moves.
+        if (previous.HasValue)
+        {
+            Vector2 offset = previous.Value - boss;
+            if (offset.Length() >= 1f && offset.Length() <= meleeRange
+                && Vector2.Distance(previous.Value, arena) <= 17f
+                && Vector2.Dot(Vector2.Normalize(offset), away) >= 0.7071068f)
+                return previous;
+        }
+
+        // Seventeen yalms leaves three to the physical wall for later dodges. Stop sooner
+        // when necessary to retain melee range instead of dragging the boss to the boundary.
+        Vector2 relativeBoss = boss - arena;
+        float projection = Vector2.Dot(relativeBoss, away);
+        float discriminant = projection * projection + 17f * 17f - relativeBoss.LengthSquared();
+        if (discriminant < 0)
+            return null;
+        float distance = Math.Min(meleeRange, -projection + MathF.Sqrt(discriminant));
+        if (distance < 1f)
+            return null;
+        Vector2 destination = boss + away * distance;
+        return SafeSegment(player, destination, arena, []) ? destination : null;
+    }
 
     // Only these actions have repeatable RB path failures in live captures. Other mechanics
     // retain ordinary avoidance until their own evidence justifies manual recovery.
