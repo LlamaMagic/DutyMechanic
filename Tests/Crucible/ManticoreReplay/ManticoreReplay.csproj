@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Exercise the production half-room selector with the captured opening
+       positions, mirrored arms, sequential cleaves, and pulse perturbations. -->
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <!-- RB scans .cs recursively; .cs.test fixtures compile only in this replay project. -->
+  <ItemGroup><Compile Include="*.cs.test" /><Compile Include="../../../Dungeons/Crucible/ManticoreSafePosition.cs" Link="ManticoreSafePosition.cs" /></ItemGroup>
+</Project>

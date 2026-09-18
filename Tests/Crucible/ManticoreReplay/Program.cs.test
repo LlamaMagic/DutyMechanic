@@ -1,0 +1,119 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+//67380 stood almost exactly behind the boss and took both opening arm hits.
+// Replay both sides under arbitrary rotation, then retain the chosen point
+// despite pulse-sized position changes. This tests geometry, not live timing.
+var center = new Vector2(120, -420);
+int cases = 0;
+foreach (int side in new[] { -1, 1 })
+for (int degrees = 0; degrees < 360; degrees += 15)
+{
+    float heading = degrees * MathF.PI / 180;
+    var origin = center + new Vector2(0, -10);
+    var start = origin + new Vector2(MathF.Sin(heading), MathF.Cos(heading)) * 5.338f;
+    var polygon = Cone(origin, heading + side * MathF.PI / 2);
+    var shapes = new[] { polygon };
+    var chosen = ManticoreSafePosition.Choose(start, center, 18.5f, shapes, null);
+    if (!chosen.HasValue || !ManticoreSafePosition.Safe(chosen.Value, center, 18.5f, shapes, .74f)) throw new Exception("Arm lacks a safe endpoint.");
+    // Only moved endpoints require the larger planning margin. A safe initial
+    // position is deliberately retained without a gratuitous adjustment.
+    if (chosen.Value != start)
+    {
+        for (int pulse = 0; pulse < 20; pulse++)
+        {
+            var perturbed = chosen.Value + new Vector2(MathF.Sin(pulse), MathF.Cos(pulse)) * .25f;
+            if (ManticoreSafePosition.Choose(perturbed, center, 18.5f, shapes, chosen) != chosen) throw new Exception("Stable endpoint jittered.");
+        }
+    }
+    var reverse = new[] { Cone(origin, heading + side * MathF.PI / 2 + MathF.PI) };
+    var next = ManticoreSafePosition.Choose(chosen.Value, center, 18.5f, reverse, chosen);
+    if (!next.HasValue || !ManticoreSafePosition.Safe(next.Value, center, 18.5f, reverse, .74f)) throw new Exception("Reversed cleave retained danger.");
+    cases++;
+}
+var enclosing = new[] { new[] { new Vector2(0, -600), new Vector2(300, -600), new Vector2(300, 0), new Vector2(0, 0) } };
+if (ManticoreSafePosition.Choose(center, center, 18.5f, enclosing, null).HasValue) throw new Exception("Impossible overlap accepted.");
+Console.WriteLine($"{cases} rotated arm/sequential-cleave cases and endpoint perturbations passed; impossible overlap returns fallback.");
+
+//104664's paired23y swings start at(120,+9), then(120,-9). Verify
+// the shared selector crosses to the second safe side and settles there.
+var squareCenter = new Vector2(120, 0);
+var southCircle = new[] { Circle(new Vector2(120, 9), 23.5f) };
+var northCircle = new[] { Circle(new Vector2(120, -9), 23.5f) };
+var first = ManticoreSafePosition.Choose(new Vector2(119, 1), squareCenter, 18.5f, southCircle, null);
+if (!first.HasValue) throw new Exception("First Tablitaur swing has no destination.");
+var second = ManticoreSafePosition.Choose(first.Value, squareCenter, 18.5f, northCircle, first);
+if (!second.HasValue || second.Value.Y <= 0 || !ManticoreSafePosition.Safe(second.Value, squareCenter, 18.5f, northCircle, 1.5f)) throw new Exception("Second swing failed to switch sides: " + first + " -> " + second);
+for (int pulse = 0; pulse < 30; pulse++)
+    if (ManticoreSafePosition.Choose(second.Value + new Vector2(.1f * MathF.Sin(pulse), .1f * MathF.Cos(pulse)), squareCenter, 18.5f, northCircle, second) != second)
+        throw new Exception("Tablitaur settled position jittered.");
+// A moving8y spinner must invalidate an old destination; the new segment
+// cannot cross that circle when starting outside it.
+var spinner = new[] { Circle(second.Value, 8.5f) };
+var escaped = ManticoreSafePosition.Choose(second.Value, squareCenter, 18.5f, spinner, second);
+if (!escaped.HasValue || Vector2.Distance(escaped.Value, second.Value) < 10) throw new Exception("Spinner failed to invalidate destination.");
+Console.WriteLine("Captured Tablitaur sequential swings, settled-position perturbations, and spinner displacement passed.");
+// A retained endpoint beyond a spinner is safe in isolation but its segment
+// is not. Prefer the already-safe current point instead of cutting through it.
+var obstacle = new[] { Circle(squareCenter, 8.5f) };
+var safeStart = squareCenter + new Vector2(-12, 0);
+var across = squareCenter + new Vector2(12, 0);
+if (ManticoreSafePosition.Choose(safeStart, squareCenter, 18.5f, obstacle, across) != safeStart)
+    throw new Exception("Retained endpoint crossed a spinner.");
+// Graph callers must retain a safe goal across an intervening obstacle so the
+// native pathfinder can route around it. This checks endpoint ownership only;
+// live navigation still needs verification against the registered polygons.
+if (ManticoreSafePosition.Choose(safeStart, squareCenter, 18.5f, obstacle, across, false) != across)
+    throw new Exception("Graph destination was discarded because its direct segment was blocked.");
+Console.WriteLine("Graph destination retention and stricter direct-segment fallback passed.");
+// Arelia1456's moving spinner repeatedly invalidated minimal-clearance goals.
+// Start just outside its native circle: the chasing policy must commit to a
+// deeper escape, retain it during a small chase step, and eventually replan.
+var chaseStart = squareCenter + new Vector2(9.5f, 0);
+var chaseGoal = ManticoreSafePosition.Choose(chaseStart, squareCenter, 18.5f, obstacle, null, false, 4, 4);
+if (!chaseGoal.HasValue || Vector2.Distance(chaseGoal.Value, squareCenter) < 12.4f)
+    throw new Exception("Moving spinner did not receive extra escape clearance.");
+var advancedSpinner = new[] { Circle(squareCenter + new Vector2(1, 0), 8.5f) };
+if (ManticoreSafePosition.Choose(chaseStart + new Vector2(.3f, 0), squareCenter, 18.5f, advancedSpinner, chaseGoal, false, 4, 4) != chaseGoal)
+    throw new Exception("Moving spinner replaced a still-safe retained destination.");
+var arrivedSpinner = new[] { Circle(chaseGoal.Value, 8.5f) };
+var revisedChase = ManticoreSafePosition.Choose(chaseGoal.Value, squareCenter, 18.5f, arrivedSpinner, chaseGoal, false, 4, 4);
+if (!revisedChase.HasValue || revisedChase == chaseGoal)
+    throw new Exception("Moving spinner retained an unsafe destination.");
+Console.WriteLine("Moving-spinner clearance, stable retention, and invalidation passed.");
+//82404 stalled at the leap's escape boundary near the arena rim. A destination
+// lease must move farther along the safe crescent, without leaving the floor.
+var leap = new[] { Circle(new Vector2(130.6066f, -409.3934f), 30.5f) };
+var leapStart = new Vector2(120.45f, -437.95f);
+var leapGoal = ManticoreSafePosition.Choose(leapStart, center, 18.5f, leap, null, false);
+if (!leapGoal.HasValue || !ManticoreSafePosition.Safe(leapGoal.Value, center, 18.5f, leap, 1.5f))
+    throw new Exception("Captured leap boundary lacks a stable safe goal.");
+Console.WriteLine("Captured Manticore leap crescent has a stable goal inside arena bounds.");
+
+// RB67004 alternated escape/arrival during Ground Toss near the final rim.
+// Replay that captured origin/start to verify a retained goal has clearance;
+// pit intersections and actual navigation remain live-test responsibilities.
+var finalCenter = new Vector2(520, -420);
+var toss = new[] { Circle(new Vector2(532.24976f, -427.75616f), 6.5f) };
+var finalStart = new Vector2(538.5573f, -428.8886f);
+var finalGoal = ManticoreSafePosition.Choose(finalStart, finalCenter, 21.5f, toss, null, false);
+if (!finalGoal.HasValue || !ManticoreSafePosition.Safe(finalGoal.Value, finalCenter, 21.5f, toss, 1.5f))
+    throw new Exception("Final Ground Toss has no clear retained destination.");
+foreach (float drift in new[] { -.2f, 0, .2f })
+    if (ManticoreSafePosition.Choose(finalGoal.Value + new Vector2(drift, 0), finalCenter, 21.5f, toss, finalGoal, false) != finalGoal)
+        throw new Exception("Final dodge destination oscillated after arrival.");
+Console.WriteLine("Captured final Ground Toss boundary and arrival perturbations passed.");
+
+static Vector2[] Circle(Vector2 origin, float radius) => Enumerable.Range(0, 64).Select(i => origin + new Vector2(MathF.Sin(i * MathF.PI / 32), MathF.Cos(i * MathF.PI / 32)) * radius).ToArray();
+
+static Vector2[] Cone(Vector2 origin, float heading)
+{
+    var points = new[] { new Vector2(0, -.5f) }.Concat(Enumerable.Range(0, 37).Select(i =>
+    {
+        float a = (-91 + 182f * i / 36) * MathF.PI / 180;
+        return new Vector2(MathF.Sin(a), MathF.Cos(a)) * 30.5f;
+    }));
+    return points.Select(p => origin + new Vector2(p.X * MathF.Cos(heading) + p.Y * MathF.Sin(heading), -p.X * MathF.Sin(heading) + p.Y * MathF.Cos(heading))).ToArray();
+}

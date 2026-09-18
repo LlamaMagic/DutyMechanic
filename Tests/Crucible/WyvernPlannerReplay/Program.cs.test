@@ -1,0 +1,232 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+//98964 at01:44:14 crossed the510,-4 pool toward the505,0 helper.
+// Repeat the captured layout and its opposite orientation, sampling the actual
+// returned route independently. This proves geometry, not live mover timing.
+var captured = new[] { new Vector2(536,-7), new Vector2(530,-12), new Vector2(504,7), new Vector2(530,4), new Vector2(527,-4), new Vector2(510,12), new Vector2(513,4), new Vector2(510,-4) };
+foreach (int mirror in new[] { 1, -1 })
+{
+    Vector2 Reflect(Vector2 p) => new Vector2(520,0) + (p - new Vector2(520,0)) * mirror;
+    var pools = captured.Select(Reflect).ToArray();
+    var start = Reflect(new Vector2(514.556f,-1.215f));
+    bool Goal(Vector2 p) => mirror * (p.X - 520) < -15.6f && Math.Abs(p.Y) < 4.4f;
+    bool TimedSafe(Vector2 p, double t) => t < 6.2 || Math.Abs(p.Y) < 4.4;
+    var timer = Stopwatch.StartNew();
+    var route = WyvernCrossingPlanner.Plan(start,pools,TimedSafe,Goal,7.2);
+    if (route.Length == 0) throw new Exception("Captured crossing has no complete route.");
+    double elapsed = 0;
+    var previous = start;
+    foreach (var point in route)
+    {
+        float length = Vector2.Distance(previous, point);
+        for (int n = 1; n <= 10; n++)
+        {
+            var sample = Vector2.Lerp(previous,point,n/10f);
+            // Start lies inside the0.5y margin, outside the real5y pool.
+            // Independent replay checks the physical footprint throughout.
+            if (pools.Any(p => Vector2.Distance(sample,p) < 5.0f) || !TimedSafe(sample,elapsed + length*n/55))
+                throw new Exception("Route crosses active damage.");
+        }
+        elapsed += length/5.5; previous = point;
+    }
+    if (!Goal(previous) || elapsed > 7.2) throw new Exception("Route misses destination or deadline.");
+    Console.WriteLine($"mirror={mirror} nodes={route.Length} arrival={elapsed:F2}s search={timer.Elapsed.TotalMilliseconds:F1}ms");
+    if (WyvernCrossingPlanner.Plan(start,pools,TimedSafe,Goal,.1).Length != 0)
+        throw new Exception("Impossible deadline must fail closed.");
+}
+
+//33304's later overlap, previously rejected solely because tornadoes existed.
+// Mirror both the recorded start and moving actors; verify the planned route
+// against several motion speeds and the entire stationary effect hold.
+var laterPools = new[] {new Vector2(536,10),new Vector2(527,12),new Vector2(513,-12),new Vector2(504,-10),new Vector2(527,-4),new Vector2(530,4),new Vector2(510,-4),new Vector2(513,4)};
+// Regression for106808 includes all ten small and two large tornadoes.
+// Reflect positions and velocities to catch direction-dependent search behavior;
+// physical validation below is independent of the planner predicate.
+if (args.Contains("--full-overlap") || args.Contains("--darling-overlap"))
+foreach (int mirror in new[] {1,-1})
+{
+    Vector2 Reflect(Vector2 p) => new Vector2(520,0)+(p-new Vector2(520,0))*mirror;
+    bool darling=args.Contains("--darling-overlap");
+    var pools=(darling ? captured : laterPools).Select(Reflect).ToArray();
+    var start=Reflect(darling ? new Vector2(515.66736f,-3.9505467f) : new Vector2(515.3564f,-2.33069f));
+    bool Goal(Vector2 p) => mirror*(p.X-520)<-15.2f && Math.Abs(p.Y)<4.3f;
+    var allMoving = new[] {
+        new WyvernCrossingPlanner.MovingCircle { Origin=new Vector2(503.25f,-3.006f), Velocity=new Vector2(2,0), Radius=5.5f },
+        new WyvernCrossingPlanner.MovingCircle { Origin=new Vector2(536.71f,2.975f), Velocity=new Vector2(-2,0), Radius=5.5f }
+    }.Concat(new[]{525.994f,529.992f,517.998f,501.976f,533.989f}.Select(x =>
+        new WyvernCrossingPlanner.MovingCircle { Origin=new Vector2(x,-12.246f), Velocity=new Vector2(0,2), Radius=4 }))
+    .Concat(new[]{513.970f,521.996f,537.987f,509.972f,505.974f}.Select(x =>
+        new WyvernCrossingPlanner.MovingCircle { Origin=new Vector2(x,12.215f), Velocity=new Vector2(0,-2), Radius=4 })).ToArray();
+    // Compare the actual forward-capsule model, retaining the same0.5y margin
+    // and motion uncertainty. The earlier fixture uses circumscribed midpoints.
+    foreach (var h in allMoving)
+    {
+        bool small = h.Radius == 4;
+        h.Origin -= Vector2.Normalize(h.Velocity)*(small ? 1 : 1.5f);
+        // The primary shape declaration takes(radius,length), not the reverse.
+        // Keep the actor origin above independent of this corrected geometry.
+        h.Length = small ? 2.5f : 3.5f;
+        h.Radius = small ? 2 : 3;
+        h.Origin=Reflect(h.Origin);
+        h.Velocity*=mirror;
+    }
+    // Floor snapshots at13.673 are0.202s after planning; subtract0.404y of
+    // measured2y/s motion. The legacy midpoints above are converted back to origins.
+    // The source text capture preserves those raw positions for future models.
+    if(darling)
+    {
+        //109080 at03:19:05.377 failed on another pool/tornado arrangement.
+        // Project04.851 floor positions forward0.526s at captured2y/s;
+        // player05.176 is the nearest preceding sample (still within0.2y).
+        // This interpolated replay passes despite the live failure. Exact
+        // same-frame production inputs are still needed to explain the mismatch.
+        allMoving=new[] {
+            new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(538.09f,-3.006f),Velocity=new Vector2(-2,0),Radius=3,Length=3.5f},
+            new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(501.875f,2.975f),Velocity=new Vector2(2,0),Radius=3,Length=3.5f}
+        }.Concat(new[]{521.9957f,501.97595f,533.9894f,525.9938f,529.9916f}.Select(x=>
+            new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,-13.117f),Velocity=new Vector2(0,2),Radius=2,Length=2.5f}))
+        .Concat(new[]{509.97168f,505.97388f,513.9695f,517.9979f,537.9873f}.Select(x=>
+            new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,13.088f),Velocity=new Vector2(0,-2),Radius=2,Length=2.5f})).ToArray();
+        // One-second live samples cannot prove the exact solver-frame phase.
+        // Sweep this offset to measure sensitivity before changing production.
+        string phaseArg=args.FirstOrDefault(a=>a.StartsWith("--phase="));
+        float phase=phaseArg==null ? 0 : float.Parse(phaseArg.Substring(8),System.Globalization.CultureInfo.InvariantCulture);
+        foreach(var h in allMoving) { h.Origin+=h.Velocity*phase; h.Origin=Reflect(h.Origin); h.Velocity*=mirror; }
+        Console.WriteLine($"Darling forecast phase offset={phase:F2}s mirror={mirror}");
+    }
+    var searchTimer=Stopwatch.StartNew();
+    // The experiment proves later-arrival state matters, but may pace between
+    // repeated nodes. Keep it opt-in and out of the installed encounter planner.
+    var route = args.Contains("--time-expanded")
+        ? TimedCrossingExperiment.Plan(start,pools,(p,t)=>t<6.7 || Math.Abs(p.Y)<4.3f,Goal,7.2,speed:6,
+            moving:allMoving.Select(h=>new TimedCrossingExperiment.MovingCircle {Origin=h.Origin,Velocity=h.Velocity,Radius=h.Radius,Length=h.Length}).ToArray())
+        : WyvernCrossingPlanner.Plan(start, pools,
+            (p,t) => t < 6.7 || Math.Abs(p.Y) < 4.3f,
+            Goal, 7.2, speed:6, moving:allMoving);
+    if (route.Length == 0)
+    {
+        // Return failure normally so Windows crash handling cannot stall automation.
+        Console.Error.WriteLine($"Full overlap mirror={mirror} has no planned route.");
+        Environment.ExitCode = 1;
+        return;
+    }
+    Console.WriteLine($"Full search={searchTimer.Elapsed.TotalMilliseconds:F1}ms nodes={route.Length} revisits={route.Length-route.Distinct().Count()}");
+    var schedule=args.Contains("--stationary-holds")
+        ? StationarySchedule.Build(start,route,6,(p,t)=>WyvernCrossingPlanner.MovingSafe(p,t,allMoving) && (t<6.5 || Math.Abs(p.Y)<4.3f))
+        : null;
+    if(schedule!=null)
+    {
+        int holds=schedule.Zip(schedule.Skip(1)).Count(pair=>pair.First.Position==pair.Second.Position);
+        int cycles=schedule.Length-schedule.Select(step=>step.Position).Distinct().Count()-holds;
+        Console.WriteLine($"Schedule nodes={schedule.Length} holds={holds} residualCycleVisits={cycles}");
+        if(cycles!=0) { Console.Error.WriteLine("Schedule still paces; stationary execution is not ready."); Environment.ExitCode=1; return; }
+    }
+    // Independent physical capsule check: do not call MovingSafe here. Faster
+    // player travel changes collision timing. Bracket the measured6y/s
+    // speed and test one small launch delay without changing lateral clearance.
+    foreach(float playerSpeed in new[]{5.9f,6f,6.1f})
+    foreach(float tornadoSpeed in new[]{1.8f,2f,2.2f})
+    foreach(double delay in new[]{0,.05})
+    {
+        bool Safe(Vector2 p,double t)
+        {
+            foreach(var h in allMoving)
+            {
+                var dir=Vector2.Normalize(h.Velocity);
+                var relative=p-(h.Origin+dir*tornadoSpeed*(float)t);
+                float along=Vector2.Dot(relative,dir);
+                float end=Math.Max(0,Math.Min(h.Length,along));
+                if((relative-dir*end).Length()<h.Radius+.5f) return false;
+            }
+            return pools.All(c=>Vector2.Distance(p,c)>=5.5f) && p.X>=500.5f && p.X<=539.5f && Math.Abs(p.Y)<=14.3f;
+        }
+        double elapsed=delay; var previous=start;
+        for(double time=0;time<=delay;time+=.005)
+            if(!Safe(start,time)) { Console.Error.WriteLine("Initial delay is unsafe."); Environment.ExitCode=1; return; }
+        int scheduleIndex=0;
+        foreach(var point in schedule==null ? route : schedule.Select(step=>step.Position).ToArray())
+        {
+            float length=Vector2.Distance(previous,point);
+            if(schedule!=null && length<.001f)
+            {
+                // A live executor must hold until the recorded departure time,
+                // rather than discard duplicates as already-reached waypoints.
+                double departure=Math.Max(elapsed,schedule[scheduleIndex].Seconds+delay);
+                for(double t=elapsed;t<=departure;t+=.005)
+                    if(!Safe(point,t)) { Console.Error.WriteLine("Stationary hold is unsafe."); Environment.ExitCode=1; return; }
+                if(!Safe(point,departure)) { Console.Error.WriteLine("Stationary departure is unsafe."); Environment.ExitCode=1; return; }
+                elapsed=departure;
+            }
+            ++scheduleIndex;
+            for(int n=1;n<=10;n++)
+            {
+                double time=elapsed+length*n/(10*playerSpeed);
+                var sample=Vector2.Lerp(previous,point,n/10f);
+                if(!Safe(sample,time) || time>=6.7 && Math.Abs(sample.Y)>=4.3f)
+                {
+                    Console.Error.WriteLine($"Full overlap execution failed speed={playerSpeed}/{tornadoSpeed} delay={delay} t={time:F3} pos={sample}");
+                    Environment.ExitCode=1; return;
+                }
+            }
+            elapsed+=length/playerSpeed; previous=point;
+        }
+        if(elapsed>7.2 || !Goal(previous)) { Console.Error.WriteLine("Full overlap missed goal/deadline."); Environment.ExitCode=1; return; }
+        if(!Safe(previous,9.1)) { Console.Error.WriteLine("Final hold endpoint is unsafe."); Environment.ExitCode=1; return; }
+        for(double time=elapsed;time<=9.1;time+=.025)
+            if(!Safe(previous,time)) { Console.Error.WriteLine("Full overlap hold failed."); Environment.ExitCode=1; return; }
+        Console.WriteLine($"full overlap mirror={mirror} speed={playerSpeed}/{tornadoSpeed} delay={delay:F2} arrival={elapsed:F2}s end={previous}");
+    }
+}
+foreach (int mirror in new[] {1,-1})
+{
+    Vector2 Reflect(Vector2 p) => new Vector2(520,0)+(p-new Vector2(520,0))*mirror;
+    var pools=laterPools.Select(Reflect).ToArray();
+    var start=Reflect(new Vector2(522.401f,-1.258f));
+    var moving=new[] {
+        new WyvernCrossingPlanner.MovingCircle {Origin=Reflect(new Vector2(536.73f,-3.006f)),Velocity=new Vector2(-2*mirror,0),Radius=5.5f},
+        new WyvernCrossingPlanner.MovingCircle {Origin=Reflect(new Vector2(503.23f,2.975f)),Velocity=new Vector2(2*mirror,0),Radius=5.5f}
+    };
+    bool Goal(Vector2 p) => mirror*(p.X-520)>15.6f && Math.Abs(p.Y)<4.3f;
+    bool Timed(Vector2 p,double t) => t<6.5 || Math.Abs(p.Y)<4.3f;
+    var route=WyvernCrossingPlanner.Plan(start,pools,Timed,Goal,7.2,moving:moving);
+    if(route.Length==0) throw new Exception("Moving-whirlwind capture has no complete route.");
+    double elapsed=0; var previous=start;
+    foreach(var p in route)
+    {
+        float length=Vector2.Distance(previous,p);
+        for(int n=1;n<=10;n++)
+        {
+            var sample=Vector2.Lerp(previous,p,n/10f);
+            double time=elapsed+length*n/55;
+            if(!WyvernCrossingPlanner.MovingSafe(sample,time,moving) || pools.Any(c=>Vector2.Distance(sample,c)<5))
+                throw new Exception("Overlap route intersects persistent or moving damage.");
+        }
+        elapsed+=length/5.5; previous=p;
+    }
+    for(double t=elapsed;t<=9.1;t+=.05)
+        if(!WyvernCrossingPlanner.MovingSafe(previous,t,moving)) throw new Exception("Hold is crossed by a tornado.");
+    // Independently simulate execution at measured6y/s as well as planning
+    // speed, and tornado speeds bracketing the captured1.9–2.2y/s samples.
+    foreach(float playerSpeed in new[]{5.5f,6f})
+    foreach(float tornadoSpeed in new[]{1.8f,2f,2.2f})
+    {
+        double time=0; var from=start;
+        bool PhysicalSafe(Vector2 point,double at) => moving.All(h=>
+            Vector2.Distance(point,h.Origin+h.Velocity*(tornadoSpeed/2)*(float)at)>=5f);
+        foreach(var to in route)
+        {
+            float length=Vector2.Distance(from,to);
+            for(int n=1;n<=10;n++)
+                if(!PhysicalSafe(Vector2.Lerp(from,to,n/10f),time+length*n/(10*playerSpeed)))
+                    throw new Exception("Execution speed variant touches moving capsule envelope.");
+            time+=length/playerSpeed; from=to;
+        }
+        for(double at=time;at<=9.1;at+=.05)
+            if(!PhysicalSafe(from,at)) throw new Exception("Execution hold variant touches tornado.");
+    }
+    Console.WriteLine($"moving mirror={mirror} nodes={route.Length} arrival={elapsed:F2}s end={previous}");
+}

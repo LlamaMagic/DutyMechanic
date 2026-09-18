@@ -1,0 +1,58 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// RB77088 had a north-origin cone while the fire pursued along the north
+// perimeter. Replay both that orientation and its reflection. This is a
+// conservative synthetic pool layout, not evidence that live execution passed.
+var center = new Vector2(120, -420);
+foreach (int mirror in new[] { 1, -1 })
+{
+    Vector2 Reflect(Vector2 p) => center + (p - center) * mirror;
+    var pools = new[] { new Vector2(104, -420), new Vector2(136, -420) }.Select(Reflect).ToArray();
+    var cone = new FireKitePlanner.Cone { Center = Reflect(new Vector2(120, -404)), Heading = mirror == 1 ? (float)Math.PI : 0, Remaining = 5.7 };
+    var start = Reflect(new Vector2(128, -405));
+    var fire = Reflect(new Vector2(118.5f, -415));
+    var timer = Stopwatch.StartNew();
+    var route = FireKitePlanner.Plan(start, fire, center, pools, new[] { cone }, 0, 5.2, 8, null);
+    Console.WriteLine($"mirror={mirror} points={route.Length} searchMs={timer.Elapsed.TotalMilliseconds:F1}");
+    if (route.Length == 0) { Console.Error.WriteLine("No complete route for the captured overlap approach."); Environment.Exit(1); }
+    Console.WriteLine(string.Join(" -> ", route.Select(p => $"({p.X:F1},{p.Y:F1})")));
+    // Replay the receding-horizon policy, not merely one valid initial plan.
+    // Actual motion uses measured6/7.8y player speed and3y fire pursuit, while
+    // the production search retains its slower-player/faster-fire allowances.
+    var player = start;
+    var pursuer = fire;
+    Vector2? preferred = null;
+    Vector2 destination = start;
+    for (int tick = 0; tick < 70; tick++)
+    {
+        double elapsed = tick * .1;
+        if (tick % 5 == 0)
+        {
+            var remainingCone = new FireKitePlanner.Cone { Center = cone.Center, Heading = cone.Heading, Remaining = cone.Remaining - elapsed };
+            route = FireKitePlanner.Plan(player, pursuer, center, pools, new[] { remainingCone }, 0, 5.2 - elapsed, 8 - elapsed, preferred);
+            if (route.Length == 0) { Console.Error.WriteLine($"Replan failed at{elapsed:F1}s position={player} fire={pursuer}"); Environment.Exit(1); }
+            destination = route[0];
+            preferred = route[1];
+        }
+        var motion = destination - player;
+        if (motion.Length() > .001f) player += Vector2.Normalize(motion) * Math.Min(.78f, motion.Length());
+        var chase = player - pursuer;
+        if (elapsed < 4.5 && chase.Length() > .001f) pursuer += Vector2.Normalize(chase) * Math.Min(.3f, chase.Length());
+        if (Vector2.Distance(player, center) > 18.5 || pools.Any(p => Vector2.Distance(player, p) < 5.5))
+        { Console.Error.WriteLine("Replay crossed a pool or boundary."); Environment.Exit(1); }
+        if (tick == 51 && Vector2.Distance(player, pursuer) < 10.5)
+        { Console.Error.WriteLine("Replay occupied fire blast at snapshot."); Environment.Exit(1); }
+        var relative = player - cone.Center;
+        if (tick == 56 && Vector2.Dot(Vector2.Normalize(relative), new Vector2((float)Math.Sin(cone.Heading), (float)Math.Cos(cone.Heading))) >= .5f)
+        { Console.Error.WriteLine("Replay occupied the cone at snapshot."); Environment.Exit(1); }
+    }
+    Console.WriteLine("Receding-horizon replay passed.");
+}
+// Fail closed in an explicitly impossible arena, rather than returning a
+// partial route whose endpoint would appear safe without a continuation.
+if (FireKitePlanner.Plan(center, center, center, new[] { center }, Array.Empty<FireKitePlanner.Cone>(), 0, 5.2, 8, null).Length != 0)
+    { Console.Error.WriteLine("Impossible pool fixture returned a route."); Environment.Exit(1); }

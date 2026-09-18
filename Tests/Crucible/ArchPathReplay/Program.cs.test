@@ -1,0 +1,36 @@
+using System;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// Arelia51080: moving toward the later circle's safe endpoint crossed the
+// settled lance lines and inflicted Damage Down. Replay the actual endpoints
+// and final headings, then verify that ordinary escape remains possible.
+var start = new Vector2(531.0005f, -.9312679f);
+var badEnd = new Vector2(530, 8);
+var beams = new[] {
+    (new Vector2(512.9929f, -.015319824f), 1.3619f),
+    (new Vector2(519.9817f, 6.9733276f), 1.8530f),
+    (new Vector2(519.9817f, -7.0039062f), .7934f),
+    (new Vector2(526.97034f, -.015319824f), .8078f)
+};
+int blocked = 0;
+foreach (var beam in beams)
+{
+    if (!ArchPathSafety.Beam(badEnd, badEnd, beam.Item1, beam.Item2, 2.5f)) throw new Exception("Fixture endpoint is not safe: wrong regression geometry.");
+    if (!ArchPathSafety.Beam(start, badEnd, beam.Item1, beam.Item2, 2.5f)) blocked++;
+}
+if (blocked == 0) throw new Exception("Captured damaging crossing was accepted.");
+int alternatives = 0;
+for (int x = 501; x < 540; x++)
+for (int z = -13; z < 14; z++)
+{
+    var end = new Vector2(x, z);
+    bool safe = ArchPathSafety.Circle(start, end, start, 3.5f);
+    foreach (var beam in beams) safe &= ArchPathSafety.Beam(start, end, beam.Item1, beam.Item2, 2.5f);
+    if (safe) alternatives++;
+}
+if (alternatives == 0) throw new Exception("Captured overlap has no direct escape candidates.");
+if (!ArchPathSafety.Circle(Vector2.Zero, new Vector2(5, 0), Vector2.Zero, 3.5f)) throw new Exception("Initial circle escape rejected.");
+if (ArchPathSafety.Circle(new Vector2(-5, 0), new Vector2(5, 0), Vector2.Zero, 3.5f)) throw new Exception("Circle crossing accepted.");
+if (ArchPathSafety.Circle(Vector2.Zero, Vector2.One, Vector2.Zero, 3.5f)) throw new Exception("Unsafe endpoint accepted.");
+Console.WriteLine($"Captured crossing blocked by {blocked} beams; {alternatives} direct alternatives remain. Circle escape/crossing checks passed.");

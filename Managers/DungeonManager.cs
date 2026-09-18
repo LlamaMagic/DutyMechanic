@@ -17,6 +17,10 @@ internal static class DungeonManager
 {
     private static readonly Dictionary<ZoneId, Type> AvailableDungeons = new Dictionary<ZoneId, Type>()
     {
+            // Crucible boards use distinct territories and encounter lifetimes.
+            { (ZoneId)1339, typeof(FirstBoardOfUnbroken) },
+            { (ZoneId)1340, typeof(SecondBoardOfUnbroken) },
+
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },
             { ZoneId.HallOfTheNoticeWesternLa, typeof(HallOfTheNoviceWesternLa) },

@@ -49,5 +49,13 @@ It will automatically install the files into the correct folders and keep them u
 
 ## Usage
 
+### Crucible of the Unbroken
+
+First and Second Board mechanics live in `Dungeons/Crucible`, with separate territory registrations for 1339 and 1340. The folder keeps encounter-specific movement lifetimes and pure geometry planners together. Third Board is not implemented. Entry, board navigation, purchases and Beastmaster rotation belong to the calling profile/plugin and combat routine; these handlers own encounter mechanics.
+
+When updating an installation that previously received development sources from PandaCrucible, close that RB instance normally and remove the old flat `Dungeons` copies of the ten files now in `Dungeons/Crucible` after backing them up outside the plugin. Keeping both layouts causes duplicate type definitions. PandaCrucible no longer installs or patches DutyMechanic.
+
+Offline geometry replays are under `Tests/Crucible`: run `dotnet run --project Tests/Crucible/ArchPathReplay`, and likewise `FirePlannerReplay`, `ManticoreReplay`, and `WyvernPlannerReplay`. Fixtures use `.cs.test` so RB's recursive source compiler does not load console entry points. Each replay links the production planner; it verifies captured geometry, not live client timing or unattended reliability.
+
 ⚠️ Some classes may not survive certain bosses. ⚠️ If you can't clear even after tuning combat routine settings, try running the previous dungeon until you out-level and can skip the "difficult" one. Also, tank privilege is real. Tanks will have the best success.
 

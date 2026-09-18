@@ -1,0 +1,41 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+// Replay-only bridge from a time-expanded walking path to explicit holds. A
+// repeated position is not permission to delete elapsed time: retain both its
+// arrival and departure, and collapse a cycle only if waiting there is safe.
+// Production needs a timestamp-aware executor before this can replace pacing.
+internal static class StationarySchedule
+{
+    internal readonly record struct Step(Vector2 Position, double Seconds);
+
+    internal static Step[] Build(Vector2 start, Vector2[] route, float speed, Func<Vector2, double, bool> safe)
+    {
+        var steps = new List<Step> { new(start, 0) };
+        var previous = start;
+        double seconds = 0;
+        foreach (var point in route)
+        {
+            seconds += Vector2.Distance(previous, point) / speed;
+            steps.Add(new(point, seconds));
+            previous = point;
+        }
+        for (int i = 0; i < steps.Count - 2; ++i)
+        {
+            for (int j = steps.Count - 1; j > i + 1; --j)
+            {
+                if (steps[i].Position != steps[j].Position) continue;
+                bool canHold = safe(steps[i].Position, steps[j].Seconds);
+                //25ms samples resolve pulse-sized gaps; independent physical
+                // simulation in Program also brackets speed and startup delay.
+                for (double t = steps[i].Seconds; canHold && t < steps[j].Seconds; t += .025)
+                    canHold = safe(steps[i].Position, t);
+                if (!canHold) continue;
+                steps.RemoveRange(i + 1, j - i - 1);
+                break;
+            }
+        }
+        return steps.ToArray();
+    }
+}
