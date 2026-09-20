@@ -142,7 +142,8 @@ namespace DutyMechanic.Dungeons
                 h.Position.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading),
                 h.Position.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
             var start = new System.Numerics.Vector2(Core.Me.Location.X, Core.Me.Location.Z);
-            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(Center.X, Center.Z), 21.5f, polygons, dodgePoint, false);
+            // Preserve pit clearance while favoring the current target's reach.
+            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(Center.X, Center.Z), 21.5f, polygons, dodgePoint, false, preference: CrucibleMeleePreference.Capture());
             // A constrained donut/pit overlap may leave no candidate. Preserve
             // native emergency avoidance rather than inventing a safe point.
             if (!chosen.HasValue)

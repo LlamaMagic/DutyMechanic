@@ -157,11 +157,15 @@ namespace DutyMechanic.Dungeons
             // corners remain available. Native escape and march keep priority.
             bool ClearPoint(Vector3 p, float margin) => Math.Abs(p.X - Center.X) <= 19 && Math.Abs(p.Z) <= 19 &&
                 hazards.All(h => h.Position.Distance2D(p) >= h.Radius + margin);
+            // A safe distant hold may now close through a fully clear corridor.
+            var melee = CrucibleMeleePreference.ReachableMelee(darkOrbPoint, p => ClearPoint(p, 1.5f));
+            if (melee.HasValue) darkOrbPoint = melee;
             if (!darkOrbPoint.HasValue || !ClearPoint(darkOrbPoint.Value, .75f))
             {
                 darkOrbPoint = ClearPoint(Core.Me.Location, .75f) ? Core.Me.Location :
                     Enumerable.Range(-19, 39).SelectMany(x => Enumerable.Range(-19, 39).Select(z => Center + new Vector3(x, 0, z)))
-                        .Where(p => ClearPoint(p, 1.5f)).OrderBy(p => p.Distance2D(Core.Me.Location)).Select(p => (Vector3?)p).FirstOrDefault();
+                        // Keep orb clearance; melee is only a safe-point tie-break.
+                        .Where(p => ClearPoint(p, 1.5f)).OrderBy(CrucibleMeleePreference.CaptureWorld()).ThenBy(p => p.Distance2D(Core.Me.Location)).Select(p => (Vector3?)p).FirstOrDefault();
                 if (darkOrbPoint.HasValue)
                     ff14bot.Helpers.Logging.Write("[CrucibleDarkOrbHold] destination={0} hazards={1}", darkOrbPoint, hazards.Length);
             }
@@ -186,6 +190,7 @@ namespace DutyMechanic.Dungeons
                 destination = Enumerable.Range(-19, 39).SelectMany(i => new[] { new Vector3(101, 0, i), new Vector3(139, 0, i), new Vector3(120 + i, 0, -19), new Vector3(120 + i, 0, 19) })
                     .Where(p => Safe(p, hazards) && Clear(Core.Me.Location, p, hazards))
                     .OrderBy(p => zombies.Count(z => z.Distance2D(p) <= 10.75f))
+                    .ThenBy(CrucibleMeleePreference.CaptureWorld())
                     .ThenBy(p => p.Distance2D(Core.Me.Location)).Select(p => (Vector3?)p).FirstOrDefault();
                 if (destination.HasValue)
                     ff14bot.Helpers.Logging.Write("[CrucibleVoid] bait destination={0} intersectedZombies={1}", destination, zombies.Count(z => z.Distance2D(destination.Value) <= 10.75f));
@@ -218,10 +223,11 @@ namespace DutyMechanic.Dungeons
                     return;
                 }
                 nextMarchPlan = DateTime.UtcNow.AddMilliseconds(500);
+                var meleePreference = CrucibleMeleePreference.CaptureWorld();
                 var options = Enumerable.Range(-9, 19).SelectMany(x => Enumerable.Range(-9, 19).Select(z => Center + new Vector3(x * 2, 0, z * 2)))
                     .Where(p => Safe(p, hazards) && Clear(Core.Me.Location, p, hazards))
                     .SelectMany(p => Enumerable.Range(0, 16).Select(i => new { Point = p, Heading = i * (float)Math.PI / 8 }))
-                    .Where(p => MarchSafe(p.Point, p.Heading)).OrderBy(p => p.Point.Distance2D(Core.Me.Location)).FirstOrDefault();
+                    .Where(p => MarchSafe(p.Point, p.Heading)).OrderBy(p => meleePreference(p.Point)).ThenBy(p => p.Point.Distance2D(Core.Me.Location)).FirstOrDefault();
                 destination = options?.Point;
                 marchHeading = options?.Heading;
                 if (options != null)

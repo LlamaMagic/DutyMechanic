@@ -288,7 +288,8 @@ namespace DutyMechanic.Dungeons
             if (!destination.HasValue || !SafeLaunch(destination.Value, shapes) || !ClearSegment(start, destination.Value, shapes, true))
             {
                 destination = Enumerable.Range(-9, 19).SelectMany(x => Enumerable.Range(-6, 13).Select(z => Center + new Vector3(x * 2, 0, z * 2)))
-                    .Where(p => SafeLaunch(p, shapes) && ClearSegment(start, p, shapes, true)).OrderBy(p => p.Distance2D(start))
+                    // Landing and corridor safety precede melee launch preference.
+                    .Where(p => SafeLaunch(p, shapes) && ClearSegment(start, p, shapes, true)).OrderBy(CrucibleMeleePreference.CaptureWorld()).ThenBy(p => p.Distance2D(start))
                     .Select(p => (Vector3?)p).FirstOrDefault();
                 if (destination.HasValue)
                     ff14bot.Helpers.Logging.Write("[CrucibleWyvern] knockback launch={0} origin={1}", destination, knockbackOrigin);

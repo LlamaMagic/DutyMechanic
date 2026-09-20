@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Link production detached geometry so arena/heading regressions are
+       tested without injecting a test harness into RebornBuddy's compiler. -->
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs.test" />
+    <Compile Include="../../../Dungeons/Crucible/ThirdBoardGeometry.cs" Link="ThirdBoardGeometry.cs" />
+    <!-- Master routes must preserve the bleeding boundary on every edge,
+         including detours when the native start SpanRef is unavailable. -->
+    <Compile Include="../../../Dungeons/Crucible/MasterArenaMovement.cs" Link="MasterArenaMovement.cs" />
+    <!-- Exercise far shelter selection and outward egress without live game state. -->
+    <Compile Include="../../../Dungeons/Crucible/CorpseFlowerPositioning.cs" Link="CorpseFlowerPositioning.cs" />
+  </ItemGroup>
+</Project>

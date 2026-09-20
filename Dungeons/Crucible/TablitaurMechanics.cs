@@ -211,9 +211,11 @@ namespace DutyMechanic.Dungeons
             // normal 6 y/s); retain them until the standard 1.5 y margin is breached.
             // If that extra space is unavailable, fall back to the proven margin.
             bool chasing = spinActor != 0 && DateTime.UtcNow < spinEnd;
-            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false, chasing ? 4f : .75f, chasing ? 4f : 1.5f);
+            // Damage preference never reduces the chasing spinner's clearance.
+            var meleePreference = CrucibleMeleePreference.Capture();
+            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false, chasing ? 4f : .75f, chasing ? 4f : 1.5f, meleePreference);
             if (!chosen.HasValue && chasing)
-                chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false);
+                chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false, preference: meleePreference);
             manualDodge = chosen.HasValue;
             if (!manualDodge)
             {

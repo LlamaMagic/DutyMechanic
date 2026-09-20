@@ -437,7 +437,8 @@ namespace DutyMechanic.Dungeons
                 float x = first.X + direction * (fourth != null && now > fourth.Finish.AddMilliseconds(250) ? 26.8f : 28.7f);
                 var candidate = Enumerable.Range(0, 25).Select(i => new Vector3(x, 0, -12 + i))
                     .Where(p => SafeArch(p, .25f) && ReachableArch(p))
-                    .OrderBy(p => dodgeDestination.HasValue ? dodgeDestination.Value.Distance2D(p) : Core.Me.Distance2D(p)).FirstOrDefault();
+                    // Only the authored next lane is eligible; favor melee along it.
+                    .OrderBy(CrucibleMeleePreference.CaptureWorld()).ThenBy(p => dodgeDestination.HasValue ? dodgeDestination.Value.Distance2D(p) : Core.Me.Distance2D(p)).FirstOrDefault();
                 HoldDodge();
                 if (candidate == default(Vector3))
                 {
@@ -474,11 +475,12 @@ namespace DutyMechanic.Dungeons
                 }
                 else
                 {
+                    var meleePreference = CrucibleMeleePreference.CaptureWorld();
                     var choices = from ix in Enumerable.Range(0, 39)
                                   from iz in Enumerable.Range(0, 27)
                                   let p = new Vector3(501 + ix, 0, -13 + iz)
                                   where SafeArch(p, .75f) && ReachableArch(p)
-                                  orderby Core.Me.Distance2D(p)
+                                  orderby meleePreference(p), Core.Me.Distance2D(p)
                                   select p;
                     var point = choices.FirstOrDefault();
                     if (point != default(Vector3))
@@ -498,6 +500,13 @@ namespace DutyMechanic.Dungeons
             if (dodgeOwned && (now < dodgeHoldUntil || groundHazards.Any(h => h.Until > now) ||
                 GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).Any(a => a.IsCasting && IsDodgeCast(a.CastingSpellId))))
             {
+                // Improve a completed native dodge without crossing its still-
+                // active hazards. Ward/fire and authored Arch sequences already
+                // returned above and retain their required movement lifecycle.
+                var melee = CrucibleMeleePreference.ReachableMelee(dodgeDestination, p =>
+                    InPasArena() ? Math.Abs(p.X - PasArena.X) < 18 && Math.Abs(p.Z - PasArena.Z) < 22 :
+                    InBoneArena() && p.Distance2D(BoneArena) < 18);
+                if (melee.HasValue) MoveDodge(melee.Value);
                 HoldDodge();
                 return true;
             }
@@ -634,7 +643,8 @@ namespace DutyMechanic.Dungeons
                 double sprint = Core.Me.CharacterAuras.Where(a => a.Name == "Sprint").Select(a => a.TimespanLeft.TotalSeconds).DefaultIfEmpty(0).Max();
                 var route = FireKitePlanner.Plan(new System.Numerics.Vector2(start.X, start.Z),
                     new System.Numerics.Vector2(danger.X, danger.Z), new System.Numerics.Vector2(BoneArena.X, BoneArena.Z),
-                    pools, snapshots, Math.Max(0, 4.5 - age), blastIn, sprint, firePreferred);
+                    pools, snapshots, Math.Max(0, 4.5 - age), blastIn, sprint, firePreferred,
+                    meleePreference: CrucibleMeleePreference.Capture());
                 if (route.Length == 0)
                 {
                     // No full-horizon solution is evidence of an unsafe model or

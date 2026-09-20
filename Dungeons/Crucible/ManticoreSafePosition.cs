@@ -7,8 +7,29 @@ namespace DutyMechanic.Dungeons
     // transitions at hazard boundaries. Geometry stays independent of live state.
     internal static class ManticoreSafePosition
     {
-        internal static Vector2? Choose(Vector2 start, Vector2 center, float radius, Vector2[][] polygons, Vector2? previous, bool requireStraightSegment = true, float stationaryClearance = .75f, float destinationClearance = 1.5f)
+        internal static Vector2? Choose(Vector2 start, Vector2 center, float radius, Vector2[][] polygons, Vector2? previous, bool requireStraightSegment = true, float stationaryClearance = .75f, float destinationClearance = 1.5f, Func<Vector2, int> preference = null)
         {
+            // Promote reachable safe melee before retaining a distant refuge.
+            // Keep a safe melee goal stable; optional callers retain the old
+            // planner exactly. Promotion always validates a straight corridor,
+            // even when emergency fallback relies on the native graph.
+            if (preference != null)
+            {
+                if (previous.HasValue && preference(previous.Value) == 0 && Safe(previous.Value, center, radius, polygons, destinationClearance) &&
+                    ClearSegment(start, previous.Value, center, radius, polygons)) return previous;
+                if (preference(start) == 0 && Safe(start, center, radius, polygons, stationaryClearance)) return start;
+                Vector2? melee = null;
+                float nearest = float.MaxValue;
+                for (int x = -18; x <= 18; x++)
+                    for (int z = -18; z <= 18; z++)
+                    {
+                        var p = center + new Vector2(x, z);
+                        float d = Vector2.DistanceSquared(start, p);
+                        if (d < nearest && preference(p) == 0 && Safe(p, center, radius, polygons, destinationClearance) &&
+                            ClearSegment(start, p, center, radius, polygons)) { melee = p; nearest = d; }
+                    }
+                if (melee.HasValue) return melee;
+            }
             // 1.5 y absorbs the 0.3 y arrival tolerance and pulse displacement.
             // The player may stand still with 0.75 y clearance if no move began;
             // this hysteresis avoids creating movement merely to improve margin.

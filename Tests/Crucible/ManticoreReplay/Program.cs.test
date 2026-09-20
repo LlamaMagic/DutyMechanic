@@ -7,32 +7,44 @@ using DutyMechanic.Dungeons;
 // Replay both sides under arbitrary rotation, then retain the chosen point
 // despite pulse-sized position changes. This tests geometry, not live timing.
 var center = new Vector2(120, -420);
+// The damage preference may improve a distant safe hold, but never bridge a
+// blocked corridor. Repeated calls must retain the chosen melee destination.
+var distant = center + new Vector2(15, 0);
+Func<Vector2, int> melee = p => Vector2.Distance(p, center) <= 5 ? 0 : 1;
+var preferred = ManticoreSafePosition.Choose(distant, center, 18.5f, Array.Empty<Vector2[]>(), distant, false, preference: melee);
+if (!preferred.HasValue || melee(preferred.Value) != 0) throw new Exception("Safe melee did not replace distant hold.");
+if (ManticoreSafePosition.Choose(distant, center, 18.5f, Array.Empty<Vector2[]>(), preferred, false, preference: melee) != preferred)
+    throw new Exception("Preferred melee point churned.");
+var blockedMelee = new[] { Circle(center, 7) };
+if (ManticoreSafePosition.Choose(distant, center, 18.5f, blockedMelee, distant, false, preference: melee) != distant)
+    throw new Exception("Unsafe melee displaced safe fallback.");
+Console.WriteLine("Shared melee preference: promotion, stability and blocked fallback passed.");
 int cases = 0;
 foreach (int side in new[] { -1, 1 })
-for (int degrees = 0; degrees < 360; degrees += 15)
-{
-    float heading = degrees * MathF.PI / 180;
-    var origin = center + new Vector2(0, -10);
-    var start = origin + new Vector2(MathF.Sin(heading), MathF.Cos(heading)) * 5.338f;
-    var polygon = Cone(origin, heading + side * MathF.PI / 2);
-    var shapes = new[] { polygon };
-    var chosen = ManticoreSafePosition.Choose(start, center, 18.5f, shapes, null);
-    if (!chosen.HasValue || !ManticoreSafePosition.Safe(chosen.Value, center, 18.5f, shapes, .74f)) throw new Exception("Arm lacks a safe endpoint.");
-    // Only moved endpoints require the larger planning margin. A safe initial
-    // position is deliberately retained without a gratuitous adjustment.
-    if (chosen.Value != start)
+    for (int degrees = 0; degrees < 360; degrees += 15)
     {
-        for (int pulse = 0; pulse < 20; pulse++)
+        float heading = degrees * MathF.PI / 180;
+        var origin = center + new Vector2(0, -10);
+        var start = origin + new Vector2(MathF.Sin(heading), MathF.Cos(heading)) * 5.338f;
+        var polygon = Cone(origin, heading + side * MathF.PI / 2);
+        var shapes = new[] { polygon };
+        var chosen = ManticoreSafePosition.Choose(start, center, 18.5f, shapes, null);
+        if (!chosen.HasValue || !ManticoreSafePosition.Safe(chosen.Value, center, 18.5f, shapes, .74f)) throw new Exception("Arm lacks a safe endpoint.");
+        // Only moved endpoints require the larger planning margin. A safe initial
+        // position is deliberately retained without a gratuitous adjustment.
+        if (chosen.Value != start)
         {
-            var perturbed = chosen.Value + new Vector2(MathF.Sin(pulse), MathF.Cos(pulse)) * .25f;
-            if (ManticoreSafePosition.Choose(perturbed, center, 18.5f, shapes, chosen) != chosen) throw new Exception("Stable endpoint jittered.");
+            for (int pulse = 0; pulse < 20; pulse++)
+            {
+                var perturbed = chosen.Value + new Vector2(MathF.Sin(pulse), MathF.Cos(pulse)) * .25f;
+                if (ManticoreSafePosition.Choose(perturbed, center, 18.5f, shapes, chosen) != chosen) throw new Exception("Stable endpoint jittered.");
+            }
         }
+        var reverse = new[] { Cone(origin, heading + side * MathF.PI / 2 + MathF.PI) };
+        var next = ManticoreSafePosition.Choose(chosen.Value, center, 18.5f, reverse, chosen);
+        if (!next.HasValue || !ManticoreSafePosition.Safe(next.Value, center, 18.5f, reverse, .74f)) throw new Exception("Reversed cleave retained danger.");
+        cases++;
     }
-    var reverse = new[] { Cone(origin, heading + side * MathF.PI / 2 + MathF.PI) };
-    var next = ManticoreSafePosition.Choose(chosen.Value, center, 18.5f, reverse, chosen);
-    if (!next.HasValue || !ManticoreSafePosition.Safe(next.Value, center, 18.5f, reverse, .74f)) throw new Exception("Reversed cleave retained danger.");
-    cases++;
-}
 var enclosing = new[] { new[] { new Vector2(0, -600), new Vector2(300, -600), new Vector2(300, 0), new Vector2(0, 0) } };
 if (ManticoreSafePosition.Choose(center, center, 18.5f, enclosing, null).HasValue) throw new Exception("Impossible overlap accepted.");
 Console.WriteLine($"{cases} rotated arm/sequential-cleave cases and endpoint perturbations passed; impossible overlap returns fallback.");

@@ -1,0 +1,191 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// These regressions preserve observed arena geometry and knockback distances,
+// not a claim that offline tests replace a completed automated Third Board run.
+int checks = 0;
+void Check(bool value, string reason) { checks++; if (!value) throw new Exception(reason); }
+Vector2 P(float x, float z) => new Vector2(x, z);
+ThirdBoardHazard Shape(Vector2 origin, Vector2[] points, float heading = 0) =>
+    new ThirdBoardHazard { Origin = origin, Points = points, Heading = heading };
+const uint Guttler = 0x4CAA, Siren = 0x4CA1, Ymir = 0x4C93;
+// The closest/melee-aligned briar must lose to the farthest safe patch. Egress
+// cannot trade thorn clearance for a route into the flower or another hazard.
+var briars = new[] { P(2, 0), P(12, 0), P(8, 4) };
+Check(CorpseFlowerPositioning.Shelter(briars, P(0, 0), P(2, 0), _ => true, p => p.X) == P(12, 0), "Briar distance must override travel/alignment");
+Check(CorpseFlowerPositioning.Shelter(briars, P(0, 0), P(2, 0), p => p.X < 12, _ => 0) == P(8, 4), "Unsafe farthest briar must be excluded");
+Check(!CorpseFlowerPositioning.Shelter(briars, P(0, 0), P(2, 0), _ => false, _ => 0).HasValue, "Missing shelter must fail closed");
+var steps = new[] { P(9, 0), P(15, 0), P(12, 3), P(20, 0) };
+Check(CorpseFlowerPositioning.Exit(steps, new[] { P(12, 0) }, P(0, 0), P(12, 0), p => p.X < 15, (_, __) => true) == P(12, 3), "Briar exit must stay safe, outward and within a short leg");
+Check(!CorpseFlowerPositioning.Exit(steps, new[] { P(12, 0) }, P(0, 0), P(12, 0), _ => true, (_, __) => false).HasValue, "Blocked corridors must not produce an exit");
+foreach (var p in new[] { P(520, -420), P(520, -442.5f), P(520, -397.5f), P(508, -412.5f), P(508, -422.5f), P(532, -417.5f), P(532, -427.5f) })
+    Check(ThirdBoardGeometry.InArena(p, Guttler), "All seven floor sections must remain usable");
+foreach (var p in new[] { P(510, -412.5f), P(510, -422.5f), P(530, -417.5f), P(530, -427.5f), P(520, -440), P(520, -400) })
+    Check(ThirdBoardGeometry.InArena(p, Guttler), "Inset union must preserve alcove entrances");
+foreach (var p in new[] { P(507, -417.5f), P(533, -422.5f), P(516, -444), P(524, -396) })
+    Check(!ThirdBoardGeometry.InArena(p, Guttler), "Do not invent floor between staggered alcoves");
+// The live helper is centered, not at the southern room edge. Preserve the
+// northern hit position from RB54472 and usable side refuges on both sides.
+var gyro = Shape(P(520, -420), ThirdBoardHazard.Rectangle(10.5f, 40.5f, 40.5f), MathF.PI);
+Check(gyro.Contains(P(520, -417.505f)), "Captured northern Gyrocleave hit must not be marked safe");
+Check(gyro.Contains(P(521.311f, -424.840f)), "Captured southern Gyrocleave hit must be unsafe");
+Check(!gyro.Contains(P(532, -417.5f)) && ThirdBoardGeometry.InArena(P(532, -417.5f), Guttler), "Eastern alcove remains a legal refuge");
+Check(gyro.Contains(P(520, -420)) && !gyro.Contains(P(507, -412.5f)), "Gyrocleave requires side alcoves");
+var goring = Shape(P(520, -440), ThirdBoardHazard.Circle(40.5f));
+Check(goring.Contains(P(520, -405)) && !goring.Contains(P(520, -397)), "Goring requires opposite end alcove");
+var gutting = Shape(P(520, -439), ThirdBoardHazard.Rectangle(20.5f, 50.5f));
+Check(!gutting.Contains(P(520, -443)) && gutting.Contains(P(520, -420)), "Gutting requires behind-boss end");
+foreach (int sign in new[] { -1, 1 })
+{
+    var start = P(520, -420 + 2 * sign); var landing = start + P(0, 20 * sign);
+    Check(ThirdBoardGeometry.InArena(start, Guttler) && ThirdBoardGeometry.InArena(landing, Guttler, 1), "Aura lands in end bay");
+    Check(!ThirdBoardGeometry.InArena(landing + P(4, 0), Guttler, 1), "Aura outside narrow bay fails");
+}
+var tsunamiStart = P(120, -18.5f);
+Check(ThirdBoardGeometry.InArena(tsunamiStart + ThirdBoardGeometry.Direction(0) * 35, Ymir, 1), "Tsunami staging has35y runway");
+Check(!ThirdBoardGeometry.InArena(P(120, 0) + ThirdBoardGeometry.Direction(0) * 35, Ymir, 1), "Tsunami middle is unsafe");
+var lane = Shape(P(105, -22), ThirdBoardHazard.Rectangle(5, 45, 0));
+Check(lane.Contains(P(105, -5)) && !lane.Contains(P(115, -5)), "Landslip applies only to its lane");
+var cross = ThirdBoardGeometry.CageForecast(1, P(520, -420), 0, DateTime.UtcNow.AddSeconds(13.2));
+Check(cross.Any(h => h.Contains(P(533, -420))) && cross.Any(h => h.Contains(P(520, -433))), "Cage cross arms");
+Check(cross.All(h => !h.Contains(P(528, -432))), "Cross corner remains open");
+// Captured four-cage layout: the old hold and the subsequent traversal
+// through the boss must be rejected before Life Claim's short final cast.
+var cages = new[] { P(530, -400), P(510, -400), P(520, -420), P(520, -440) }
+    .SelectMany((p, i) => ThirdBoardGeometry.CageForecast((uint)i + 1, p, 0, DateTime.UtcNow.AddSeconds(13.2))).ToArray();
+Check(cages.Any(h => h.Contains(P(520.053f, -414.315f))), "Captured pre-explosion hold is not a cage refuge");
+Check(!ThirdBoardGeometry.Corridor(P(520.053f, -414.315f), P(520.093f, -425.332f), Guttler, cages), "Captured crossing through boss cage must remain forbidden");
+Check(ThirdBoardGeometry.Candidates(Guttler).Any(p => cages.All(h => !h.Contains(p))), "Captured cage layout retains an in-arena refuge");
+var ring = ThirdBoardHazard.Donut(2.5f, 43.5f).Select(p => Shape(P(120, -420), p)).ToArray();
+Check(ring.All(h => !h.Contains(P(120, -420))) && ring.Any(h => h.Contains(P(126, -419))), "Dirge ring hole remains safe");
+var melody = Shape(P(120, -399), ThirdBoardHazard.Cone(50.5f, 46), MathF.PI);
+Check(melody.Contains(P(120, -420)) && !melody.Contains(P(137, -414)), "Siren edge cone faces center");
+Check(ThirdBoardGeometry.Corridor(P(120, -420), P(138.5f, -420), Siren, Array.Empty<ThirdBoardHazard>()), "March through center stays inside circle");
+Check(!ThirdBoardGeometry.Corridor(P(138, -420), P(156.5f, -420), Siren, Array.Empty<ThirdBoardHazard>()), "Outward march exits room");
+Check(!ThirdBoardGeometry.Corridor(P(120, -435), P(120, -416.5f), Siren, new[] { melody }), "March must test entire hazard corridor");
+Console.WriteLine($"Third Board geometry: {checks} checks passed.");
+// Successive inverse telegraphs must retain the first safe half; persistent
+// cage bodies participate regardless of the wave's scheduled activation.
+var now = DateTime.UtcNow;
+var north = Shape(P(120, 0), ThirdBoardHazard.Rectangle(25, 25)); north.Until = now.AddSeconds(2); north.Action = 1;
+var south = Shape(P(120, 0), ThirdBoardHazard.Rectangle(25, 25), MathF.PI); south.Until = now.AddSeconds(3); south.Action = 2;
+var body = Shape(P(105, 10), ThirdBoardHazard.Circle(2)); body.Persistent = true; body.Until = now.AddSeconds(12); body.Actor = 3;
+var wave = ThirdBoardGeometry.SelectWave(new[] { north, south, body }, Ymir);
+Check(wave.Contains(north) && wave.Contains(body) && !wave.Contains(south), "Inverse next wave must not erase current safe half");
+var small = Shape(P(110, -10), ThirdBoardHazard.Circle(2)); small.Until = now.AddSeconds(3);
+Check(ThirdBoardGeometry.SelectWave(new[] { north, small }, Ymir).Length == 2, "Compatible near-future hazard participates early");
+Console.WriteLine($"Third Board total: {checks} checks passed.");
+// Captured Water II failure: the east/south corner had room to escape inward,
+// but native avoidance repeatedly reported no path. Reject wall shortcuts and
+// paths into a second circle while allowing the initial occupied circle exit.
+var trapped = P(137.034f, -16.241f);
+var water = Shape(P(137.011f, -16.251f), ThirdBoardHazard.Circle(6.5f)); water.Action = 48483;
+Check(ThirdBoardGeometry.WaterEscapeCorridor(trapped, P(133, -9), new[] { water }), "Water corner has an inward escape");
+Check(!ThirdBoardGeometry.WaterEscapeCorridor(trapped, P(146, -16), new[] { water }), "Water escape cannot cross the arena wall");
+var otherWater = Shape(P(132, -10), ThirdBoardHazard.Circle(3)); otherWater.Action = 48483;
+Check(!ThirdBoardGeometry.WaterEscapeCorridor(trapped, P(129, -6), new[] { water, otherWater }), "Water escape cannot cross another circle");
+Check(!ThirdBoardGeometry.WaterEscapeCorridor(P(140, -16), P(129, -16), new[] { water }), "Water escape cannot first deepen penetration");
+Console.WriteLine($"Third Board total including Water II recovery: {checks} checks passed.");
+// Siren's interpolated relocation must not need an8y single-tick jump.
+Check(ThirdBoardGeometry.SirenRelocated(P(120, -426), P(132, -408), .3), "Interpolated edge relocation predicts Melody");
+Check(!ThirdBoardGeometry.SirenRelocated(P(120, -420), P(123, -420), .4), "Ordinary pursuit is not teleport");
+Check(!ThirdBoardGeometry.SirenRelocated(P(120, -426), P(132, -408), 2), "Stale snapshot is not teleport evidence");
+Check(!ThirdBoardGeometry.SirenRelocated(P(105, -435), P(120, -420), .2), "Center relocation is not an edge cone");
+var liveMelody = Shape(P(105.151f, -434.849f), ThirdBoardHazard.Cone(50.5f, 46), MathF.PI / 4);
+Check(liveMelody.Contains(P(132.212f, -408.823f)), "Captured Siren failure lies inside the sustained cone");
+Check(ThirdBoardGeometry.Candidates(Siren).Any(p => !liveMelody.Contains(p) &&
+    ThirdBoardGeometry.InArena(p, Siren, 1) && Enumerable.Range(0, 8).All(i =>
+        !liveMelody.Contains(p + ThirdBoardGeometry.Direction(i * MathF.PI / 4) * .6f))),
+    "Siren has an in-arena lateral refuge with arrival clearance");
+Console.WriteLine($"Third Board total including movement handoff: {checks} checks passed.");
+// Bleeding-rim clearance must constrain circle, square, alcove and corridor
+// destinations without removing the small Farburst refuge beside an edge eye.
+Check(!ThirdBoardGeometry.InArena(P(139, -420), Siren), "Circle rim is excluded even with default inset");
+Check(!ThirdBoardGeometry.InArena(P(139, 0), Ymir), "Square rim is excluded");
+Check(!ThirdBoardGeometry.InArena(P(522, -397.5f), Guttler), "Alcove side rim is excluded");
+Check(ThirdBoardGeometry.InArena(P(520, -397.5f), Guttler), "Alcove center remains usable");
+Check(!ThirdBoardGeometry.Corridor(P(120, -420), P(139, -420), Siren, Array.Empty<ThirdBoardHazard>()), "Route cannot terminate in bleeding rim");
+Check(ThirdBoardGeometry.Candidates(0x4C9B).Any(p => Vector2.Distance(p, P(141, -420)) < 4.5f), "Edge Farburst retains a reachable refuge");
+Console.WriteLine($"Third Board total including bleeding-rim clearance: {checks} checks passed.");
+// Cumulative motion from the last staging snapshot catches the recorded
+// interpolated displacement without confusing perpendicular repositioning.
+Check(ThirdBoardGeometry.LandslipMoved(P(119.187f, 5.981f), P(119.188f, -7.725f), MathF.PI), "Captured Landslip retires staging");
+Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(119, 5.5f), MathF.PI), "Small staging drift is not resolution");
+Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(124, 6), MathF.PI), "Cross-lane motion is not resolution");
+Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(119, 12), MathF.PI), "Opposite displacement is not resolution");
+Console.WriteLine($"Third Board total including Landslip handoff: {checks} checks passed.");
+// Melody and march resolve sequentially. A safe flank must permit a later
+// inward march even when that future segment crosses the current cone.
+var edge = ThirdBoardGeometry.SirenEdgeOrigin(P(120.537f, -400.361f));
+Check(Math.Abs(Vector2.Distance(edge, P(120, -420)) - 21) < .001f, "Interpolated Siren origin projects to captured edge");
+var song = Shape(P(120, -399), ThirdBoardHazard.Cone(50.5f, 46), MathF.PI); song.Action = 48566;
+var flank = P(128, -404);
+Check(ThirdBoardGeometry.MelodyRefuge(flank, song.Origin, new[] { song }, true), "Flank permits inward march after Melody");
+Check(!ThirdBoardGeometry.MelodyRefuge(P(120, -410), song.Origin, new[] { song }, true), "Melody cone is unsafe while singing");
+Check(!ThirdBoardGeometry.MelodyRefuge(P(139, -420), song.Origin, new[] { song }, false), "Melody refuge excludes bleeding rim");
+var blocking = Shape(P(120, -420), ThirdBoardHazard.Circle(8)); blocking.Action = 48577;
+Check(!ThirdBoardGeometry.MelodyRefuge(flank, song.Origin, new[] { song, blocking }, true), "Future march still respects other hazards");
+foreach (float turn in new[] { 0f, MathF.PI, MathF.PI / 2, -MathF.PI / 2 })
+{
+    float inward = ThirdBoardGeometry.Heading(P(120, -420) - flank);
+    Check(Vector2.Distance(ThirdBoardGeometry.Direction(inward - turn + turn), Vector2.Normalize(P(120, -420) - flank)) < .001f, "March aura facing yields inward motion");
+}
+Console.WriteLine($"Third Board total including Melody/march sequencing: {checks} checks passed.");
+
+// Melee preference must not trade safety or destination stability for damage.
+var target = P(0, 0);
+var heldMelee = P(4, 0);
+Check(ThirdBoardGeometry.PreferMeleeRefuge(heldMelee, P(10, 0), target, 5,
+    new[] { P(5, 0) }, p => true, (a, b) => true) == heldMelee, "Keep safe held melee rather than churn closer candidates");
+Check(ThirdBoardGeometry.PreferMeleeRefuge(null, P(10, 0), target, 5,
+    new[] { P(4, 0) }, p => true, (a, b) => false) == null, "Blocked corridor cannot gain melee preference");
+Check(ThirdBoardGeometry.PreferMeleeRefuge(null, P(10, 0), target, 5,
+    new[] { P(4, 0) }, p => p.Length() > 6, (a, b) => true) == null, "No safe melee must preserve caller refuge fallback");
+var strip = ThirdBoardGeometry.PreferMeleeRefuge(null, P(15, 0), target, 10.9f,
+    Array.Empty<Vector2>(), p => p.Length() > 10.5f, (a, b) => true);
+Check(strip.HasValue && strip.Value.Length() > 10.5f && strip.Value.Length() <= 10.9f,
+    "Melee ring can find narrow safe strip outside Sludge when grid has no sample");
+Check(ThirdBoardGeometry.PreferMeleeRefuge(P(4, 0), P(10, 0), target, 5,
+    new[] { P(-4, 0) }, p => p.X < 0, (a, b) => true)?.X < 0, "New hazards invalidate an unsafe held melee point");
+Console.WriteLine($"Third Board total including safe melee preference: {checks} checks passed.");
+
+// Reproduce the Master failure independently of RB's missing local SpanRef.
+// Safe destinations must not authorize wall detours or crossing persistent ice.
+var masterCenter = P(120, 0);
+bool MasterFloor(Vector2 p) => Math.Abs(p.X - 120) <= 18.75f && Math.Abs(p.Y) <= 18.75f;
+var clock = DateTime.UtcNow;
+Check(!MasterFloor(P(134.813f, 21.255f)), "Darling's recorded bleeding position must be forbidden");
+Check(!MasterArenaMovement.Corridor(P(120, 0), P(120, 21), MasterFloor, Array.Empty<ThirdBoardHazard>(), clock), "No route may cross the bleeding perimeter");
+var ice = Shape(P(120, 0), ThirdBoardHazard.Circle(9.5f)); ice.Persistent = true;
+Check(!MasterArenaMovement.Corridor(P(105, 0), P(135, 0), MasterFloor, new[] { ice }, clock), "Safe endpoints cannot authorize crossing persistent ice");
+var detour = MasterArenaMovement.Route(P(105, 0), P(135, 0), masterCenter, MasterFloor, new[] { ice }, clock);
+Check(detour.Length > 1, "Blocked straight approach must obtain interior graph detour");
+var prior = P(105, 0);
+foreach (var waypoint in detour) { Check(MasterArenaMovement.Corridor(prior, waypoint, MasterFloor, new[] { ice }, clock), "Every detour edge remains on safe floor"); prior = waypoint; }
+var bait = Shape(P(120, 0), ThirdBoardHazard.Circle(5.5f)); bait.Until = clock.AddSeconds(5.5);
+Check(MasterArenaMovement.Route(P(120, 0), P(127, 0), masterCenter, MasterFloor, new[] { bait }, clock).Length > 0, "Sheet of Ice can be escaped before its impact");
+var side = Shape(P(140, 0), ThirdBoardHazard.Rectangle(8, 100.5f), MathF.PI * 1.5f); side.Until = clock.AddSeconds(6);
+Check(MasterArenaMovement.Route(P(120, 2.592f), P(120, 10), masterCenter, MasterFloor, new[] { side }, clock).Length > 0, "Captured center Icy Torment has a bounded side escape");
+Check(MasterArenaMovement.Route(P(120, 0), P(120, 21), masterCenter, MasterFloor, Array.Empty<ThirdBoardHazard>(), clock).Length == 0, "Rejected boundary destination must never gain a route");
+var sweepFront = Shape(P(120, 10), ThirdBoardHazard.Cone(60.5f, 91)); sweepFront.Until = clock.AddSeconds(2.95);
+var sweepRear = Shape(P(120, 10), ThirdBoardHazard.Cone(60.5f, 91), MathF.PI); sweepRear.Until = clock.AddSeconds(4.95);
+Check(MasterArenaMovement.Route(P(120, 15), P(120, 5), masterCenter, MasterFloor, new[] { sweepFront }, clock).Length > 0, "Sweeping front has an interior route behind the landed boss");
+Check(MasterArenaMovement.Route(P(120, 5), P(120, 15), masterCenter, MasterFloor, new[] { sweepRear }, clock.AddSeconds(2.95)).Length > 0, "Sweeping rear permits the return crossing after front resolves");
+var touchdownSource = P(105, -15); var touchdownStage = P(110, -10);
+Check(Enumerable.Range(25, 6).All(d => MasterFloor(touchdownStage + Vector2.Normalize(touchdownStage - touchdownSource) * d)), "Captured corner Touchdown can land safely through the entire uncertainty envelope");
+Console.WriteLine($"Including Master route regressions: {checks} checks passed.");
+
+// Regression for the24-candidate truncation: every preferred point lies in
+// another component, but a later safe refuge remains reachable on our side.
+var divider = Shape(P(120, -20), ThirdBoardHazard.Rectangle(1, 40)); divider.Persistent = true;
+var choices = Enumerable.Range(0, 30).Select(i => P(125 + i % 5, -10 + i / 5)).Concat(new[] { P(110, 5) });
+var completeSearch = MasterArenaMovement.RouteToAny(P(110, 0), choices, masterCenter, MasterFloor, new[] { divider }, clock);
+Check(completeSearch.Length > 0 && completeSearch.Last() == P(110, 5), "Reachable refuge beyond24 preferred candidates must be considered");
+var blockedSearch = MasterArenaMovement.RouteToAny(P(110, 0), choices.Take(30), masterCenter, MasterFloor, new[] { divider }, clock);
+Check(blockedSearch.Length == 0, "Full search must not cross a persistent barrier just to satisfy melee preference");
+var vomit = Shape(P(920, -435), ThirdBoardHazard.Circle(6.5f)); vomit.Persistent = true;
+bool BorgnyFloor(Vector2 p) => Vector2.Distance(p, P(920, -420)) <= 18.75f;
+Check(!MasterArenaMovement.Corridor(P(910, -433), P(930, -433), BorgnyFloor, new[] { vomit }, clock), "Borgny puddle blocks a route even when endpoints are clear");
+Console.WriteLine($"Including full-refuge search: {checks} checks passed.");

@@ -313,7 +313,8 @@ namespace DutyMechanic.Dungeons
                 new System.Numerics.Vector2(h.Origin.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading),
                     h.Origin.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
             var position = new System.Numerics.Vector2(Core.Me.Location.X, Core.Me.Location.Z);
-            var destination = ManticoreSafePosition.Choose(position, new System.Numerics.Vector2(Center.X, Center.Z), 18.5f, polygons, halfRoomDestination, false);
+            // Shared preference ranks only destinations that pass dodge safety.
+            var destination = ManticoreSafePosition.Choose(position, new System.Numerics.Vector2(Center.X, Center.Z), 18.5f, polygons, halfRoomDestination, false, preference: CrucibleMeleePreference.Capture());
             if (!destination.HasValue)
             {
                 // An unexpected overlap must retain the existing native escape

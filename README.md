@@ -51,11 +51,13 @@ It will automatically install the files into the correct folders and keep them u
 
 ### Crucible of the Unbroken
 
-First and Second Board mechanics live in `Dungeons/Crucible`, with separate territory registrations for 1339 and 1340. The folder keeps encounter-specific movement lifetimes and pure geometry planners together. Third Board is not implemented. Entry, board navigation, purchases and Beastmaster rotation belong to the calling profile/plugin and combat routine; these handlers own encounter mechanics.
+First, Second, Third and First Master's Board mechanics live in `Dungeons/Crucible`, registered for territories 1339–1342. Third Board and First Master's Board cover the captured six-encounter routes; alternate branches remain unsupported. Entry, board navigation, purchases and Beastmaster rotation belong to the calling profile/plugin and combat routine.
+
+The handlers preserve safe melee positions where possible, but mechanic positioning takes priority. Third Board includes knockback staging, forced march, moving-eye predictions and Guttler's alcove geometry. First Master's Board includes transformation pads, far briar shelter and post-pull exit, sequential Ice Dragon/Gargoyle attacks, persistent ground hazards and moving Poison Clouds. Local navigation recovery is limited to the encounters where native pathfinding failed; other geometry remains under native avoidance.
 
 When updating an installation that previously received development sources from PandaCrucible, close that RB instance normally and remove the old flat `Dungeons` copies of the ten files now in `Dungeons/Crucible` after backing them up outside the plugin. Keeping both layouts causes duplicate type definitions. PandaCrucible no longer installs or patches DutyMechanic.
 
-Offline geometry replays are under `Tests/Crucible`: run `dotnet run --project Tests/Crucible/ArchPathReplay`, and likewise `FirePlannerReplay`, `ManticoreReplay`, and `WyvernPlannerReplay`. Fixtures use `.cs.test` so RB's recursive source compiler does not load console entry points. Each replay links the production planner; it verifies captured geometry, not live client timing or unattended reliability.
+Offline geometry replays are under `Tests/Crucible`: run `dotnet run --project Tests/Crucible/ArchPathReplay`, and likewise `FirePlannerReplay`, `ManticoreReplay`, `WyvernPlannerReplay` and `ThirdBoardReplay`. The latter also covers First Master's navigation and briar positioning. Fixtures use `.cs.test` so RB's recursive source compiler does not load console entry points. Each replay links production geometry; it does not establish live client timing or unattended reliability. Moving-cloud contact margins and the latest First Master's positioning changes still require live validation.
 
 ⚠️ Some classes may not survive certain bosses. ⚠️ If you can't clear even after tuning combat routine settings, try running the previous dungeon until you out-level and can skip the "difficult" one. Also, tank privilege is real. Tanks will have the best success.
 

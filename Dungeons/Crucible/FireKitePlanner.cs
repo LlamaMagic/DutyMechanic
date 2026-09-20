@@ -31,7 +31,7 @@ namespace DutyMechanic.Dungeons
         // The bounded beam retains spatial alternatives rather than only the
         // locally greatest separation. All returned routes reach the horizon.
         internal static Vector2[] Plan(Vector2 start, Vector2 fire, Vector2 center,
-            Vector2[] pools, Cone[] cones, double stationarySeconds, double blastIn, double sprintSeconds, Vector2? preferred, Action<int, int> observe = null)
+            Vector2[] pools, Cone[] cones, double stationarySeconds, double blastIn, double sprintSeconds, Vector2? preferred, Action<int, int> observe = null, Func<Vector2, int> meleePreference = null)
         {
             const float dt = .5f, fireSpeed = 3.2f;
             float initialGap = Vector2.Distance(start, fire);
@@ -81,6 +81,10 @@ namespace DutyMechanic.Dungeons
                             continue;
                         float turnPenalty = node.Direction >= 0 && node.Direction != direction ? .08f : 0;
                         float score = node.Score - turnPenalty - (direction == 16 ? 0 : .015f);
+                        // Reward melee uptime only after all timed leg samples
+                        // passed. A modest 0.1 per half-second cannot waive fire
+                        // separation, blast timing, pools or cone constraints.
+                        if (meleePreference != null && meleePreference(end) == 0) score += .1f;
                         if (step == 0 && preferred.HasValue)
                             score -= Vector2.Distance(end, preferred.Value) * .12f;
                         var candidate = new State { Player = end, Fire = predictedFire, MinimumGap = minimum, Score = score, Direction = direction, Route = new List<Vector2>(node.Route) };

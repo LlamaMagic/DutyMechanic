@@ -1,4 +1,4 @@
-﻿using DutyMechanic.Data;
+using DutyMechanic.Data;
 using DutyMechanic.Dungeons;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
@@ -20,6 +20,12 @@ internal static class DungeonManager
             // Crucible boards use distinct territories and encounter lifetimes.
             { (ZoneId)1339, typeof(FirstBoardOfUnbroken) },
             { (ZoneId)1340, typeof(SecondBoardOfUnbroken) },
+            // Third Board has separate actors and arena geometry; its controller
+            // still gates entry to the six captured route encounters.
+            { (ZoneId)1341, typeof(ThirdBoardOfUnbroken) },
+            // First Master's Board is a distinct territory; registration must
+            // travel with its captured-route handler or combat has no mechanics.
+            { (ZoneId)1342, typeof(FirstMastersBoard) },
 
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },
