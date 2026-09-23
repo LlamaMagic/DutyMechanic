@@ -11,6 +11,118 @@ Vector2 P(float x, float z) => new Vector2(x, z);
 ThirdBoardHazard Shape(Vector2 origin, Vector2[] points, float heading = 0) =>
     new ThirdBoardHazard { Origin = origin, Points = points, Heading = heading };
 const uint Guttler = 0x4CAA, Siren = 0x4CA1, Ymir = 0x4C93;
+// Acid Rain receipts outlive the following boss cast. Exercise the same planner
+// against independent pursuit motion, not just its generated destination list.
+var rainClock = new DateTime(2026, 9, 23, 15, 0, 0, DateTimeKind.Utc);
+var rain = new CorpseFlowerRain();
+rain.Start(P(0, 0), rainClock.AddSeconds(2));
+Check(rain.Predict(P(8, 0)) == P(0, 0), "Initial rain circle must remain at its bait");
+Check(!rain.Observe(48694, 0, P(0, 0), P(8, 0), rainClock), "Zero sequence cannot count a rain hit");
+rain.Observe(48693, 10, P(0, 0), P(8, 0), rainClock.AddSeconds(2));
+rain.Observe(48693, 10, P(0, 0), P(8, 0), rainClock.AddSeconds(2));
+Check(rain.Impacts == 1 && rain.Predict(P(8, 0)) == P(5, 0), "Duplicate receipt or five-yalm chase prediction failed");
+Check(rain.Escape(P(8, 0), P(1, 0), rainClock.AddSeconds(2), _ => false, _ => 0) == null, "Blocked rain route must fail closed");
+for (uint i = 11; i <= 17; i++) rain.Observe(48694, i, P(0, 0), P(20, 0), rainClock.AddSeconds(i - 8));
+Check(rain.Active(rainClock.AddSeconds(9.2)) && !rain.Active(rainClock.AddSeconds(9.5)), "Final impact needs a short receipt grace");
+rain.Start(P(0, 0), rainClock);
+rain.Update(P(10, 0), rainClock.AddSeconds(.3));
+Check(rain.Impacts == 0 && rain.Active(rainClock.AddSeconds(9)) && !rain.Active(rainClock.AddSeconds(10)), "Missing receipts need bounded prediction, not fabricated completion");
+rain.Observe(48693, 30, P(0, 0), P(10, 0), rainClock.AddSeconds(.4));
+Check(rain.Impacts == 1 && rain.Predict(P(10, 0)) == P(5, 0), "Late first receipt must not advance pursuit twice after timer fallback");
+rain.Reset(); Check(!rain.Active(rainClock), "Encounter reset must release rain");
+// Report planner cost separately from build/test startup; a bounded route must
+// not recreate the large per-frame searches that previously stalled the game.
+var rainPlanning = new System.Diagnostics.Stopwatch();
+int rainPlans = 0;
+foreach (var start in new[] { P(17, 0), P(-17, 0), P(0, 17) })
+{
+    rain.Start(start, rainClock.AddSeconds(1.7));
+    Vector2 runner = start, heading = Vector2.Normalize(new Vector2(-start.Y, start.X)), previousImpact = start;
+    int impacts = 0, unsafeHits = 0, missingLegs = 0; Vector2? plannedLeg = null;
+    for (int tick = 0; tick < 184; tick++)
+    {
+        var rainNow = rainClock.AddSeconds(tick * .05);
+        if (tick >= 34 && (tick - 34) % 20 == 0 && impacts < 8)
+        {
+            if (impacts > 0)
+            {
+                var delta = runner - previousImpact;
+                previousImpact += delta.Length() > 5 ? Vector2.Normalize(delta) * 5 : delta;
+            }
+            if (Vector2.Distance(runner, previousImpact) < 6) unsafeHits++;
+            rain.Observe(impacts == 0 ? 48693u : 48694u, (uint)++impacts, previousImpact, runner, rainNow);
+        }
+        if (!rain.Active(rainNow)) break;
+        if (tick % 5 == 0 || !plannedLeg.HasValue)
+        {
+            rainPlanning.Start();
+            plannedLeg = rain.Escape(runner, heading, rainNow, p => p.Length() <= 18.75f, _ => 0);
+            rainPlanning.Stop();
+            rainPlans++;
+        }
+        var leg = plannedLeg;
+        if (!leg.HasValue) { if (missingLegs == 0) Console.WriteLine($"RAIN blocked tick={tick} player={runner} direction={heading} forecast={rain.Predict(runner)} due={rain.NextAt:o}"); missingLegs++; continue; }
+        heading = Vector2.Normalize(leg.Value - runner);
+        runner += heading * .3f;
+        Check(runner.Length() <= 18.75f, "Continuous rain route crossed arena boundary");
+    }
+    Check(unsafeHits == 0 && missingLegs == 0, $"Rain pursuit simulation failed at {start}: hits={unsafeHits}, missing legs={missingLegs}");
+}
+Console.WriteLine($"Acid Rain planning: {rainPlans} calls, {rainPlanning.Elapsed.TotalMilliseconds / rainPlans:F2}ms mean (offline floor predicate).");
+// The old live-heading forecast chose a different rim. Packet rotation must
+// remain fixed throughout the jump; duplicate/stale responses cannot end it.
+var breathPrediction = new BorgnyBreathPrediction();
+breathPrediction.Start(P(920, -420), MathF.PI / 2, new uint[] { 100 });
+Check(Vector2.Distance(breathPrediction.Origin, P(900.3f, -420)) < .001f, "Cast rotation predicts western rear rim");
+Check(Vector2.Distance(breathPrediction.Forward, P(1, 0)) < .001f, "Predicted cone faces inward");
+breathPrediction.Observe(48808, 100);
+breathPrediction.Observe(48809, 101);
+breathPrediction.Observe(48808, 0);
+Check(breathPrediction.Pulses == 0, "Old, unrelated and zero responses do not count");
+for (uint seq = 102; seq < 107; seq++) { breathPrediction.Observe(48808, seq); breathPrediction.Observe(48808, seq); }
+Check(breathPrediction.Active && breathPrediction.Pulses == 5, "Five unique pulses must retain refuge");
+breathPrediction.Observe(48808, 107);
+Check(!breathPrediction.Active && breathPrediction.Pulses == 6, "Sixth unique effect releases refuge");
+breathPrediction.Start(P(920, -420), 0, Array.Empty<uint>());
+Check(breathPrediction.Active && breathPrediction.Pulses == 0 && Vector2.Distance(breathPrediction.Origin, P(920, -439.7f)) < .001f, "New cast replaces previous direction and counter");
+breathPrediction.Reset();
+Check(!breathPrediction.Active, "Encounter reset releases prediction");
+// Quake uptime must never trade away the required levitation refuge.
+var quakeEdge = MasterArenaMovement.LevitationPosition(P(0, 0), P(12, 0), 5.84f, _ => true).Value;
+Check(quakeEdge == P(5.65f, 0), "Unreachable melee must retain inset edge");
+Check(quakeEdge.Length() + .1f <= 5.75f, "Quake arrival leaves quarter-yalm pad clearance");
+var quakeMelee = MasterArenaMovement.LevitationPosition(P(0, 0), P(11, 0), 5.84f, _ => true).Value;
+Check(Vector2.Distance(quakeMelee, P(11, 0)) + .1f < 5.84f, "Worst permitted arrival remains inside actual melee reach when refuge overlaps");
+var quakeFallback = MasterArenaMovement.LevitationPosition(P(0, 0), P(0, -12), 5.84f, p => p.Y >= -3).Value;
+Check(quakeFallback.Y >= -3 && quakeFallback.Y < -2.5f, "Quake falls inward when edge is unsafe");
+Check(MasterArenaMovement.LevitationPosition(P(0, 0), P(0, 0), 5.84f, _ => true) == P(0, 0), "Coincident pad and boss cannot normalize zero");
+Check(!MasterArenaMovement.LevitationPosition(P(0, 0), P(12, 0), 5.84f, _ => false).HasValue, "No safe pad point cannot authorize leaving refuge");
+// Repeated native positions between updates must not erase the forward avoid.
+var cloudMotion = new CloudMotionPrediction();
+var cloudTime = new DateTime(2026, 9, 23, 0, 20, 0, DateTimeKind.Utc);
+Check(cloudMotion.Observe(P(0, 0), cloudTime) == Vector2.Zero, "New cloud cannot invent velocity");
+Check(cloudMotion.Observe(P(.2f, 0), cloudTime.AddMilliseconds(100)) == P(2, 0), "Measured cloud travel projects one second");
+Check(cloudMotion.Observe(P(.2f, 0), cloudTime.AddMilliseconds(105)) == P(2, 0), "Fast duplicate poll retains forward coverage");
+Check(cloudMotion.Observe(P(.2f, 0), cloudTime.AddMilliseconds(180)) == P(2, 0), "Duplicate native frames do not alternate forecast geometry");
+Check(cloudMotion.Observe(P(.2f, 0), cloudTime.AddMilliseconds(200)) == Vector2.Zero, "Confirmed stationary cloud releases stale direction");
+Check(cloudMotion.Observe(P(-.2f, 0), cloudTime.AddMilliseconds(300)) == P(-4, 0), "Direction change replaces old forecast");
+Check(cloudMotion.Observe(P(10, 0), cloudTime.AddSeconds(2)) == Vector2.Zero, "Long observation gap discards velocity");
+Check(cloudMotion.Observe(P(20, 0), cloudTime.AddSeconds(2.1)) == P(6, 0), "Interpolation correction remains bounded");
+// Cloud lead coverage must include the swept corridor without consuming the
+// same extra space behind or beside it. Exercise every direction to catch
+// mismatches between world X/Z and the hazard's local polygon coordinates.
+foreach (var direction in new[] { P(1, 0), P(-1, 0), P(0, 1), P(0, -1), Vector2.Normalize(P(1, 1)) })
+{
+    var cloud = Shape(P(10, 20), ThirdBoardHazard.SweptCircle(1.5f, direction * 2));
+    var cloudSide = new Vector2(-direction.Y, direction.X);
+    Check(cloud.Contains(P(10, 20)), "Cloud current center remains unsafe");
+    Check(cloud.Contains(P(10, 20) + direction * 3.4f), "Cloud future leading edge triggers early avoidance");
+    Check(cloud.Contains(P(10, 20) + direction + cloudSide * 1.49f), "Swept corridor cannot leave a crossing gap");
+    Check(!cloud.Contains(P(10, 20) - direction * 1.6f), "Prediction must not grow behind departing cloud");
+    Check(!cloud.Contains(P(10, 20) + direction + cloudSide * 1.6f), "Prediction must preserve lateral safe space");
+}
+var stationaryCloud = Shape(P(0, 0), ThirdBoardHazard.SweptCircle(1.5f, Vector2.Zero));
+Check(stationaryCloud.Contains(P(1.49f, 0)) && !stationaryCloud.Contains(P(1.6f, 0)), "Stationary/new cloud uses contact disk without invented heading");
 // The closest/melee-aligned briar must lose to the farthest safe patch. Egress
 // cannot trade thorn clearance for a route into the flower or another hazard.
 var briars = new[] { P(2, 0), P(12, 0), P(8, 4) };
@@ -189,3 +301,588 @@ var vomit = Shape(P(920, -435), ThirdBoardHazard.Circle(6.5f)); vomit.Persistent
 bool BorgnyFloor(Vector2 p) => Vector2.Distance(p, P(920, -420)) <= 18.75f;
 Check(!MasterArenaMovement.Corridor(P(910, -433), P(930, -433), BorgnyFloor, new[] { vomit }, clock), "Borgny puddle blocks a route even when endpoints are clear");
 Console.WriteLine($"Including full-refuge search: {checks} checks passed.");
+
+// Native staging must expose a region, cover the opposite side of the arena,
+// and reject a center whose surrounding body/landing clearance is unsafe.
+var staging = ThirdBoardGeometry.RefugeMask(P(120, 0));
+Check(!staging.Any(h => h.Contains(P(120, 0))), "Native refuge center remains walkable");
+Check(!staging.Any(h => h.Contains(P(120.5f, .1f))), "Native refuge accepts a region rather than an exact coordinate");
+Check(staging.Any(h => h.Contains(P(121, .1f))), "Leaving the staging interior triggers native avoidance");
+Check(staging.Any(h => h.Contains(P(60, 30))), "Opposite arena edge cannot escape outside the staging donut");
+Check(ThirdBoardGeometry.RefugeFits(P(120, 0), 1.25f, p => Math.Abs(p.X - 120) < 1.5f), "Guttler centerline permits a refuge with clearance");
+Check(!ThirdBoardGeometry.RefugeFits(P(121, 0), 1.25f, p => Math.Abs(p.X - 120) < 1.5f), "A safe center alone cannot authorize a clipped refuge");
+Check(!ThirdBoardGeometry.RefugeFits(P(120, 0), 1.25f, p => Math.Abs(p.X - 120.5f) > .1f), "Interior hazard is checked as well as the outer perimeter");
+Console.WriteLine($"Including native staging regions: {checks} checks passed.");
+
+// September21 captures: mutable eye publications regenerated native escape at
+//23Hz, while completed escapes continued moving through pursuit leases.
+var eyeSource = Shape(P(120, -420), ThirdBoardHazard.Circle(2.5f));
+eyeSource.Persistent = true;
+var eyePublication = new ThirdBoardEyePublication(eyeSource, clock);
+var initialPublication = eyePublication.Hazard;
+var previousOrigin = initialPublication.Origin;
+int updates = 0;
+for (int tick = 1; tick <= 90; tick++)
+{
+    eyeSource.Origin = P(120 + tick / 15f, -420); // Two yalms/sec at30Hz.
+    var snapshot = eyePublication.Read(eyeSource, clock.AddSeconds(tick / 30.0));
+    Check(ReferenceEquals(snapshot, initialPublication), "Eye publication identity must remain stable");
+    if (snapshot.Origin != previousOrigin) updates++;
+    previousOrigin = snapshot.Origin;
+    Check(Enumerable.Range(0, 32).All(i => snapshot.Contains(eyeSource.Origin + ThirdBoardGeometry.Direction(i * MathF.PI / 16) * 2.5f)), "Envelope must preserve the entire live contact safety circle");
+}
+Check(updates <= 15, "Normal moving eye must publish at most5Hz instead of bot-tick frequency");
+eyeSource.Origin += P(10, 0);
+Check(eyePublication.Read(eyeSource, clock.AddSeconds(3.01)).Origin == eyeSource.Origin, "Unexpected displacement bypasses the publication timer");
+var stationaryOrigin = eyePublication.Hazard.Origin;
+eyeSource.Origin += P(.1f, .1f);
+Check(eyePublication.Read(eyeSource, clock.AddSeconds(4)).Origin == stationaryOrigin, "Sub-quarter-yalm jitter must not replan a settled escape");
+
+foreach (float direction in new[] { 0f, MathF.PI / 2, MathF.PI, -MathF.PI / 2, 3.141f })
+{
+    bool TsunamiSafe(Vector2 p) => ThirdBoardGeometry.InArena(p, Ymir) && ThirdBoardGeometry.InArena(p + ThirdBoardGeometry.Direction(direction) * 35, Ymir);
+    var refuge = ThirdBoardGeometry.Candidates(Ymir, .5f).Where(p => ThirdBoardGeometry.RefugeFits(p, 1f, TsunamiSafe)).ToArray();
+    Check(refuge.Length > 0, "Tsunami must retain staging for cardinal and captured rounded heading");
+    Check(refuge.All(p => ThirdBoardGeometry.RefugeFits(p, .75f, TsunamiSafe)), "Entire native staging interior preserves landing/wall clearance");
+}
+foreach (var origin in new[] { P(120.870285f, -440.98196f), P(104.53508f, -405.7931f), P(141, -420), P(120, -399) })
+{
+    var capturedMelody = Shape(origin, ThirdBoardHazard.Cone(50.5f, 46), ThirdBoardGeometry.Heading(ThirdBoardGeometry.Center(Siren) - origin));
+    capturedMelody.Action = 48566;
+    foreach (bool marching in new[] { false, true })
+        Check(ThirdBoardGeometry.Candidates(Siren).Any(p => ThirdBoardGeometry.RefugeFits(p, 1.25f, q => ThirdBoardGeometry.MelodyRefuge(q, origin, new[] { capturedMelody }, marching))), "Captured Melody origins must retain full safe flanks before and during march preparation");
+}
+Console.WriteLine($"Including eye publication, escape cleanup, Tsunami and Melody: {checks} checks passed.");
+
+// The enlarged contact envelope must not eliminate Farburst's small refuge
+// beside an eye at the measured circular arena rim.
+foreach (var origin in new[] { P(99.069f, -420.029f), P(134.800f, -405.229f), P(105.239f, -434.813f) })
+{
+    var contactSource = Shape(origin, ThirdBoardHazard.Circle(2.5f));
+    var contactEnvelope = new ThirdBoardEyePublication(contactSource, clock).Hazard;
+    var farburst = ThirdBoardHazard.Donut(4.5f, 50.5f).Select(points => Shape(origin, points)).ToArray();
+    Check(ThirdBoardGeometry.Candidates(0x4C9B, .5f).Any(p => !contactEnvelope.Contains(p) && farburst.All(h => !h.Contains(p))), "Farburst refuge survives bounded contact publication without relaxing bleeding protection");
+}
+Console.WriteLine($"Including Farburst envelope clearance: {checks} checks passed.");
+
+// RB79084, September21: four alternating Landslip lanes followed by three
+// Rockslide lines. The observed stationary point lands beyond the bleeding rim;
+// explicit staging must retain legal starts whose landings miss the follow-up.
+var capturedLanes = new[] {
+    Shape(P(105, -22), ThirdBoardHazard.Rectangle(5, 45, 0), 6.283f),
+    Shape(P(135, 22), ThirdBoardHazard.Rectangle(5, 45, 0), 3.141f),
+    Shape(P(125, -22), ThirdBoardHazard.Rectangle(5, 45, 0), 6.283f),
+    Shape(P(115, 22), ThirdBoardHazard.Rectangle(5, 45, 0), 3.141f)
+};
+var slides = new[] {
+    Shape(P(98, 5), ThirdBoardHazard.Rectangle(5.5f, 45.5f), 1.571f),
+    Shape(P(142, -15), ThirdBoardHazard.Rectangle(5.5f, 45.5f), 4.713f),
+    Shape(P(105, 22), ThirdBoardHazard.Rectangle(5.5f, 45.5f), 3.141f)
+};
+bool CapturedLandingSafe(Vector2 point)
+{
+    var active = capturedLanes.Where(h => h.Contains(point)).ToArray();
+    if (active.Length != 1 || !ThirdBoardGeometry.InArena(point, Ymir)) return false;
+    var landing = point + ThirdBoardGeometry.Direction(active[0].Heading) * 20;
+    return ThirdBoardGeometry.InArena(landing, Ymir) && slides.All(h => !h.Contains(landing));
+}
+Check(!CapturedLandingSafe(P(120.186f, 5.875f)), "Captured stationary Landslip position must be rejected");
+Check(ThirdBoardGeometry.Candidates(Ymir, .5f).Any(CapturedLandingSafe), "Captured Landslip/Rockslide overlap retains explicit staging destinations");
+Console.WriteLine($"Including captured Landslip staging: {checks} checks passed.");
+
+// Sept22 west/east backsteps must choose the same inward axis despite the
+// choreography's stale heading. The observed bad west shelter was far forward.
+var breathCenter = P(920, -420);
+var westBreath = P(900.5416f, -420.0046f);
+var westForward = MasterArenaMovement.BreathForward(westBreath, breathCenter, 5.695f);
+Check(Vector2.Dot(westForward, Vector2.UnitX) > .999f, "West Breath must face inward, not along its old heading");
+var eastForward = MasterArenaMovement.BreathForward(P(939.5742f, -420), breathCenter, 5.793f);
+Check(Vector2.Dot(eastForward, -Vector2.UnitX) > .999f, "East Breath must mirror the side shelter");
+Check(Vector2.Dot(Vector2.Normalize(P(902, -427) - westBreath), westForward) <
+      Vector2.Dot(Vector2.Normalize(P(916.45f, -436.98f) - westBreath), westForward),
+      "Near-wall side shelter must outrank the captured damaging forward position");
+Console.WriteLine($"Including observed Breath backsteps: {checks} checks passed.");
+
+// Sept22 north backstep: stage behind the initial cast direction rather than
+// following choreography turns toward the opposite rim. Every route stays in
+// the inset circular arena, including when a puddle blocks the nearest endpoint.
+var stagingForward = ThirdBoardGeometry.Direction(2.414f);
+bool BreathFloor(Vector2 p) => Vector2.Distance(p, breathCenter) <= 18.75f;
+var stagingGoals = Enumerable.Range(-18, 37).SelectMany(x => Enumerable.Range(-18, 37).Select(z => breathCenter + P(x, z)))
+    .Where(p => MasterArenaMovement.BreathStaging(p, breathCenter, stagingForward, 18.75f)).ToArray();
+Check(stagingGoals.Length > 1, "Breath staging retains multiple rear-rim refuges");
+Check(MasterArenaMovement.BreathStaging(P(915, -402), breathCenter, stagingForward, 18.75f), "Northwest rear rim matches the captured initial Breath facing");
+Check(!MasterArenaMovement.BreathStaging(P(927, -433), breathCenter, stagingForward, 18.75f), "Captured southeast detour is not pre-jump staging");
+var stagingRoute = MasterArenaMovement.RouteToAny(P(909.949f, -418.053f), stagingGoals, breathCenter, BreathFloor, Array.Empty<ThirdBoardHazard>(), DateTime.UtcNow);
+Check(stagingRoute.Length > 0 && stagingRoute.All(BreathFloor), "Captured Breath start has an interior route to the rear rim");
+var puddleCenters = new[] { P(928, -408), P(930, -418) };
+Check(MasterArenaMovement.PuddleClearance(P(905, -425), puddleCenters) > MasterArenaMovement.PuddleClearance(P(924.926f, -409.323f), puddleCenters), "Phlegm prefers separation from the nearest poison puddle, not boss melee");
+Check(MasterArenaMovement.PuddleClearance(breathCenter, Array.Empty<Vector2>()) == 0, "No poison puddles yields a stable distance tie, not an invalid score");
+Console.WriteLine($"Including Breath staging and Phlegm placement: {checks} checks passed.");
+
+// Safe endpoints alone allowed routes through Borgny's lingering cone. Replay
+// the north landing and a puddle-separated Gargoyle orb using production routes.
+var lingeringBreath = MasterArenaMovement.BreathCone(P(920, -400.5f), P(0, -1));
+Check(lingeringBreath.Contains(P(920, -420)), "Breath includes arena center after north landing");
+Check(!lingeringBreath.Contains(P(929, -403)), "Near-wall lateral refuge is outside Breath");
+Check(!MasterArenaMovement.Corridor(P(911, -403), P(929, -403), BreathFloor, new[] { lingeringBreath }, clock), "Do not cross Breath between safe side refuges");
+var orbBarrier = new ThirdBoardHazard { Origin = P(120, 0), Points = ThirdBoardHazard.Circle(3), Persistent = true, Until = DateTime.MaxValue };
+Check(!MasterArenaMovement.Corridor(P(114, 0), P(126, 0), MasterFloor, new[] { orbBarrier }, clock), "Orb direct segment is blocked");
+Check(MasterArenaMovement.Route(P(114, 0), P(126, 0), masterCenter, MasterFloor, new[] { orbBarrier }, clock).Length > 1, "An orb across a puddle remains reachable by detour");
+Console.WriteLine($"Including lingering Breath and orb detours: {checks} checks passed.");
+// An indefinite actor avoid must never acquire a speculative crossing window,
+// even if a future caller accidentally omits the persistent flag.
+var indefiniteOrb = new ThirdBoardHazard { Origin = P(120, 0), Points = ThirdBoardHazard.Circle(2), Until = DateTime.MaxValue };
+Check(!MasterArenaMovement.Corridor(P(114, 0), P(126, 0), MasterFloor, new[] { indefiniteOrb }, clock), "Indefinite orb cannot be crossed before an imaginary activation");
+Console.WriteLine($"Including indefinite-avoid safety: {checks} checks passed.");
+
+// Sept22 live failures: the old one-degree margin accepted these damaging
+// flank positions. The perpendicular inset must reject both while preserving
+// a reachable, in-melee refuge inside the unchanged circular boundary.
+var bufferedWest = MasterArenaMovement.BreathCone(westBreath, westForward);
+Check(bufferedWest.Contains(P(906.0994f, -429.89944f)), "Captured west cone-edge hit is no longer safe");
+Check(lingeringBreath.Contains(P(934.046f, -408.226f)), "Captured north cone-edge hit is no longer safe");
+var flankGoals = Enumerable.Range(-37, 75).SelectMany(x => Enumerable.Range(-37, 75)
+    .Select(z => breathCenter + P(x * .5f, z * .5f)))
+    .Where(p => BreathFloor(p) && !bufferedWest.Contains(p) && Vector2.Distance(p, westBreath) <= 10).ToArray();
+Check(flankGoals.Length > 0, "Buffered Breath preserves an interior melee flank");
+var flankRoute = MasterArenaMovement.RouteToAny(P(906.0994f, -429.89944f), flankGoals, breathCenter, BreathFloor, new[] { bufferedWest }, clock);
+Check(flankRoute.Length > 0 && flankRoute.All(BreathFloor), "Damaging flank can escape to buffered refuge without crossing the boundary");
+
+// A cloud overlap can disconnect a complete route while an immediate short
+// egress remains possible. Partial escape must never enter a new hazard, move
+// deeper into an occupied field, or use the boundary as a cheaper alternative.
+var occupied = new ThirdBoardHazard { Origin = P(0, 0), Points = ThirdBoardHazard.Circle(8), Persistent = true };
+var neighbour = new ThirdBoardHazard { Origin = P(4, 0), Points = ThirdBoardHazard.Circle(1.5f), Persistent = true };
+bool EscapeFloor(Vector2 p) => p.Length() < 10;
+var escapeFields = new[] { occupied, neighbour };
+var partial = MasterArenaMovement.EscapeStep(P(1, 0), EscapeFloor, escapeFields);
+Check(partial.HasValue && occupied.Contains(partial.Value), "Partial egress progresses even when three yalms cannot clear the occupied field");
+Check(partial.HasValue && !neighbour.Contains(partial.Value), "Partial egress does not exchange occupied damage for a new cloud");
+Check(!MasterArenaMovement.ReducingExposure(P(1, 0), P(3, 0), EscapeFloor, escapeFields), "Egress rejects entering the neighbouring cloud");
+Check(!MasterArenaMovement.ReducingExposure(P(1, 0), P(-1, 0), EscapeFloor, new[] { occupied }), "Egress cannot initially deepen exposure");
+Check(!MasterArenaMovement.EscapeStep(P(9, 0), EscapeFloor, new[] { occupied }).HasValue, "Safe player does not enter emergency movement");
+Check(!MasterArenaMovement.ReducingExposure(P(7, 0), P(10, 0), EscapeFloor, new[] { occupied }), "Partial egress cannot cross the arena boundary");
+Console.WriteLine($"Including Borgny clearance and bounded partial escape: {checks} checks passed.");
+// Starting inside Breath does not authorize a full path through its deeper
+// center to the opposite flank, even when that endpoint would be safe.
+Check(!MasterArenaMovement.Corridor(P(920, -410), P(929, -425), BreathFloor, new[] { lingeringBreath }, clock), "Complete Breath escape cannot first deepen cone exposure");
+Console.WriteLine($"Including full-route Breath egress: {checks} checks passed.");
+
+// Knockback staging must validate the displacement, not merely an apparently
+// safe current tile. A diagonal fits Fallout's20y push in the square; a cardinal
+// push does not. Wall stopping is allowed only by Borgny's mechanic contract.
+bool PushSquare(Vector2 p) => Math.Abs(p.X) <= 18.75f && Math.Abs(p.Y) <= 18.75f;
+bool PushCircle(Vector2 p) => p.Length() <= 18.75f;
+Check(MasterArenaMovement.KnockbackSafe(P(1, 1), P(0, 0), 20, false, PushSquare, Array.Empty<ThirdBoardHazard>()), "Fallout diagonal lands inside square");
+Check(!MasterArenaMovement.KnockbackSafe(P(1, 0), P(0, 0), 20, false, PushSquare, Array.Empty<ThirdBoardHazard>()), "Fallout cardinal crosses lethal boundary");
+Check(MasterArenaMovement.KnockbackSafe(P(-12, 0), P(-15, 0), 25, false, PushCircle, Array.Empty<ThirdBoardHazard>()), "Aero staging crosses interior and lands safely");
+Check(!MasterArenaMovement.KnockbackSafe(P(0, 0), P(0, 0), 25, false, PushCircle, Array.Empty<ThirdBoardHazard>()), "Unknown push direction at origin is not safe");
+Check(MasterArenaMovement.KnockbackSafe(P(7, 0), P(0, 0), 30, true, PushCircle, Array.Empty<ThirdBoardHazard>()), "Borgny allows authored wall stop");
+Check(!MasterArenaMovement.KnockbackSafe(P(7, 0), P(0, 0), 30, false, PushCircle, Array.Empty<ThirdBoardHazard>()), "Other mechanics cannot borrow Borgny wall stop");
+var transitCloud = new ThirdBoardHazard { Origin = P(12, 0), Points = ThirdBoardHazard.Circle(3), Persistent = true };
+Check(!MasterArenaMovement.KnockbackSafe(P(7, 0), P(0, 0), 30, true, PushCircle, new[] { transitCloud }), "Safe rim endpoint cannot justify being pushed through poison");
+var transitOrb = new ThirdBoardHazard { Origin = P(8, 8), Points = ThirdBoardHazard.Circle(1.5f), Persistent = true };
+Check(!MasterArenaMovement.KnockbackSafe(P(1, 1), P(0, 0), 20, false, PushSquare, new[] { transitOrb }), "Full Dread push cannot collect fifth orb en route");
+Check(!MasterArenaMovement.KnockbackSafe(P(19, 0), P(0, 0), 30, true, PushCircle, Array.Empty<ThirdBoardHazard>()), "Wall stop never licenses staging outside floor");
+Console.WriteLine($"Including First Master knockback corridors: {checks} checks passed.");
+
+// Landing rank may be cheap, but it must retain the old preference for every
+// accepted path. Poison on the displacement still invalidates that candidate.
+Check(MasterArenaMovement.KnockbackEndsInside(P(1, 1), P(0, 0), 20, PushSquare), "Interior push keeps preferred rank");
+Check(!MasterArenaMovement.KnockbackEndsInside(P(7, 0), P(0, 0), 30, PushCircle), "Borgny wall stop is not ranked as interior");
+Check(!MasterArenaMovement.KnockbackEndsInside(P(0, 0), P(0, 0), 30, PushCircle), "Unknown push direction cannot receive interior rank");
+Check(MasterArenaMovement.KnockbackEndsInside(P(1, 1), P(0, 0), 20, PushSquare) &&
+    !MasterArenaMovement.KnockbackSafe(P(1, 1), P(0, 0), 20, false, PushSquare, new[] { transitOrb }),
+    "Endpoint ranking never substitutes for full hazard validation");
+// Deferred goals model Touchdown's per-goal corridor cost. A direct route
+// must not evaluate unused candidates; a blocked goal must still try the next.
+int landingGoalReads = 0;
+System.Collections.Generic.IEnumerable<Vector2> LandingGoals()
+{
+    landingGoalReads++;
+    yield return P(5, 0);
+    landingGoalReads++;
+    yield return P(-5, 0);
+}
+var directLanding = MasterArenaMovement.RouteToAny(P(0, 0), LandingGoals(), P(0, 0), PushCircle,
+    Array.Empty<ThirdBoardHazard>(), clock);
+Check(directLanding.SequenceEqual(new[] { P(5, 0) }) && landingGoalReads == 1,
+    "Direct landing stops before evaluating any unused goal");
+landingGoalReads = 0;
+var blockedLanding = Shape(P(2.5f, 0), ThirdBoardHazard.Circle(1));
+var alternativeLanding = MasterArenaMovement.RouteToAny(P(0, 0), LandingGoals(), P(0, 0), PushCircle,
+    new[] { blockedLanding }, clock);
+Check(alternativeLanding.SequenceEqual(new[] { P(-5, 0) }) && landingGoalReads == 2,
+    "New route hazard forces safe alternative rather than reusing blocked route");
+// A new cloud must invalidate the same displacement next pulse. No successful
+// result may persist in a cache across successive geometry snapshots.
+Check(MasterArenaMovement.KnockbackSafe(P(7, 0), P(0, 0), 30, true, PushCircle, Array.Empty<ThirdBoardHazard>()) &&
+    !MasterArenaMovement.KnockbackSafe(P(7, 0), P(0, 0), 30, true, PushCircle, new[] { transitCloud }),
+    "Fresh cloud geometry invalidates a previously safe landing");
+Console.WriteLine($"Including deferred landing search: {checks} checks passed.");
+
+// Both slash directions need a linear margin near the boss, without removing
+// all safe melee floor. Verify rotation as well as the formerly accepted edge.
+var bufferedSweepFront = new ThirdBoardHazard { Origin = P(0, 0), Points = MasterArenaMovement.SweepingSlash() };
+var bufferedSweepRear = new ThirdBoardHazard { Origin = P(0, 0), Heading = MathF.PI, Points = MasterArenaMovement.SweepingSlash() };
+Check(bufferedSweepFront.Contains(P(5, -.2f)), "Front slash rejects close dividing-line refuge");
+Check(!bufferedSweepFront.Contains(P(5, -.9f)), "Front slash preserves buffered melee refuge");
+Check(bufferedSweepRear.Contains(P(5, .2f)), "Rear slash receives the same half-yalm margin");
+Check(!bufferedSweepRear.Contains(P(5, .9f)), "Rear slash preserves buffered melee refuge");
+Console.WriteLine($"Including Sweeping slash clearance: {checks} checks passed.");
+
+// Sept22 Gargoyle: an orb collection goal was inside Desolation. A normal
+// safety search must still escape the line while preserving other orb avoids.
+var desolation = new ThirdBoardHazard { Origin = P(119.5511f, 2.5967705f), Heading = 2.055f,
+    Points = ThirdBoardHazard.Rectangle(4, 60.5f), Until = clock.AddSeconds(3.55) };
+var gargoyleBlocks = new[] { desolation,
+    new ThirdBoardHazard { Origin = P(123.5f, -17.5f), Points = ThirdBoardHazard.Circle(2), Persistent = true },
+    new ThirdBoardHazard { Origin = P(130.5f, -10.5f), Points = ThirdBoardHazard.Circle(2), Persistent = true },
+    new ThirdBoardHazard { Origin = P(137.5f, 3.5f), Points = ThirdBoardHazard.Circle(2), Persistent = true } };
+var gargoyleStart = P(129.63356f, -2.9421086f);
+Check(desolation.Contains(gargoyleStart), "Recorded stalled orb approach lies inside Desolation");
+var dodgeGoals = Enumerable.Range(-18, 37).SelectMany(x => Enumerable.Range(-18, 37).Select(z => masterCenter + P(x, z)))
+    .Where(p => MasterFloor(p) && gargoyleBlocks.All(h => !h.Contains(p))).OrderBy(p => Vector2.Distance(p, gargoyleStart));
+var orbDodge = MasterArenaMovement.RouteToAny(gargoyleStart, dodgeGoals, masterCenter, MasterFloor, gargoyleBlocks, clock);
+Check(orbDodge.Length > 0 && gargoyleBlocks.All(h => !h.Contains(orbDodge.Last())), "Safety-first goals escape instead of waiting for an orb route");
+Check(orbDodge.All(MasterFloor), "Orb recovery keeps the square boundary");
+Console.WriteLine($"Including captured Desolation recovery: {checks} checks passed.");
+// Sept22 corner slash replay: preserve the half-yalm margin and bleeding inset
+// while verifying a complete escape to fine goals around the real landing.
+foreach (var sample in new[] { (P(137.83472f, 17.837708f), P(137.9726f, 17.158401f), .619f), (P(102.098145f, -17.898865f), P(102.820076f, -17.978273f), 3.927f) })
+{
+    var rear = new ThirdBoardHazard { Origin = sample.Item1, Heading = sample.Item3 + MathF.PI,
+        Points = MasterArenaMovement.SweepingSlash(), Until = clock.AddSeconds(2) };
+    var goals = MasterArenaMovement.SlashRefuges(sample.Item1).Where(p => MasterFloor(p) && !rear.Contains(p));
+    var route = MasterArenaMovement.RouteToAny(sample.Item2, goals, masterCenter, MasterFloor, new[] { rear }, clock);
+    Check(route.Length > 0, "Captured corner slash has a reachable fine refuge");
+    Check(route.All(MasterFloor) && !rear.Contains(route.Last()), "Corner refuge preserves floor and slash clearance");
+}
+Console.WriteLine($"Including corner slash recovery: {checks} checks passed.");
+
+// Flauros must leave a usable outer refuge when Electric Shock overlaps a
+// sprite line, and neither parent choreography nor the buster blocks the floor.
+var flaurosCenter = SecondMasterGeometry.FlaurosCenter;
+var shock = Shape(flaurosCenter, SecondMasterGeometry.FlaurosShape(49191));
+var voltage = Shape(flaurosCenter, SecondMasterGeometry.FlaurosShape(49195));
+Check(shock.Contains(flaurosCenter + P(16.2f, 0)), "Electric Shock retains damaging-edge margin");
+Check(!shock.Contains(flaurosCenter + P(17, 0)), "Electric Shock leaves inset outer refuge");
+Check(voltage.Contains(flaurosCenter + P(3.4f, 10)), "Large voltage uses three-yalm half-width plus margin");
+Check(!voltage.Contains(flaurosCenter + P(3.6f, 10)), "Large voltage cannot use full width as half-width");
+foreach (uint action in new uint[] { 49185, 49187, 49188, 49189, 49190, 49192 })
+    Check(SecondMasterGeometry.FlaurosShape(action) == null, "Choreography and targeted busters have no duplicate avoid");
+var flaurosRefuge = flaurosCenter + P(17.5f, 0);
+Check(Vector2.Distance(flaurosRefuge, flaurosCenter) < SecondMasterGeometry.FlaurosRadius &&
+    !shock.Contains(flaurosRefuge) && !voltage.Contains(flaurosRefuge), "Concurrent shock and line retain boundary-safe refuge");
+var half = Shape(flaurosCenter, SecondMasterGeometry.FlaurosShape(49193), MathF.PI / 2);
+Check(half.Contains(flaurosCenter + P(10, 0)) && !half.Contains(flaurosCenter + P(-10, 0)), "Rotated helper rectangle follows RB heading convention");
+Console.WriteLine($"Including Second Master opening: {checks} checks passed.");
+
+// Drake's fireball replacement must leave the tornado's small interior usable,
+// including when close to the inset rectangular wall. Preserve a route there.
+var drakeCenter = SecondMasterGeometry.DrakeCenter;
+var drakeBoundary = SecondMasterGeometry.DrakeBoundary().Select(p => Shape(drakeCenter, p)).ToArray();
+Check(SecondMasterGeometry.InDrakeFloor(drakeCenter + P(18, 13)), "Drake retains rectangular corners");
+Check(!SecondMasterGeometry.InDrakeFloor(drakeCenter + P(19, 0)), "Drake excludes bleeding wall");
+Check(drakeBoundary.Any(h => h.Contains(drakeCenter + P(19, 0))), "Native boundary excludes the same wall");
+Check(drakeBoundary.All(h => !h.Contains(drakeCenter + P(18, 13))), "Native boundary preserves corner refuge");
+var tornadoOrigin = drakeCenter + P(15, 0);
+var tornado = SecondMasterGeometry.DrakeShapes(49259).Select(p => Shape(tornadoOrigin, p)).ToArray();
+Check(tornado.All(h => !h.Contains(tornadoOrigin + P(2, 0))), "Tornado keeps a buffered inner shelter");
+Check(tornado.Any(h => h.Contains(tornadoOrigin + P(3, 0))), "Tornado nominal edge is unsafe");
+// Captured long crossing arrived at the server snapshot; short crossings and
+// already-sheltered players must preserve Sprint for a later emergency.
+Check(SecondMasterGeometry.DrakeShelterNeedsSprint(28.9f, 4.7), "Captured tornado crossing requests Sprint before moving");
+Check(!SecondMasterGeometry.DrakeShelterNeedsSprint(15, 4.7), "Short tornado crossing can walk safely");
+Check(!SecondMasterGeometry.DrakeShelterNeedsSprint(2.4f, .1), "Inside shelter does not consume Sprint");
+Check(!SecondMasterGeometry.DrakeShelterNeedsSprint(29, 0), "Resolved cast does not request Sprint");
+Check(!SecondMasterGeometry.DrakeShapes(49254).Any(), "Mangling Fang is not a room-sized avoid");
+var feedingObstruction = Shape(drakeCenter, ThirdBoardHazard.Circle(4.5f));
+var feedingPath = MasterArenaMovement.Route(drakeCenter + P(-10, 0), drakeCenter + P(10, 0), drakeCenter,
+    SecondMasterGeometry.InDrakeFloor, new[] { feedingObstruction }, clock);
+Check(feedingPath.Length > 0 && feedingPath.All(SecondMasterGeometry.InDrakeFloor), "Morpho approach can route around fire while retaining the floor");
+Console.WriteLine($"Including Second Master Drake: {checks} checks passed.");
+
+// Durga's40y displacement needs a diagonal across the square. Verify all four
+// baits rather than accepting a point that is safe before, but lethal after, push.
+var durgaCenter = SecondMasterGeometry.DurgaCenter;
+var durgaFence = SecondMasterGeometry.DurgaBoundary().Select(p => Shape(durgaCenter, p)).ToArray();
+foreach (var corner in SecondMasterGeometry.DurgaBaits())
+{
+    Check(SecondMasterGeometry.InDurgaFloor(corner) && !durgaFence.Any(h => h.Contains(corner)), "Durga bait stays inside the wall");
+    var legal = SecondMasterGeometry.DurgaPushStands(corner).Where(p => MasterArenaMovement.KnockbackSafe(p, corner, 40, false, SecondMasterGeometry.InDurgaFloor, durgaFence)).ToArray();
+    Check(legal.Length > 0, "Each corner provides a full40y safe displacement");
+    Check(legal.All(p => SecondMasterGeometry.InDurgaFloor(p + Vector2.Normalize(p - corner) * 40)), "Knockback landings preserve boundary clearance");
+    Check(MasterArenaMovement.Route(corner, legal[0], durgaCenter, SecondMasterGeometry.InDurgaFloor, durgaFence, clock).Length > 0, "Corner bait has a legal route into push staging");
+}
+Check(!SecondMasterGeometry.DurgaPushStands(durgaCenter).Any(), "A missed center bait must not invent a safe40y push");
+Check(SecondMasterGeometry.DurgaShape(49274) == null && SecondMasterGeometry.DurgaShape(49272) == null, "Push and raidwide are not damaging floor circles");
+Check(Shape(durgaCenter, SecondMasterGeometry.DurgaShape(50688)).Contains(durgaCenter + P(2.4f, 10)), "Locked missile retains its half-yalm margin");
+Console.WriteLine($"Including Durga trial: {checks} checks passed.");
+
+// RB74304's exact first Jolt geometry had no native start span. A local route
+// must reach the one small-hand corner before impact, without crossing the wall.
+var joltFields = durgaFence.Concat(new[] {
+    Shape(P(111, 9), SecondMasterGeometry.DurgaShape(49265)),
+    Shape(P(111, -9), SecondMasterGeometry.DurgaShape(49265)),
+    Shape(P(129, -9), SecondMasterGeometry.DurgaShape(49265)),
+    Shape(P(129, 9), SecondMasterGeometry.DurgaShape(49266)) }).ToArray();
+var joltStart = P(120, 10.818125f);
+var joltPath = MasterArenaMovement.RouteToAny(joltStart, SecondMasterGeometry.DurgaRefuges().OrderBy(p => Vector2.DistanceSquared(p, joltStart)),
+    durgaCenter, SecondMasterGeometry.InDurgaFloor, joltFields, clock);
+Check(joltPath.Length > 0 && joltPath.All(SecondMasterGeometry.InDurgaFloor), "Captured Jolt has a legal local egress");
+Check(joltFields.All(h => !h.Contains(joltPath.Last())), "Jolt refuge clears all four simultaneous hands");
+Check(Vector2.Distance(joltStart, joltPath.Last()) < 24, "Jolt refuge can be reached during the captured4.9s cast");
+Console.WriteLine($"Including captured Durga native-span failure: {checks} checks passed.");
+
+// Riddles are independent expiry checks, not a simultaneous intersection.
+// Include localized prompts and reject an unknown question instead of picking
+// an arbitrary transformed actor. Banish must preserve its buffered shelter.
+foreach (uint status in new uint[] { 5148, 5149, 5150, 5151 })
+    Check(Enumerable.Range(1, 9).Count(n => SecondMasterGeometry.SphinxNumber(status, (uint)n)) == (status == 5149 ? 5 : status == 5151 ? 3 : 4), "Sphinx assignment retains the expected legal tiles");
+Check(!SecondMasterGeometry.SphinxNumber(5148, 0) && !SecondMasterGeometry.SphinxNumber(5150, 1), "Zero and one are not valid even/prime answers");
+Check(SecondMasterGeometry.SphinxPrompt("Riddle me this─which child is kin of cloud?") == 0x4CFF, "Cloud question follows the Dodo identity");
+Check(SecondMasterGeometry.SphinxPrompt("問おう……\r\n「甲鱗綱」の魔物はいずれなりや？") == 0x4D02, "Japanese line wrapping retains the Puk answer");
+Check(SecondMasterGeometry.SphinxPrompt("Sag mir: Wer ist ein Kind der Biestlinge?") == 0x4D01, "German beast question follows Opo-opo");
+Check(SecondMasterGeometry.SphinxPrompt("Réponds à ma question... Laquelle de ces bêtes est hydride ?") == 0x4D00, "French wave question follows Pugil");
+Check(SecondMasterGeometry.SphinxPrompt("cloud") == 0, "Partial player text is not a riddle question");
+var banishDonut = SecondMasterGeometry.SphinxShapes(49335).Select(p => Shape(durgaCenter, p)).ToArray();
+Check(banishDonut.All(h => !h.Contains(durgaCenter + P(9, 0))) && banishDonut.Any(h => h.Contains(durgaCenter + P(10, 0))), "Banish donut keeps its half-yalm interior margin");
+Check(!SecondMasterGeometry.SphinxShapes(49353).Any(), "Numeric Riddle raidwide is not an arena-wide avoid");
+// RB15476's apparent rear refuge was inside the actual sideways Banish. The
+// helper's model did not turn with the cast packet; retain the captured case.
+var banishOrigin = P(120, -7.0635786f);
+var banishPacket = Shape(banishOrigin, SecondMasterGeometry.SphinxShapes(49341).Single(), -1.5708683f);
+Check(banishPacket.Contains(P(119.97572f, -7.655932f)), "Captured Banish refuge is inside the packet cone");
+Check(!banishPacket.Contains(P(128, -8)), "Banish has a safe melee-side destination on the packet's opposite side");
+Console.WriteLine($"Including Sphinx riddle and helper geometry: {checks} checks passed.");
+
+// Element selection and positive tower semantics must remain independent of
+// generic damaging geometry; treating a tower as a circle guarantees failure.
+Check(SecondMasterGeometry.GigantisBait(0x4D07, 0x499) && !SecondMasterGeometry.GigantisBait(0x4D05, 0x499), "Lightning club consumes fire only");
+Check(SecondMasterGeometry.GigantisBait(0x4D05, 0x49A) && !SecondMasterGeometry.GigantisBait(0x4D07, 0x49A), "Fire club consumes lightning only");
+Check(SecondMasterGeometry.GigantisBait(0x4D05, 0) && SecondMasterGeometry.GigantisBait(0x4D07, 0), "Unenchanted club can consume either large slime");
+Check(!SecondMasterGeometry.GigantisBait(0x4D06, 0), "Small slimes are never stamp bait");
+Check(SecondMasterGeometry.GigantisShape(49364) == null && SecondMasterGeometry.GigantisShape(49375) == null, "Tower and Rupture are not damage avoids");
+var giantCenter = SecondMasterGeometry.FlaurosCenter;
+Check(SecondMasterGeometry.InGigantisFloor(giantCenter + P(18.7f, 0)) && !SecondMasterGeometry.InGigantisFloor(giantCenter + P(19, 0)), "Gigantis floor preserves wall inset");
+var rage = Shape(giantCenter, SecondMasterGeometry.GigantisShape(49359));
+Check(rage.Contains(giantCenter + P(15.4f, 0)) && !rage.Contains(giantCenter + P(16, 0)), "Rage circle retains a safe outer band");
+// RB30496 at09:19:17 took Rage and was knocked into the boundary after
+// selecting the rear of the visual model. The cast packet points the other way;
+// retaining the original melee position would have avoided this attack.
+var rageOrigin = P(120, -427.07816f);
+var ragePacket = Shape(rageOrigin, SecondMasterGeometry.GigantisShape(49363), 2.8866603f);
+var rageVisual = Shape(rageOrigin, SecondMasterGeometry.GigantisShape(49363), 6.0282f);
+var wrongRefuge = P(120.38384f, -427.52725f);
+Check(!rageVisual.Contains(wrongRefuge) && ragePacket.Contains(wrongRefuge), "Rage captured false refuge is unsafe in packet direction");
+Check(!ragePacket.Contains(P(120, -420.57816f)), "Rage packet preserves the captured safe melee side");
+Console.WriteLine($"Including Gigantis trial: {checks} checks passed.");
+
+// Lauda's knockbacks must preserve the entire narrow floor union. A safe
+// endpoint alone is insufficient when a forced segment crosses a cage or rim.
+var laudaCenter = SecondMasterGeometry.LaudaCenter;
+var laudaFloor = SecondMasterGeometry.LaudaBoundary().ToArray();
+var noFields = Array.Empty<ThirdBoardHazard>();
+foreach (var pocket in new[] { P(520, -442), P(520, -398), P(508, -412.5f), P(532, -427.5f) })
+    Check(SecondMasterGeometry.InLaudaFloor(pocket) && laudaFloor.All(h => !h.Contains(pocket)), "Lauda keeps authored alcove interiors");
+Check(laudaFloor.Any(h => h.Contains(P(535, -420))), "Lauda native mask forbids exterior detours");
+Check(SecondMasterGeometry.LaudaPushSafe(P(520, -442), P(0, 1), 40, noFields, noFields), "Unseen Force north-to-south path is legal");
+Check(SecondMasterGeometry.LaudaPushSafe(P(520, -398), P(0, -1), 40, noFields, noFields), "Unseen Force south-to-north path is legal");
+Check(!SecondMasterGeometry.LaudaPushSafe(laudaCenter, P(1, 0), 40, noFields, noFields), "Unseen Force cannot cross the short axis");
+var cageContact = Shape(laudaCenter, ThirdBoardHazard.Rectangle(3, 3, 3));
+Check(!SecondMasterGeometry.LaudaPushSafe(P(520, -442), P(0, 1), 40, new[] { cageContact }, noFields), "An intervening cage invalidates a safe-looking landing");
+var laudaGutting = new ThirdBoardHazard { Action = 49446, Origin = P(520, -440), Heading = 0,
+    Points = ThirdBoardHazard.Rectangle(20.5f, 50.5f), Until = clock.AddSeconds(4) };
+Check(SecondMasterGeometry.LaudaLandingSafe(P(520, -438), noFields, new[] { laudaGutting }, clock), "Gutting permits a short timed step behind its caster after the push");
+Check(!SecondMasterGeometry.LaudaLandingSafe(P(520, -402), noFields, new[] { laudaGutting }, clock), "Gutting rejects the far landing that cannot recover before impact");
+Check(!SecondMasterGeometry.LaudaLandingSafe(P(520, -438), noFields, new[] { laudaGutting }, clock.AddSeconds(3.5)), "Gutting requires actual time for post-push movement");
+foreach (uint action in new uint[] { 49453, 49470, 49473, 49484 })
+    Check(!SecondMasterGeometry.LaudaShapes(action).Any(), "Lauda knockbacks and buster cannot become floor-wide avoids");
+var rush = Shape(laudaCenter, SecondMasterGeometry.LaudaShapes(49483).Single());
+Check(rush.Contains(laudaCenter + P(2.9f, 10)) && !rush.Contains(laudaCenter + P(3.1f, 10)), "Rush uses half-width plus the half-yalm margin");
+Console.WriteLine($"Including Lauda staging and boundary checks: {checks} checks passed.");
+
+// RB104860's first cast after spawning still displayed the old sprite facing.
+// The subsequent aim and hit establish why visual rotation is insufficient;
+// the live retest must verify the equivalent packet value at cast discovery.
+var voltageVictim = P(135.61836f, -429.38672f);
+var voltageOrigin = P(138.99438f, -426.19977f);
+var staleVoltage = Shape(voltageOrigin, SecondMasterGeometry.FlaurosShape(49194), 5.027f);
+var aimedVoltage = Shape(voltageOrigin, SecondMasterGeometry.FlaurosShape(49194), 4.160f);
+Check(!staleVoltage.Contains(voltageVictim) && aimedVoltage.Contains(voltageVictim), "Captured sprite visual heading misses the actual victim lane");
+Console.WriteLine($"Including captured Flauros rotation regression: {checks} checks passed.");
+
+// RB17856 escaped Molten by cutting the corner out of this northern alcove,
+// then oscillated on the rim at512.9,-400.9. A center-only destination check
+// misses the crossing; replay the entire corridor on the authored floor union.
+var moltenStart = P(520.0014f, -397.4893f);
+var moltenField = new ThirdBoardHazard { Origin = moltenStart,
+    Points = ThirdBoardHazard.Circle(6.5f), Until = clock.AddSeconds(2.57) };
+var moltenPath = MasterArenaMovement.RouteToAny(moltenStart,
+    SecondMasterGeometry.LaudaRefuges().OrderBy(p => Vector2.DistanceSquared(p, moltenStart)),
+    laudaCenter, SecondMasterGeometry.InLaudaFloor, new[] { moltenField }, clock);
+Check(moltenPath.Length > 0 && !moltenField.Contains(moltenPath.Last()), "Molten alcove has a reachable escape inside the floor");
+var moltenPrior = moltenStart;
+foreach (var waypoint in moltenPath)
+{
+    Check(Enumerable.Range(0, 101).All(i => SecondMasterGeometry.InLaudaFloor(Vector2.Lerp(moltenPrior, waypoint, i / 100f))), "Molten corridor never cuts the burning pocket corner");
+    moltenPrior = waypoint;
+}
+Console.WriteLine($"Including captured Lauda pocket escape: {checks} checks passed.");
+
+// RB19556's yellow cages occupied both end pockets. Molten must choose an
+// open diagonal before the delayed cage circles appear, then have a connected
+// route from the captured player position without crossing a cage body.
+var yellowCenters = new[] { P(520, -442.5f), P(527.5f, -430), P(520, -397.5f), P(512.5f, -410) };
+var yellowForecasts = yellowCenters.Select(p => Shape(p, ThirdBoardHazard.Circle(12.5f))).ToArray();
+var yellowBodies = yellowCenters.Select(p => Shape(p, ThirdBoardHazard.Rectangle(3, 3, 3))).ToArray();
+var moltenCandidates = SecondMasterGeometry.LaudaMoltenRefuges(yellowForecasts).ToArray();
+Check(moltenCandidates.Length > 0 && moltenCandidates.All(p => yellowForecasts.All(h => !h.Contains(p))), "Molten retains safe diagonal drops when both pockets are caged");
+var yellowRoute = MasterArenaMovement.RouteToAny(P(521.6457f, -428.14603f), moltenCandidates, laudaCenter, SecondMasterGeometry.InLaudaFloor, yellowBodies, clock);
+Check(yellowRoute.Length > 0 && yellowForecasts.All(h => !h.Contains(yellowRoute.Last())), "Captured yellow-cage overlap has a reachable bait refuge");
+Console.WriteLine($"Including captured Molten cage overlap: {checks} checks passed.");
+// The centered laudaGyro helper hit behind its captured heading after the first
+// Unseen Force. Both landing ends must leave the strip via a legal alcove path.
+var laudaGyro = Shape(laudaCenter, SecondMasterGeometry.LaudaShapes(49451).Single());
+Check(laudaGyro.Contains(P(519.968f, -401.785f)) && laudaGyro.Contains(P(520, -438)), "laudaGyro includes both longitudinal landing ends");
+Check(!laudaGyro.Contains(P(508, -412.5f)), "laudaGyro preserves west alcove");
+var gyroPath = MasterArenaMovement.RouteToAny(P(519.968f, -401.785f),
+    SecondMasterGeometry.LaudaRefuges().Where(p => !laudaGyro.Contains(p)), laudaCenter,
+    SecondMasterGeometry.InLaudaFloor, new[] { laudaGyro }, clock);
+Check(gyroPath.Length > 0 && !laudaGyro.Contains(gyroPath.Last()), "post-Force laudaGyro reaches side shelter");
+Console.WriteLine($"Including captured laudaGyro landing: {checks} checks passed.");
+
+// RB69524's remaining Molten proximity effect preferred the far end pocket,
+// entirely inside Gyro. Distance optimization must retain legal side refuges.
+var overlappingProximity = P(520.557f, -442.34323f);
+Check(SecondMasterGeometry.LaudaRefuges().OrderByDescending(p => Vector2.DistanceSquared(p, overlappingProximity))
+    .Take(16).All(laudaGyro.Contains), "captured proximity ranking previously lost every candidate to Gyro");
+var proximityRefuges = SecondMasterGeometry.LaudaProximityRefuges(overlappingProximity, new[] { laudaGyro }).ToArray();
+Check(proximityRefuges.Length > 0 && proximityRefuges.All(p => !laudaGyro.Contains(p)), "proximity overlap ranks only legal floor refuges");
+Console.WriteLine($"Including Molten proximity and Gyro overlap: {checks} checks passed.");
+
+// RB65820's validated helper receipt must remain usable when the boss's visual
+// jump rotation is stale; unrelated helpers must not choose a knockback side.
+Check(SecondMasterGeometry.LaudaDaggerHeading(P(520.0737f, -441.8272f), P(520.0204f, -441.91177f), .563f) == .563f, "Captured dagger helper identifies incoming aim");
+Check(SecondMasterGeometry.LaudaDaggerHeading(P(520, -442), P(520, -441.9f), MathF.PI) == MathF.PI, "Front throw uses the opposite incoming aim");
+Check(!SecondMasterGeometry.LaudaDaggerHeading(P(520, -442), P(520, -442), 0).HasValue, "Coincident source cannot establish direction");
+Check(!SecondMasterGeometry.LaudaDaggerHeading(P(520, -442), P(520, -441.9f), 0).HasValue, "Source and heading disagreement rejects stale aim");
+
+// RB65820 left this safe pocket at28.9 and crossed the still-active cage at30.5.
+// Delay only until the earlier blast resolves, preserving time to exit Molten.
+var cageWaitPlayer = P(519.4698f, -397.61243f);
+var cageWaitFields = new[] {
+    new ThirdBoardHazard { Action = 49460, Origin = P(522.5f, -410), Points = ThirdBoardHazard.Circle(12.5f), Until = clock.AddSeconds(2) },
+    new ThirdBoardHazard { Action = 49468, Origin = cageWaitPlayer, Points = ThirdBoardHazard.Circle(6.5f), Until = clock.AddSeconds(3.1) } };
+Check(SecondMasterGeometry.LaudaWaitForCages(cageWaitPlayer, cageWaitFields, clock), "Captured overlap retains its safe cage refuge");
+Check(!SecondMasterGeometry.LaudaWaitForCages(cageWaitPlayer, cageWaitFields, clock.AddSeconds(2)), "Cage impact releases the later Molten escape");
+Check(!SecondMasterGeometry.LaudaWaitForCages(P(520, -401), cageWaitFields, clock), "Already inside a cage must escape instead of wait");
+Console.WriteLine($"Including Lauda dagger and sequential cage regression: {checks} checks passed.");
+
+// RB52536's Gyro appeared0.2s before Shockwave; it must not choose a sideways
+// launch. Once displacement completes, publish it normally for the local exit.
+var prePushGyro = new ThirdBoardHazard { Action = 49451, Origin = laudaCenter, Points = SecondMasterGeometry.LaudaShapes(49451).Single(), Until = clock.AddSeconds(6.7) };
+Check(SecondMasterGeometry.LaudaAfterForce(prePushGyro, clock, clock.AddSeconds(1.5)), "Gyro cannot reroute the last instant of a directional push");
+Check(!SecondMasterGeometry.LaudaAfterForce(prePushGyro, clock.AddSeconds(1.6), clock.AddSeconds(1.5)), "Gyro returns immediately after the protected displacement");
+Check(!SecondMasterGeometry.LaudaAfterForce(new ThirdBoardHazard { Persistent = true, Until = clock.AddSeconds(9) }, clock, clock.AddSeconds(1.5)), "Persistent bodies remain blocked through the push");
+
+// Waiting at the exact Molten bait consumed its escape window. The captured
+// diagonal refuge has legal space for an early step without entering any cage.
+var advanceOrigin = P(512.5013f, -409.12363f);
+var advanceCages = new[] { P(512.5f, -430), P(520, -397.5f), P(520, -442.5f), P(527.5f, -410) }
+    .Select(p => new ThirdBoardHazard { Action = 49460, Origin = p, Points = ThirdBoardHazard.Circle(12.5f), Until = clock.AddSeconds(2) }).ToArray();
+var advanceMolten = new ThirdBoardHazard { Action = 49468, Origin = advanceOrigin, Points = ThirdBoardHazard.Circle(6.5f), Until = clock.AddSeconds(3.1) };
+var advancePath = MasterArenaMovement.RouteToAny(advanceOrigin,
+    SecondMasterGeometry.LaudaCageAdvance(advanceOrigin, advanceCages.Append(advanceMolten), clock),
+    laudaCenter, SecondMasterGeometry.InLaudaFloor, advanceCages, clock);
+Check(advancePath.Length > 0 && advanceCages.All(h => !h.Contains(advancePath.Last())), "Captured diagonal can advance without waiting in a cage");
+Check(Vector2.Distance(advancePath.Last(), advanceOrigin) > 2, "Early advance materially shortens the post-cage Molten escape");
+Console.WriteLine($"Including Lauda launch priority and early Molten staging: {checks} checks passed.");
+
+// RB49496 baited at520.97,-442.02 then stepped deeper into that tiny end
+// pocket. Both mirrored layouts must bait at their outer edge and stage toward
+// the later exit, not maximize distance by moving deeper into the pocket.
+foreach (int mirror in new[] { -1, 1 })
+{
+    var trappedCages = new[] { P(532.5f, -427.5f), P(517.5f, -430), P(507.5f, -412.5f), P(522.5f, -410) }
+        .Select(p => P(520 + (p.X - 520) * mirror, p.Y))
+        .Select(p => Shape(p, ThirdBoardHazard.Circle(12.5f))).ToArray();
+    var escapeBaits = SecondMasterGeometry.LaudaMoltenRefuges(trappedCages).ToArray();
+    Check(escapeBaits.Length > 0, "Yellow-cage placement retains bait candidates");
+    Check(escapeBaits.All(p => MathF.Abs(p.Y + 420) == 23.5f), "Yellow-cage bait uses the outer pocket row");
+    var pocketBait = escapeBaits.OrderBy(p => Vector2.DistanceSquared(p, P(520, -442))).First();
+    foreach (var field in trappedCages) { field.Action = 49460; field.Until = clock.AddSeconds(2); }
+    var laterMolten = new ThirdBoardHazard { Action = 49468, Origin = pocketBait, Points = ThirdBoardHazard.Circle(6.5f), Until = clock.AddSeconds(3.05) };
+    var stagePath = MasterArenaMovement.RouteToAny(pocketBait, SecondMasterGeometry.LaudaCageAdvance(pocketBait, trappedCages.Append(laterMolten), clock),
+        laudaCenter, SecondMasterGeometry.InLaudaFloor, trappedCages, clock);
+    Check(stagePath.Length > 0 && MathF.Abs(stagePath.Last().Y + 420) < MathF.Abs(pocketBait.Y + 420), "Early stage advances toward the arena instead of deeper into the pocket");
+    var exitPath = MasterArenaMovement.RouteToAny(stagePath.Last(), SecondMasterGeometry.LaudaRefuges().OrderBy(p => Vector2.Distance(p, stagePath.Last())),
+        laudaCenter, SecondMasterGeometry.InLaudaFloor, new[] { laterMolten }, clock.AddSeconds(1.8));
+    var previousPoint = stagePath.Last(); float travel = 0;
+    foreach (var point in exitPath) { travel += Vector2.Distance(previousPoint, point); previousPoint = point; }
+    Check(exitPath.Length > 0 && travel / 6 < .9f, "Receipt release leaves time to clear Molten before its2.7s snapshot even without Sprint");
+}
+Console.WriteLine($"Including yellow-cage escape room: {checks} checks passed.");
+
+// RB15476's native Rush escape entered the centre cage from its north edge.
+// Replay the actual contact layout and first west-to-east blade wave: the
+// local route must remain outside cage bodies along every sampled segment.
+var lateCages = new[] { P(510, -400), P(530, -400), P(520, -420), P(520, -440) }
+    .Select(p => new ThirdBoardHazard { Actor = 1, Origin = p, Points = ThirdBoardHazard.Rectangle(5.5f, 5.5f, 5.5f), Persistent = true, Until = clock.AddSeconds(12) })
+    .Concat(new[] { P(527.5f, -410), P(507.5f, -422.5f), P(517.5f, -430), P(532.5f, -417.5f) }
+        .Select(p => new ThirdBoardHazard { Actor = 2, Origin = p, Points = ThirdBoardHazard.Rectangle(3, 3, 3), Persistent = true, Until = clock.AddSeconds(12) })).ToArray();
+var lateStart = P(519.03906f, -414.39368f);
+Check(!MasterArenaMovement.Corridor(lateStart, P(521.7704f, -418.45917f), SecondMasterGeometry.InLaudaFloor, lateCages, clock), "Captured fatal native segment enters the centre cage");
+var lateRush = new[] { -417.5f, -412.5f, -407.5f, -402.5f }.Select(z => new ThirdBoardHazard {
+    Action = 49483, Origin = P(505, z), Heading = MathF.PI / 2, Points = ThirdBoardHazard.Rectangle(3, 50.5f), Until = clock.AddSeconds(1) }).ToArray();
+var lateFields = lateCages.Concat(lateRush).ToArray();
+var lateRoute = MasterArenaMovement.RouteToAny(lateStart, SecondMasterGeometry.LaudaRefuges().OrderBy(p => Vector2.DistanceSquared(p, lateStart)),
+    laudaCenter, SecondMasterGeometry.InLaudaFloor, lateFields, clock);
+Check(lateRoute.Length == 0, "Captured north pocket cannot escape Rush by crossing the centre cage");
+var latePrevious = lateStart;
+foreach (var step in lateRoute)
+{
+    Check(MasterArenaMovement.Corridor(latePrevious, step, SecondMasterGeometry.InLaudaFloor, lateCages, clock), "Local blade escape never cuts through a cage");
+    latePrevious = step;
+}
+Console.WriteLine($"Including late cage/Rush route regression: {checks} checks passed.");
+
+// Two blade rows are2.05s apart, just beyond the old2s publication window.
+// At cage appearance the player still has time to leave toward the west;
+// considering both rows avoids entering the disconnected north pocket.
+var cageSpawnPlayer = P(519.34656f, -417.4942f);
+var firstRush = new[] { 522.5f, 527.5f, 532.5f }.Select(x => new ThirdBoardHazard {
+    Action = 49482, Origin = P(x, -445), Points = ThirdBoardHazard.Rectangle(3, 50.5f), Until = clock.AddSeconds(2.5) });
+foreach (var field in lateRush) field.Until = clock.AddSeconds(4.55);
+var spawnFields = lateCages.Concat(firstRush).Concat(lateRush).ToArray();
+var spawnRoute = MasterArenaMovement.RouteToAny(cageSpawnPlayer, SecondMasterGeometry.LaudaRefuges().OrderBy(p => Vector2.DistanceSquared(p, cageSpawnPlayer)),
+    laudaCenter, SecondMasterGeometry.InLaudaFloor, spawnFields, clock);
+Check(spawnRoute.Length > 0 && spawnRoute.Last().X < 514.5f, "Early two-row planning exits west before the cage traps its north pocket");
+Check(spawnFields.All(h => !h.Contains(spawnRoute.Last())), "Early cage refuge clears both approaching blade rows");
+Console.WriteLine($"Including early two-row cage egress: {checks} checks passed.");
+
+// RB32032's long diagonal arrived after the4.9s snapshot despite reaching the
+// refuge before damage publication. Short routes must not waste Sprint.
+Check(SecondMasterGeometry.DurgaEscapeNeedsSprint(29.7f, 4.9), "Long captured Jolt route requests Sprint");
+Check(!SecondMasterGeometry.DurgaEscapeNeedsSprint(12, 4.9), "Short Jolt route keeps Sprint available");
+Check(!SecondMasterGeometry.DurgaEscapeNeedsSprint(30, 0), "Resolved Jolt cannot request Sprint");
+Console.WriteLine($"Including Jolt travel budget: {checks} checks passed.");
+
+// Native arrival tolerance repeatedly stopped just outside Drake's inset.
+// Recovery must finish inside it without bypassing a real fireball or shelter.
+var edgeStart = P(538.79f, 8);
+var edgeGoal = SecondMasterGeometry.DrakeEdgeRecovery(edgeStart, false, Array.Empty<ThirdBoardHazard>());
+Check(edgeGoal == P(538, 8), "Captured east-edge oscillation gets an interior goal");
+Check(SecondMasterGeometry.DrakeEdgeRecovery(P(538.6f, 8), true, Array.Empty<ThirdBoardHazard>()) == edgeGoal, "Recovery continues past the fence, not just its first safe pixel");
+Check(SecondMasterGeometry.DrakeEdgeRecovery(P(538.1f, 8), true, Array.Empty<ThirdBoardHazard>()) == null, "Recovery releases at the inner goal");
+Check(SecondMasterGeometry.DrakeEdgeRecovery(P(540, 8), false, Array.Empty<ThirdBoardHazard>()) == null, "Unknown outer floor cannot authorize direct recovery");
+Check(SecondMasterGeometry.DrakeEdgeRecovery(P(520, 0), false, Array.Empty<ThirdBoardHazard>()) == null, "Ordinary interior combat keeps native movement");
+var edgeAttack = new ThirdBoardHazard { Actor = 1, Origin = P(538, 8), Points = ThirdBoardHazard.Circle(.4f), Persistent = true };
+Check(SecondMasterGeometry.DrakeEdgeRecovery(edgeStart, false, new[] { edgeAttack }) == null, "Recovery cannot enter a real attack");
+Console.WriteLine($"Including Drake boundary recovery: {checks} checks passed.");
+Check(SecondMasterGeometry.DrakeCycloneNeedsSprint(P(534.576f, 10.393f), P(500, 0), MathF.PI / 2, 4.7), "Captured long Cyclone requests Sprint before snapshot");
+Check(!SecondMasterGeometry.DrakeCycloneNeedsSprint(P(504, 10), P(500, 0), MathF.PI / 2, 4.7), "Already safe cone flank does not request Sprint");
+Check(!SecondMasterGeometry.DrakeCycloneNeedsSprint(P(510, 0), P(500, 0), MathF.PI / 2, 4.7), "Nearby cone escape preserves Sprint");
+Console.WriteLine($"Including Cyclone travel budget: {checks} checks passed.");

@@ -39,7 +39,6 @@ namespace DutyMechanic.Dungeons
         private System.Numerics.Vector2? halfRoomDestination;
         private bool halfRoomMoving;
         private static bool InOpening => WorldManager.ZoneId == 1340 && Core.Me.Distance2D(Center) < 45;
-
         /// <inheritdoc/>
         public override ZoneId ZoneId => (ZoneId)1340;
         /// <inheritdoc/>
@@ -62,12 +61,7 @@ namespace DutyMechanic.Dungeons
             tablitaur.Register();
             loosefrox.Register();
             AvoidanceHelpers.AddAvoidDonut(InOpeningCondition, () => Center, 65, 19);
-            AvoidanceManager.AddAvoidPolygon<Hazard>(condition: InOpeningCondition,
-                leashPointProducer: null, leashRadius: 60,
-                rotationProducer: h => -h.Heading, scaleProducer: h => 1,
-                heightProducer: h => 15, pointsProducer: h => h.Points,
-                locationProducer: h => h.Origin, collectionProducer: NativeHazards,
-                priority: AvoidancePriority.High);
+            AvoidanceManager.AddAvoidPolygon<Hazard>(condition: InOpeningCondition, leashPointProducer: null, leashRadius: 60, rotationProducer: h => -h.Heading, scaleProducer: h => 1, heightProducer: h => 15, pointsProducer: h => h.Points, locationProducer: h => h.Origin, collectionProducer: NativeHazards, priority: AvoidancePriority.High);
             ff14bot.Helpers.Logging.Write("[CrucibleSecond] Manticore/Wyvern/Voidmancer/Tablitaur trial handlers registered; live validation required.");
             return Task.FromResult(false);
         }
@@ -97,14 +91,18 @@ namespace DutyMechanic.Dungeons
             var next = active.Where(h => h.Until > now).OrderBy(h => h.Until).FirstOrDefault();
             if (next != null)
                 return active.Where(h => h.Until > now && h.Until <= next.Until.AddMilliseconds(200)).ToArray();
-            return charge.Count > 0 && now < queueExpires ? new[] { charge.Peek() } : Array.Empty<Hazard>();
+            return charge.Count > 0 && now < queueExpires ? new[]
+            {
+                charge.Peek()
+            }
+
+            : Array.Empty<Hazard>();
         }
 
         // Keep hazards stamped into the navigation graph even while holding a
         // chosen destination. Hiding them made graph-based approach blind to the
         // very obstacles that the stable destination was intended to avoid.
         private IEnumerable<Hazard> NativeHazards() => CurrentHazards();
-
         /// <inheritdoc/>
         public override Task<bool> RunAsync()
         {
@@ -117,6 +115,7 @@ namespace DutyMechanic.Dungeons
                 Reset();
                 return Task.FromResult(false);
             }
+
             if (SidestepPlugin.Enabled)
                 SidestepPlugin.Enabled = false;
             var now = DateTime.UtcNow;
@@ -127,11 +126,13 @@ namespace DutyMechanic.Dungeons
                     charge.Dequeue();
                 resolveCharge = default;
             }
+
             if (charge.Count > 0 && now >= queueExpires)
             {
                 charge.Clear();
                 previewCount = 0;
             }
+
             var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).ToArray();
             var boss = actors.FirstOrDefault(a => a.BaseId == 0x4C53 && a.IsAlive);
             if (boss != null)
@@ -151,6 +152,7 @@ namespace DutyMechanic.Dungeons
                         ff14bot.Helpers.Logging.Write("[CrucibleSecond] arm glow={0} remaining={1}", aura.Id, aura.TimespanLeft);
                     }
             }
+
             foreach (var actor in actors)
             {
                 uint spell = actor.IsCasting ? actor.CastingSpellId : 0;
@@ -166,8 +168,7 @@ namespace DutyMechanic.Dungeons
                 // The 250 ms fence released movement before both hits. Preserve
                 // 750 ms for these helpers only; charge sequencing is independent.
                 var until = now + cast.RemainingCastTime + TimeSpan.FromMilliseconds(halfRoom || openingArm ? 750 : 250);
-                ff14bot.Helpers.Logging.Write("[CrucibleSecondCast] id={0} actor={1:X} base={2:X} pos={3} heading={4:F4} destination={5} remaining={6:F2}",
-                    spell, actor.ObjectId, actor.BaseId, actor.Location, actor.Heading, cast.CastLocation, cast.RemainingCastTime.TotalSeconds);
+                ff14bot.Helpers.Logging.Write("[CrucibleSecondCast] id={0} actor={1:X} base={2:X} pos={3} heading={4:F4} destination={5} remaining={6:F2}", spell, actor.ObjectId, actor.BaseId, actor.Location, actor.Heading, cast.CastLocation, cast.RemainingCastTime.TotalSeconds);
                 if (spell == 48127)
                 {
                     charge.Clear();
@@ -177,6 +178,7 @@ namespace DutyMechanic.Dungeons
                     // Glows may precede this cast; preserve their observed order.
                     queueExpires = now.AddSeconds(25);
                 }
+
                 if (spell == 48128 && boss != null)
                 {
                     var origin = previewCount == 0 ? boss.Location : lastChargeEnd;
@@ -194,12 +196,14 @@ namespace DutyMechanic.Dungeons
                     else
                         ff14bot.Helpers.Logging.Write("[CrucibleSecond] Rejecting ambiguous charge preview; awaiting actual helper.");
                 }
+
                 if (spell == 48130 || spell == 48132 || spell == 48134)
                 {
                     // Cast completion plus 250 ms is a provisional effect fence;
                     // live action/result capture must verify it before release.
                     resolveCharge = until;
                 }
+
                 // Live action rows verified September 16: radius 30 circle,
                 // width 8 charge, and type 13 front/back helpers. Half-plane arms
                 // are a conservative envelope pending the 90/180-degree source
@@ -222,6 +226,7 @@ namespace DutyMechanic.Dungeons
                     active.Add(Cone(actor.Location, actor.Heading + side * (float)Math.PI / 2, 30.5f, until));
                     halfRoomUntil = until;
                 }
+
                 if ((spell == 48132 || spell == 48134) && (!armsQueued || charge.Count == 0))
                     active.Add(Cone(actor.Location, actor.Heading, 30.5f, until));
                 if (halfRoom)
@@ -235,6 +240,7 @@ namespace DutyMechanic.Dungeons
                     active.Add(Cone(actor.Location, actor.Heading + (rear ? (float)Math.PI : 0), 40.5f, until));
                     halfRoomUntil = until;
                 }
+
                 if (spell == 48130)
                 {
                     var delta = cast.CastLocation - actor.Location;
@@ -243,10 +249,9 @@ namespace DutyMechanic.Dungeons
                         active.Add(Line(actor.Location, (float)Math.Atan2(delta.X, delta.Z), length, until));
                 }
             }
-            // Kember 101416 published the fourth preview at 00:16:27.572 and
-            // both glow statuses one tick later,27.606. Queuing arms only inside
-            // that preview callback lost both early warnings; the actual casts
-            // then allowed just 0.3 s to dodge. Join both observations across ticks.
+
+            // Glow statuses can arrive one tick after the fourth preview. Join
+            // both observations across ticks; the actual casts leave only 0.3s to dodge.
             if (previewCount == 4 && !armsQueued && glowOrder.Count >= 2 && charge.Count > 0)
             {
                 foreach (uint glow in glowOrder.Take(2))
@@ -255,6 +260,7 @@ namespace DutyMechanic.Dungeons
                 ff14bot.Helpers.Logging.Write("[CrucibleSecond] queued final arms from observed glows {0}; origin={1} heading={2:F4}", string.Join(",", glowOrder.Take(2)), lastChargeEnd, lastChargeHeading);
                 glowOrder.Clear();
             }
+
             // 82404's opening arms were stable, but the 30 y leap and queued
             // charges still restarted native escape every 33 ms at its boundary.
             // Give every published Manticore hazard the same destination and
@@ -283,9 +289,9 @@ namespace DutyMechanic.Dungeons
             if (now >= nextHealth)
             {
                 nextHealth = now.AddSeconds(2);
-                ff14bot.Helpers.Logging.Write("[CrucibleSecondHealth] player={0:F1} pet={1} petHP={2:F1} boss={3:F1} pos={4} queued={5}",
-                    Core.Me.CurrentHealthPercent, Core.Me.Pet?.Name, Core.Me.Pet?.CurrentHealthPercent, boss?.CurrentHealthPercent, Core.Me.Location, charge.Count);
+                ff14bot.Helpers.Logging.Write("[CrucibleSecondHealth] player={0:F1} pet={1} petHP={2:F1} boss={3:F1} pos={4} queued={5}", Core.Me.CurrentHealthPercent, Core.Me.Pet?.Name, Core.Me.Pet?.CurrentHealthPercent, boss?.CurrentHealthPercent, Core.Me.Location, charge.Count);
             }
+
             return Task.FromResult(false);
         }
 
@@ -302,16 +308,12 @@ namespace DutyMechanic.Dungeons
 
         private void MoveHalfRoom()
         {
-            // 67380 restarted native escape dozens of times near the half-plane
-            // edge despite the CR movement lease. Snapshot world-space polygons
-            // and commit to a 1.5 y-clear destination instead. Chris observed that
-            // direct movers still crossed avoids: the native navigation graph
-            // now owns travel, while this handler owns only destination/holding.
+            // Native escape can oscillate at the half-plane edge. Hold a
+            // destination with 1.5y clearance, but let native navigation route
+            // there so travel cannot cross another active avoid.
             if (AvoidanceManager.IsRunningOutOfAvoid)
                 return;
-            var polygons = CurrentHazards().Select(h => h.Points.Select(p =>
-                new System.Numerics.Vector2(h.Origin.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading),
-                    h.Origin.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
+            var polygons = CurrentHazards().Select(h => h.Points.Select(p => new System.Numerics.Vector2(h.Origin.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading), h.Origin.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
             var position = new System.Numerics.Vector2(Core.Me.Location.X, Core.Me.Location.Z);
             // Shared preference ranks only destinations that pass dodge safety.
             var destination = ManticoreSafePosition.Choose(position, new System.Numerics.Vector2(Center.X, Center.Z), 18.5f, polygons, halfRoomDestination, false, preference: CrucibleMeleePreference.Capture());
@@ -324,6 +326,7 @@ namespace DutyMechanic.Dungeons
                 ReleaseHalfRoom();
                 return;
             }
+
             if (halfRoomDestination != destination)
                 ff14bot.Helpers.Logging.Write("[CrucibleManticoreHold] from={0} destination={1} hazards={2}", position, destination, polygons.Length);
             halfRoomDestination = destination;
@@ -344,18 +347,35 @@ namespace DutyMechanic.Dungeons
             Origin = origin,
             Heading = heading,
             Until = until,
-            Points = new[] { new Vector2(-4.5f, -.5f), new Vector2(4.5f, -.5f), new Vector2(4.5f, length + .5f), new Vector2(-4.5f, length + .5f) }
+            Points = new[]
+            {
+                new Vector2(-4.5f, -.5f),
+                new Vector2(4.5f, -.5f),
+                new Vector2(4.5f, length + .5f),
+                new Vector2(-4.5f, length + .5f)
+            }
         };
         private static Hazard Cone(Vector3 origin, float heading, float radius, DateTime until)
         {
-            var points = new List<Vector2> { new Vector2(0, -.5f) };
+            var points = new List<Vector2>
+            {
+                new Vector2(0, -.5f)
+            };
             for (int i = 0; i <= 36; i++)
             {
                 double angle = (-91 + 182.0 * i / 36) * Math.PI / 180;
                 points.Add(new Vector2((float)Math.Sin(angle) * radius, (float)Math.Cos(angle) * radius));
             }
-            return new Hazard { Origin = origin, Heading = heading, Until = until, Points = points.ToArray() };
+
+            return new Hazard
+            {
+                Origin = origin,
+                Heading = heading,
+                Until = until,
+                Points = points.ToArray()
+            };
         }
+
         private static Hazard Circle(Vector3 origin, float radius, DateTime until) => new Hazard
         {
             Origin = origin,

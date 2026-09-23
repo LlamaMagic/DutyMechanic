@@ -37,24 +37,19 @@ namespace DutyMechanic.Dungeons
         private Hazard nextCone;
         private float? lastConeHeading;
         private uint coneHelper;
-
         // Voidmancer shares this sub-arena. Require a unique nearby brother;
         // territory/coordinates alone would activate the wrong encounter owner.
-        private static bool InArena() => WorldManager.ZoneId == 1340 && Core.Me.Distance2D(Center) < 40 &&
-            GameObjectManager.GameObjects.Any(a => (a.BaseId == Elder || a.BaseId == Younger) && a.Distance2D(Center) < 40);
-
+        private static bool InArena() => WorldManager.ZoneId == 1340 && Core.Me.Distance2D(Center) < 40 && GameObjectManager.GameObjects.Any(a => (a.BaseId == Elder || a.BaseId == Younger) && a.Distance2D(Center) < 40);
         internal void Register()
         {
             AvoidanceHelpers.AddAvoidSquareDonut(InArena, 39, 39, 100, 100, () => new[] { Center });
-            AvoidanceManager.AddAvoidPolygon<Hazard>(InArena, null, 60, h => -h.Heading, h => 1,
-                h => 15, h => h.Points, h => h.Position, NativeCurrent, priority: AvoidancePriority.High);
+            AvoidanceManager.AddAvoidPolygon<Hazard>(InArena, null, 60, h => -h.Heading, h => 1, h => 15, h => h.Points, h => h.Position, NativeCurrent, priority: AvoidancePriority.High);
         }
 
         // Stable destination selection must not hide obstacles from the graph.
         // Native emergency escape has priority; we resume the same destination
         // through Navigator once it relinquishes movement.
         private IEnumerable<Hazard> NativeCurrent() => Current();
-
         private IEnumerable<Hazard> Current()
         {
             var now = DateTime.UtcNow;
@@ -69,6 +64,7 @@ namespace DutyMechanic.Dungeons
                 spinHazard.Until = spinEnd;
                 current.Add(spinHazard);
             }
+
             // Forecast is concurrent with the current cone/spinner, not part of
             // the ordered paired-cleave queue, which would hide it until too late.
             if (nextCone != null && nextCone.Until > now && now < spinEnd)
@@ -91,6 +87,7 @@ namespace DutyMechanic.Dungeons
                 coneHelper = 0;
                 return;
             }
+
             var now = DateTime.UtcNow;
             hazards.RemoveAll(h => h.Until <= now);
             knockbacks.RemoveAll(h => h.Until <= now);
@@ -129,6 +126,7 @@ namespace DutyMechanic.Dungeons
                     // bounds stale state if a helper disappears during a wipe.
                     spinEnd = now.AddSeconds(30);
                 }
+
                 if (id == 48208 || id == 48209)
                     swipeActor = actor.ObjectId;
                 if (id == FirstCone || id == NextCone)
@@ -151,24 +149,24 @@ namespace DutyMechanic.Dungeons
                             ff14bot.Helpers.Logging.Write("[CrucibleTablitaurForecast] count={0} heading={1:F4} next={2:F4}", coneCount, actor.Heading, nextCone.Heading);
                         }
                     }
+
                     coneHelper = actor.ObjectId;
                     lastConeHeading = actor.Heading;
                 }
             }
-            // Kember 84268: Younger died at 00:09:34 before any swipe cast set
-            // swipeActor. Elder cancelled Swing, but the cached spin held
-            // movement until 00:10:01 while Endless Slashes began. Both living
-            // brothers own this paired sequence, regardless of helper discovery.
+
+            // Either brother's death cancels the paired sequence, even before
+            // swipeActor is known. Keeping the spin then would block movement
+            // during Endless Slashes.
             // Do not clear unrelated pending cast hazards/knockbacks here.
-            if (spinActor != 0 && (now >= spinEnd ||
-                !actors.Any(a => a.BaseId == Elder && a.IsAlive) ||
-                !actors.Any(a => a.BaseId == Younger && a.IsAlive)))
+            if (spinActor != 0 && (now >= spinEnd || !actors.Any(a => a.BaseId == Elder && a.IsAlive) || !actors.Any(a => a.BaseId == Younger && a.IsAlive)))
             {
                 ff14bot.Helpers.Logging.Write("[CrucibleTablitaurRelease] Paired spin ended: spinner={0:X}, swipe={1:X}, expired={2}.", spinActor, swipeActor, now >= spinEnd);
                 spinActor = swipeActor = 0;
                 spinEnd = default;
                 nextCone = null;
             }
+
             if (hazards.Count > 0 || knockbacks.Count > 0 || now < spinEnd && spinActor != 0)
             {
                 if (!held && !AvoidanceManager.IsRunningOutOfAvoid)
@@ -189,8 +187,7 @@ namespace DutyMechanic.Dungeons
             if (now >= nextLog)
             {
                 nextLog = now.AddSeconds(1);
-                ff14bot.Helpers.Logging.Write("[CrucibleTablitaurState] player={0:F1} pos={1} bosses={2} hazards={3} knockbacks={4} spinner={5:X} cones={6}", Core.Me.CurrentHealthPercent, Core.Me.Location,
-                    string.Join(";", actors.Where(a => a.BaseId == Elder || a.BaseId == Younger).Select(a => a.BaseId.ToString("X") + ":" + a.CurrentHealthPercent.ToString("F1"))), hazards.Count, knockbacks.Count, spinActor, coneCount);
+                ff14bot.Helpers.Logging.Write("[CrucibleTablitaurState] player={0:F1} pos={1} bosses={2} hazards={3} knockbacks={4} spinner={5:X} cones={6}", Core.Me.CurrentHealthPercent, Core.Me.Location, string.Join(";", actors.Where(a => a.BaseId == Elder || a.BaseId == Younger).Select(a => a.BaseId.ToString("X") + ":" + a.CurrentHealthPercent.ToString("F1"))), hazards.Count, knockbacks.Count, spinActor, coneCount);
             }
         }
 
@@ -202,9 +199,7 @@ namespace DutyMechanic.Dungeons
             // graph navigation routes around the continuously registered avoids.
             // The 18.5 y disk fits inside this square;
             // no corner is required by these observed half-room/circle casts.
-            var polygons = Current().Select(h => h.Points.Select(p => new System.Numerics.Vector2(
-                h.Position.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading),
-                h.Position.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
+            var polygons = Current().Select(h => h.Points.Select(p => new System.Numerics.Vector2(h.Position.X + p.X * (float)Math.Cos(h.Heading) + p.Y * (float)Math.Sin(h.Heading), h.Position.Z - p.X * (float)Math.Sin(h.Heading) + p.Y * (float)Math.Cos(h.Heading))).ToArray()).ToArray();
             var start = new System.Numerics.Vector2(Core.Me.Location.X, Core.Me.Location.Z);
             // 1456 changed destination every~100 ms as the spinner chased its
             // minimum-clearance goal. New goals get 4 y clearance (0.67 s travel at
@@ -225,6 +220,7 @@ namespace DutyMechanic.Dungeons
                 moving = false;
                 return;
             }
+
             CapabilityManager.Update(movement, CapabilityFlags.Facing, TimeSpan.FromMilliseconds(600), "Crucible: face stable Tablitaur dodge");
             // Native emergency escape owns movement until it resolves; the
             // semantic graph route resumes only after that handoff.
@@ -233,6 +229,7 @@ namespace DutyMechanic.Dungeons
                 moving = false;
                 return;
             }
+
             if (dodgePoint != chosen)
                 ff14bot.Helpers.Logging.Write("[CrucibleTablitaurHold] from={0} destination={1} hazards={2}", start, chosen, polygons.Length);
             dodgePoint = chosen;
@@ -256,6 +253,7 @@ namespace DutyMechanic.Dungeons
                 knockbackPoint = null;
                 return;
             }
+
             // The same forward mover as Wyvern requires facing ownership while
             // staging; the combat routine remains free to command pets/attacks.
             CapabilityManager.Update(movement, CapabilityFlags.Facing, TimeSpan.FromMilliseconds(600), "Crucible: face Tablitaur knockback staging");
@@ -264,6 +262,7 @@ namespace DutyMechanic.Dungeons
                 moving = false;
                 return;
             }
+
             bool Safe(Vector3 p)
             {
                 var delta = p - source.Position;
@@ -273,6 +272,7 @@ namespace DutyMechanic.Dungeons
                 var landing = p + delta * (20.5f / length);
                 return Math.Abs(p.X - Center.X) < 19 && Math.Abs(p.Z) < 19 && Math.Abs(landing.X - Center.X) < 19 && Math.Abs(landing.Z) < 19;
             }
+
             if (!knockbackPoint.HasValue || !Safe(knockbackPoint.Value))
             {
                 knockbackPoint = null;
@@ -287,8 +287,10 @@ namespace DutyMechanic.Dungeons
                         best = d;
                         knockbackPoint = p;
                     }
+
                 ff14bot.Helpers.Logging.Write("[CrucibleTablitaurKnockback] source={0} destination={1} remaining={2:F2}", source.Position, knockbackPoint, (source.Until - now).TotalSeconds);
             }
+
             if (!knockbackPoint.HasValue)
                 return;
             if (Core.Me.Distance2D(knockbackPoint.Value) > .3f)
@@ -327,14 +329,27 @@ namespace DutyMechanic.Dungeons
             Position = p,
             Heading = heading,
             Until = until,
-            Points = new[] { new Vector2(-width, -.5f), new Vector2(width, -.5f), new Vector2(width, length + .5f), new Vector2(-width, length + .5f) }
+            Points = new[]
+            {
+                new Vector2(-width, -.5f),
+                new Vector2(width, -.5f),
+                new Vector2(width, length + .5f),
+                new Vector2(-width, length + .5f)
+            }
         };
         private static Hazard Cone(Vector3 p, float heading, DateTime until) => new Hazard
         {
             Position = p,
             Heading = heading,
             Until = until,
-            Points = new[] { new Vector2(0, -.5f) }.Concat(Enumerable.Range(0, 17).Select(i => { double a = (-31 + 62.0 * i / 16) * Math.PI / 180; return new Vector2((float)Math.Sin(a) * 40.5f, (float)Math.Cos(a) * 40.5f); })).ToArray()
+            Points = new[]
+            {
+                new Vector2(0, -.5f)
+            }.Concat(Enumerable.Range(0, 17).Select(i =>
+            {
+                double a = (-31 + 62.0 * i / 16) * Math.PI / 180;
+                return new Vector2((float)Math.Sin(a) * 40.5f, (float)Math.Cos(a) * 40.5f);
+            })).ToArray()
         };
         private sealed class Hazard
         {

@@ -5,6 +5,8 @@
   <ItemGroup>
     <Compile Include="*.cs.test" />
     <Compile Include="../../../Dungeons/Crucible/ThirdBoardGeometry.cs" Link="ThirdBoardGeometry.cs" />
+    <!-- Cover Second Master hazard geometry, refuges and forced movement. -->
+    <Compile Include="../../../Dungeons/Crucible/SecondMasterGeometry.cs" Link="SecondMasterGeometry.cs" />
     <!-- Master routes must preserve the bleeding boundary on every edge,
          including detours when the native start SpanRef is unavailable. -->
     <Compile Include="../../../Dungeons/Crucible/MasterArenaMovement.cs" Link="MasterArenaMovement.cs" />

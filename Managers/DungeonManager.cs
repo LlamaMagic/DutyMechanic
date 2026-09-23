@@ -26,6 +26,8 @@ internal static class DungeonManager
             // First Master's Board is a distinct territory; registration must
             // travel with its captured-route handler or combat has no mechanics.
             { (ZoneId)1342, typeof(FirstMastersBoard) },
+            // Second Master has its own territory and encounter sequence.
+            { (ZoneId)1343, typeof(SecondMastersBoard) },
 
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },

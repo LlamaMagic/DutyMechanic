@@ -16,29 +16,37 @@ namespace DutyMechanic.Dungeons
 {
     /// <summary>
     /// Mechanics for the captured Third Board route. Native avoidance owns
-    /// geometric dodges; explicit positioning is reserved for knockbacks,
-    /// forced march and baits. Unobserved branch encounters are not registered.
+    /// geometric dodges; explicit navigation owns required staging and facing.
+    /// Staging yields to native escape; the routine owns completed-escape cleanup. Unobserved branch encounters are not registered.
     /// </summary>
     public sealed partial class ThirdBoardOfUnbroken : AbstractDungeon
     {
-        private static readonly HashSet<uint> Bosses = new HashSet<uint> { 0x4C8E, 0x4C93, 0x4C9B, 0x4C9E, 0x4CA1, 0x4CAA };
+        private static readonly HashSet<uint> Bosses = new HashSet<uint>
+        {
+            0x4C8E,
+            0x4C93,
+            0x4C9B,
+            0x4C9E,
+            0x4CA1,
+            0x4CAA
+        };
         private readonly List<ThirdBoardHazard> hazards = new List<ThirdBoardHazard>();
         private readonly Dictionary<uint, uint> casts = new Dictionary<uint, uint>();
         private readonly CapabilityManagerHandle positioning = CapabilityManager.CreateNewHandle();
         private readonly List<Knockback> knockbacks = new List<Knockback>();
         private uint encounter;
         private V2? destination;
-        private bool moving, holding;
+        private bool holding;
         private bool? autoFacing;
-        private DateTime nextPlan, nextDiagnostic, baitUntil;
+        private DateTime nextDiagnostic, baitUntil;
         private uint baitAction;
         private V2 baitSource;
         private V2? previousPlayerPosition;
         private DateTime previousPlayerTime;
         private DateTime nextPublication;
         private ThirdBoardHazard[] published = Array.Empty<ThirdBoardHazard>();
+        private readonly Dictionary<ThirdBoardHazard, ThirdBoardEyePublication> eyePublications = new Dictionary<ThirdBoardHazard, ThirdBoardEyePublication>();
         private readonly Dictionary<V2[], Clio.Utilities.Vector2[]> nativePoints = new Dictionary<V2[], Clio.Utilities.Vector2[]>();
-
         private Clio.Utilities.Vector2[] NativePoints(ThirdBoardHazard hazard)
         {
             if (!nativePoints.TryGetValue(hazard.Points, out var points))
@@ -54,44 +62,37 @@ namespace DutyMechanic.Dungeons
         /// <inheritdoc/>
         protected override HashSet<uint> SpellsToFollowDodge { get; } = new HashSet<uint>();
         /// <inheritdoc/>
-        protected override HashSet<uint> SpellsToTankBust { get; } = new HashSet<uint> { 48563, 48620 };
+        protected override HashSet<uint> SpellsToTankBust { get; } = new HashSet<uint>
+        {
+            48563,
+            48620
+        };
         /// <inheritdoc/>
-        protected override HashSet<uint> SpellsToMitigate { get; } = new HashSet<uint> { 48479, 48504, 48561 };
+        protected override HashSet<uint> SpellsToMitigate { get; } = new HashSet<uint>
+        {
+            48479,
+            48504,
+            48561
+        };
 
-        private bool Active() => WorldManager.ZoneId == 1341 && Core.Me.IsAlive && encounter != 0 &&
-            V2.Distance(Point(Core.Me.Location), ThirdBoardGeometry.Center(encounter)) < 65;
+        private bool Active() => WorldManager.ZoneId == 1341 && Core.Me.IsAlive && encounter != 0 && V2.Distance(Point(Core.Me.Location), ThirdBoardGeometry.Center(encounter)) < 65;
         private static V2 Point(V3 p) => new V2(p.X, p.Z);
         private static V3 World(V2 p) => new V3(p.X, 0, p.Y);
-
         /// <inheritdoc/>
         protected override Task<bool> EnterDungeonAsync()
         {
             Reset();
             SidestepPlugin.Enabled = false;
             TreeRoot.OnStop += OnBotStopped;
-            AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && encounter != 0x4C93 && encounter != 0x4CAA && encounter != 0x4C9B && encounter != 0x4CA1,
-                40 - 2 * ThirdBoardGeometry.EdgeClearance, 40 - 2 * ThirdBoardGeometry.EdgeClearance,
-                140, 140, () => new[] { new V3(120, 0, 0) });
+            AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && encounter != 0x4C93 && encounter != 0x4CAA && encounter != 0x4C9B && encounter != 0x4CA1, 40 - 2 * ThirdBoardGeometry.EdgeClearance, 40 - 2 * ThirdBoardGeometry.EdgeClearance, 140, 140, () => new[] { new V3(120, 0, 0) });
             // The fine Guttler mask below ends at +/-17.25X and +/-28.25Z.
             // Native navigation can route around this finite mask where no
             // exterior polygon exists. Seal beyond the mask with an
             // overlapping outer apron; this adds no restriction to legal alcoves.
-            AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && encounter == 0x4CAA,
-                34, 56, 140, 140, () => new[] { new V3(520, 0, -420) });
+            AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && encounter == 0x4CAA, 34, 56, 140, 140, () => new[] { new V3(520, 0, -420) });
             // Circular rooms and the final room use an explicit floor mask.
             // Small rectangles outside the custom floor preserve every alcove.
-            AvoidanceManager.AddAvoidPolygon<ThirdBoardHazard>(() => Active() && !HasEscapeAnchor, null, 80,
-                h => -h.Heading, h => 1, h => 15,
-                NativePoints,
-                h => World(h.Origin), PublishedHazards, priority: AvoidancePriority.High);
-            // Repeated eye-wave replanning can send escapes across the room,
-            // despite a valid held refuge. Give the native graph the same goal
-            // as positioning; retain every hazard and the original fallback.
-            // Ten yalms is RB's minimum leash, not an arrival tolerance.
-            AvoidanceManager.AddAvoidPolygon<ThirdBoardHazard>(() => Active() && HasEscapeAnchor,
-                () => World(destination.Value), 10,
-                h => -h.Heading, h => 1, h => 15, NativePoints,
-                h => World(h.Origin), PublishedHazards, priority: AvoidancePriority.High);
+            AvoidanceManager.AddAvoidPolygon<ThirdBoardHazard>(Active, null, 80, h => -h.Heading, h => 1, h => 15, NativePoints, h => World(h.Origin), PublishedHazards, priority: AvoidancePriority.High);
             return Task.FromResult(false);
         }
 
@@ -103,30 +104,102 @@ namespace DutyMechanic.Dungeons
             }
 
             var now = DateTime.UtcNow;
+            // Refresh the bounded contact envelopes even between wave snapshots:
+            // a teleport must never leave its real contact circle uncovered.
+            var contacts = hazards.Where(h => h.Action == 0 && h.Persistent && h.Until > now).ToArray();
+            foreach (var source in eyePublications.Keys.Where(h => !contacts.Contains(h)).ToArray())
+            {
+                nativePoints.Remove(eyePublications[source].Hazard.Points);
+                eyePublications.Remove(source);
+                nextPublication = default;
+            }
+
+            foreach (var contact in contacts)
+            {
+                if (!eyePublications.TryGetValue(contact, out var publication))
+                {
+                    eyePublications[contact] = publication = new ThirdBoardEyePublication(contact, now);
+                    nextPublication = default;
+                }
+
+                publication.Read(contact, now);
+            }
+
             if (now < nextPublication)
             {
                 return published;
             }
 
             nextPublication = now.AddMilliseconds(200);
-            var pending = hazards.Where(h => h.Until > now &&
-                !(h.Action == 48555 && knockbacks.Any(k => k.Lane != null && k.Until > now))).ToArray();
+            var pending = hazards.Where(h => h.Until > now && !(h.Action == 48555 && knockbacks.Any(k => k.Lane != null && k.Until > now))).ToArray();
             // Never union mutually exclusive successive waves. Persistent cage
             // bodies remain active through every wave. Combine later casts only
             // when at least one common safe point exists in the actual arena.
             var imminent = ThirdBoardGeometry.SelectWave(pending, encounter);
-            published = imminent.Concat(boundary).ToArray();
+            published = imminent.Select(h => eyePublications.TryGetValue(h, out var eye) ? eye.Hazard : h).Concat(boundary).ToArray();
             return published;
         }
 
-        private bool escapeAnchorValid;
-        private bool HasEscapeAnchor => escapeAnchorValid && holding && destination.HasValue;
+        // A native escape or provider replacement invalidates permission to stop
+        // our previous staging route. Never stop game-controlled displacement.
+        private bool stagingMoving;
+        private object stagingProvider, stagingMover;
+        private void StopStaging()
+        {
+            if (stagingMoving && !AvoidanceManager.IsRunningOutOfAvoid && !MovementManager.GenerallyOutOfControl && !Core.Me.HasAura(1257) && ReferenceEquals(stagingProvider, Navigator.NavigationProvider) && ReferenceEquals(stagingMover, Navigator.PlayerMover))
+            {
+                Navigator.Stop();
+                Navigator.Clear();
+            }
+
+            stagingMoving = false;
+        }
+
+        private void Hold(V2 point, float? facing = null)
+        {
+            SuppressPursuit(preserveAutoFacing: true);
+            if (AvoidanceManager.IsRunningOutOfAvoid || MovementManager.GenerallyOutOfControl || Core.Me.HasAura(1257))
+            {
+                stagingMoving = false;
+                return;
+            }
+
+            // Restore explicit graph navigation for positive mechanics after the
+            // tiny staging masks repeatedly failed native escape search. Disable
+            // action auto-facing during travel so attacks cannot steer SlideMover.
+            bool traveling = V2.Distance(Point(Core.Me.Location), point) > .35f;
+            if (traveling || facing.HasValue)
+            {
+                if (!autoFacing.HasValue)
+                    autoFacing = GameSettingsManager.FaceTargetOnAction;
+                GameSettingsManager.FaceTargetOnAction = false;
+            }
+
+            if (traveling)
+            {
+                Navigator.MoveTo(new ff14bot.Pathing.MoveToParameters(World(point), "Third Board staging") { DistanceTolerance = .35f, UseMount = false });
+                stagingProvider = Navigator.NavigationProvider;
+                stagingMover = Navigator.PlayerMover;
+                stagingMoving = true;
+            }
+            else
+            {
+                StopStaging();
+                if (!facing.HasValue && autoFacing.HasValue)
+                {
+                    GameSettingsManager.FaceTargetOnAction = autoFacing.Value;
+                    autoFacing = null;
+                }
+
+                if (facing.HasValue)
+                    Core.Me.SetFacing(facing.Value);
+            }
+        }
 
         /// <inheritdoc/>
         public override Task<bool> RunAsync()
         {
-            var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
-                .Where(a => a.Distance2D(Core.Me.Location) < 90).ToArray();
+            var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).Where(a => a.Distance2D(Core.Me.Location) < 90).ToArray();
             var boss = actors.FirstOrDefault(a => Bosses.Contains(a.BaseId) && a.IsAlive);
             // Ymir's shell/head can die before Sahagin. Keep that encounter's
             // knockback handling alive until the remaining add is also dead.
@@ -140,6 +213,7 @@ namespace DutyMechanic.Dungeons
                 Reset();
                 return Task.FromResult(false);
             }
+
             uint nextEncounter = boss.BaseId == 0x4C94 || boss.BaseId == 0x4C95 ? 0x4C93u : boss.BaseId;
             if (encounter != nextEncounter)
             {
@@ -147,16 +221,16 @@ namespace DutyMechanic.Dungeons
                 encounter = nextEncounter;
                 BuildBoundary();
             }
+
             SidestepPlugin.Enabled = false;
             var now = DateTime.UtcNow;
             var player = Point(Core.Me.Location);
             foreach (var lane in knockbacks.Where(k => k.Lane != null && now < k.ResolveAt))
             {
-                lane.BeforeEffect = lane.Lane.Contains(player) ? player : (V2?)null;
+                lane.BeforeEffect = lane.Lane.Contains(player) ? player : (V2? )null;
             }
 
-            if (knockbacks.Any(k => k.Lane != null && now >= k.ResolveAt && now < k.Until &&
-                k.BeforeEffect.HasValue && ThirdBoardGeometry.LandslipMoved(k.BeforeEffect.Value, player, k.Heading)))
+            if (knockbacks.Any(k => k.Lane != null && now >= k.ResolveAt && now < k.Until && k.BeforeEffect.HasValue && ThirdBoardGeometry.LandslipMoved(k.BeforeEffect.Value, player, k.Heading)))
             {
                 // Retire the simultaneous lane set, not unrelated knockbacks.
                 // Publishing Rockslide again hands the landing to native dodge.
@@ -165,16 +239,17 @@ namespace DutyMechanic.Dungeons
                 nextPublication = default;
                 ff14bot.Helpers.Logging.Write("[CrucibleThirdLandslip] Displacement confirmed at {0}; staging released, Rockslide avoidance restored.", player);
             }
+
             // A resolved knockback must not send us back to its staging point
             // during the effect fence. Ordinary motion cannot travel nine yalms
             // between adjacent (<500ms) pulses. Long pauses do not qualify.
-            if (previousPlayerPosition.HasValue && now - previousPlayerTime < TimeSpan.FromMilliseconds(500) &&
-                V2.Distance(player, previousPlayerPosition.Value) > 9 && knockbacks.Any(k => k.Until < now.AddSeconds(4)))
+            if (previousPlayerPosition.HasValue && now - previousPlayerTime < TimeSpan.FromMilliseconds(500) && V2.Distance(player, previousPlayerPosition.Value) > 9 && knockbacks.Any(k => k.Until < now.AddSeconds(4)))
             {
                 knockbacks.Clear();
                 Release();
                 nextPublication = default;
             }
+
             previousPlayerPosition = player;
             previousPlayerTime = now;
             hazards.RemoveAll(h => h.Until <= now);
@@ -194,6 +269,7 @@ namespace DutyMechanic.Dungeons
                     CaptureCast(actor, action, now);
                 }
             }
+
             // Snapshot cleanup prevents object-id reuse and growth across waves.
             var present = new HashSet<uint>(actors.Select(a => a.ObjectId));
             foreach (uint id in casts.Keys.Where(id => !present.Contains(id)).ToArray())
@@ -201,7 +277,7 @@ namespace DutyMechanic.Dungeons
                 casts.Remove(id);
             }
 
-            TickPositioning(actors, now);
+            TickPositioning(now);
             return Task.FromResult(false);
         }
 
@@ -315,15 +391,7 @@ namespace DutyMechanic.Dungeons
                 case 48556:
                     // Landslip's effect followed its cast bar by roughly 2.5s
                     // in the capture. Rockslide resolves in that same interval.
-                    knockbacks.Add(new Knockback
-                    {
-                        Origin = origin,
-                        Distance = 20,
-                        Heading = heading,
-                        Lane = new ThirdBoardHazard { Origin = origin, Heading = heading, Points = ThirdBoardHazard.Rectangle(5, 45, 0) },
-                        ResolveAt = now + cast.RemainingCastTime,
-                        Until = until.AddSeconds(2.5)
-                    });
+                    knockbacks.Add(new Knockback { Origin = origin, Distance = 20, Heading = heading, Lane = new ThirdBoardHazard { Origin = origin, Heading = heading, Points = ThirdBoardHazard.Rectangle(5, 45, 0) }, ResolveAt = now + cast.RemainingCastTime, Until = until.AddSeconds(2.5) });
                     break;
                 case 48607:
                     knockbacks.Add(new Knockback { Origin = origin, Distance = 20, Heading = heading + MathF.PI / 2, Bidirectional = true, Until = until });
@@ -344,17 +412,17 @@ namespace DutyMechanic.Dungeons
                     destination = null;
                     break;
             }
+
             if (shape != null)
             {
                 hazards.RemoveAll(h => h.Actor == actor.ObjectId && h.Action == action);
                 Add(actor.ObjectId, action, origin, heading, shape, until);
             }
-            // The shared diagnostic collector owns per-cast telemetry; keep
-            // encounter logging focused on forecasts and recovery decisions.
+        // The shared diagnostic collector owns per-cast telemetry; keep
+        // encounter logging focused on forecasts and recovery decisions.
         }
 
-        private void Add(uint actor, uint action, V2 origin, float heading, V2[] points, DateTime until, bool persistent = false) =>
-            hazards.Add(new ThirdBoardHazard { Actor = actor, Action = action, Origin = origin, Heading = heading, Points = points, Until = until, Persistent = persistent });
+        private void Add(uint actor, uint action, V2 origin, float heading, V2[] points, DateTime until, bool persistent = false) => hazards.Add(new ThirdBoardHazard { Actor = actor, Action = action, Origin = origin, Heading = heading, Points = points, Until = until, Persistent = persistent });
         private void AddRing(uint actor, uint action, V2 origin, float inner, float outer, DateTime until)
         {
             hazards.RemoveAll(h => h.Actor == actor && h.Action == action);
@@ -371,26 +439,23 @@ namespace DutyMechanic.Dungeons
             if (encounter == 0x4C93)
             {
                 // Dreadwash can displace the player onto the bleeding edge.
-                // Publish this square through the same
-                // anchored escape graph as Water II, rather than a separate
-                // boundary registration with an unrelated escape destination.
+                // Publish this square alongside Water II in the native graph;
+                // boundary recovery must not create another movement owner.
                 float inner = 20 - ThirdBoardGeometry.EdgeClearance;
                 const float outer = 70;
                 float halfBand = (outer - inner) / 2;
                 float offset = (outer + inner) / 2;
                 var center = ThirdBoardGeometry.Center(encounter);
-                foreach (float side in new[] { -1f, 1f })
+                foreach (float side in new[]
                 {
-                    boundary.Add(new ThirdBoardHazard
-                    {
-                        Origin = center + new V2(side * offset, 0),
-                        Points = ThirdBoardHazard.Rectangle(halfBand, outer, outer)
-                    });
-                    boundary.Add(new ThirdBoardHazard
-                    {
-                        Origin = center + new V2(0, side * offset),
-                        Points = ThirdBoardHazard.Rectangle(inner, halfBand, halfBand)
-                    });
+                    -1f,
+                    1f
+                }
+
+                )
+                {
+                    boundary.Add(new ThirdBoardHazard { Origin = center + new V2(side * offset, 0), Points = ThirdBoardHazard.Rectangle(halfBand, outer, outer) });
+                    boundary.Add(new ThirdBoardHazard { Origin = center + new V2(0, side * offset), Points = ThirdBoardHazard.Rectangle(inner, halfBand, halfBand) });
                 }
             }
             else if (encounter == 0x4C9B || encounter == 0x4CA1)
@@ -422,11 +487,7 @@ namespace DutyMechanic.Dungeons
                         if (!outside && runStart.HasValue)
                         {
                             float end = x - .5f;
-                            boundary.Add(new ThirdBoardHazard
-                            {
-                                Origin = center + new V2((runStart.Value + end) / 2, z),
-                                Points = ThirdBoardHazard.Rectangle((end - runStart.Value) / 2 + .25f, .25f, .25f)
-                            });
+                            boundary.Add(new ThirdBoardHazard { Origin = center + new V2((runStart.Value + end) / 2, z), Points = ThirdBoardHazard.Rectangle((end - runStart.Value) / 2 + .25f, .25f, .25f) });
                             runStart = null;
                         }
                     }
@@ -436,75 +497,46 @@ namespace DutyMechanic.Dungeons
 
         private void Release()
         {
-            escapeAnchorValid = false;
-            if (moving && !AvoidanceManager.IsRunningOutOfAvoid)
-            {
-                Navigator.Stop();
-            }
-
+            StopStaging();
+            nextPublication = default;
             if (holding)
             {
                 CapabilityManager.Clear(positioning, CapabilityFlags.Movement, "Third Board positioning resolved");
                 CapabilityManager.Clear(positioning, CapabilityFlags.Facing, "Third Board positioning resolved");
             }
+
             if (autoFacing.HasValue)
             {
                 GameSettingsManager.FaceTargetOnAction = autoFacing.Value;
                 autoFacing = null;
             }
-            moving = holding = false;
+
+            holding = false;
             destination = null;
         }
 
-        private void Hold(V2 point, float? facing = null)
+        private void SuppressPursuit(float? facing = null, bool preserveAutoFacing = false)
         {
-            // Each capability is an individual enum key in RB, not a bitmask.
-            CapabilityManager.Update(positioning, CapabilityFlags.Movement, TimeSpan.FromMilliseconds(600), "Third Board positioning");
-            CapabilityManager.Update(positioning, CapabilityFlags.Facing, TimeSpan.FromMilliseconds(600), "Third Board positioning");
+            // Suppress routine pursuit/facing, never RB avoidance. RunAsync
+            // returns false so safe damage and healing remain schedulable.
+            // No MoveTo/Stop command may steal the native escape route.
+            CapabilityManager.Update(positioning, CapabilityFlags.Movement, TimeSpan.FromMilliseconds(600), "Third Board native avoidance");
+            CapabilityManager.Update(positioning, CapabilityFlags.Facing, TimeSpan.FromMilliseconds(600), "Third Board native avoidance");
             holding = true;
-            // Native action auto-facing bypasses the routine's Facing lease.
-            // Disable it during travel too: SlideMover uses that same heading,
-            // so an axe action can otherwise turn the character off its route.
-            bool traveling = AvoidanceManager.IsRunningOutOfAvoid || V2.Distance(Point(Core.Me.Location), point) > .35f;
-            if (facing.HasValue || traveling)
+            if (facing.HasValue || AvoidanceManager.IsRunningOutOfAvoid)
             {
                 if (!autoFacing.HasValue)
-                {
                     autoFacing = GameSettingsManager.FaceTargetOnAction;
-                }
-
                 GameSettingsManager.FaceTargetOnAction = false;
             }
-            else if (autoFacing.HasValue)
+            else if (autoFacing.HasValue && !preserveAutoFacing)
             {
-                // Restore once when changing to a movement-only mechanic, not
-                // every pulse of an ongoing gaze (which would toggle the setting).
                 GameSettingsManager.FaceTargetOnAction = autoFacing.Value;
                 autoFacing = null;
             }
-            if (AvoidanceManager.IsRunningOutOfAvoid)
-            {
-                moving = false;
-                return;
-            }
-            if (V2.Distance(Point(Core.Me.Location), point) > .35f)
-            {
-                Navigator.MoveTo(new ff14bot.Pathing.MoveToParameters(World(point), "Third Board mechanic") { DistanceTolerance = .35f, UseMount = false });
-                moving = true;
-            }
-            else
-            {
-                if (moving)
-                {
-                    Navigator.Stop();
-                }
 
-                moving = false;
-                if (facing.HasValue)
-                {
-                    Core.Me.SetFacing(facing.Value);
-                }
-            }
+            if (facing.HasValue && !AvoidanceManager.IsRunningOutOfAvoid)
+                Core.Me.SetFacing(facing.Value);
         }
 
         private void Reset()
@@ -515,14 +547,14 @@ namespace DutyMechanic.Dungeons
             knockbacks.Clear();
             boundary.Clear();
             nativePoints.Clear();
+            eyePublications.Clear();
             published = Array.Empty<ThirdBoardHazard>();
             nextPublication = default;
             ResetPredictions();
             encounter = 0;
-            baitUntil = nextPlan = default;
+            baitUntil = default;
             marchHeading = null;
             previousPlayerPosition = null;
-            waterEscapeDestination = null;
         }
 
         private void OnBotStopped(ff14bot.AClasses.BotBase bot) => Reset();
