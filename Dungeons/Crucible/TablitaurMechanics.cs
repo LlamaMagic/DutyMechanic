@@ -27,6 +27,13 @@ namespace DutyMechanic.Dungeons
         // Keep polygon identity stable while its origin follows the spinner;
         // allocating a new hazard each pulse restarts native avoidance paths.
         private readonly Hazard spinHazard = Circle(Center, 8.5f, default);
+        // Reuse the sampled one-second predictor used for moving contact fields.
+        // A position-only disk let the pursuing brother catch Kember before the
+        // next dodge, knocking him through the arena boundary on September24.
+        // Chase-target direction handles turns; measured travel sets the minimum
+        // one-second lookahead. Reset samples between actors/phases.
+        private CloudMotionPrediction spinMotion = new CloudMotionPrediction();
+        private System.Numerics.Vector2 spinLead;
         private uint spinActor, swipeActor;
         private int coneCount;
         private DateTime spinEnd, nextLog;
@@ -37,6 +44,9 @@ namespace DutyMechanic.Dungeons
         private Hazard nextCone;
         private float? lastConeHeading;
         private uint coneHelper;
+        private uint slashActor;
+        private DateTime slashUntil;
+        private Vector3? slashPoint;
         // Voidmancer shares this sub-arena. Require a unique nearby brother;
         // territory/coordinates alone would activate the wrong encounter owner.
         private static bool InArena() => WorldManager.ZoneId == 1340 && Core.Me.Distance2D(Center) < 40 && GameObjectManager.GameObjects.Any(a => (a.BaseId == Elder || a.BaseId == Younger) && a.Distance2D(Center) < 40);
@@ -62,6 +72,19 @@ namespace DutyMechanic.Dungeons
             {
                 spinHazard.Position = spinner.Location;
                 spinHazard.Until = spinEnd;
+                var origin = new System.Numerics.Vector2(spinner.Location.X, spinner.Location.Z);
+                var measured = spinMotion.Observe(origin, now);
+                var lead = TablitaurSpinPrediction.Lead(origin,
+                    new System.Numerics.Vector2(Core.Me.Location.X, Core.Me.Location.Z), measured);
+                // Preserve the current 8.5y contact disk and its forward capsule.
+                // Do not let stale velocity aim away from the player after a turn.
+                // The shared sampler caps interpolation jumps at six yalms.
+                // Both graph avoidance and manual goals consume this same shape.
+                if (lead != spinLead)
+                {
+                    spinLead = lead;
+                    spinHazard.Points = ThirdBoardHazard.SweptCircle(8.5f, spinLead).Select(p => new Vector2(p.X, p.Y)).ToArray();
+                }
                 current.Add(spinHazard);
             }
 
@@ -81,10 +104,15 @@ namespace DutyMechanic.Dungeons
                 hazards.Clear();
                 knockbacks.Clear();
                 spinActor = swipeActor = 0;
+                spinMotion = new CloudMotionPrediction();
+                spinLead = default;
                 coneCount = 0;
                 nextCone = null;
                 lastConeHeading = null;
                 coneHelper = 0;
+                slashActor = 0;
+                slashUntil = default;
+                slashPoint = null;
                 return;
             }
 
@@ -104,10 +132,18 @@ namespace DutyMechanic.Dungeons
                 // 750 ms is the provisional helper effect fence. Slash 48204 is
                 // a targeted tankbuster, not a fixed cast-start rectangle:
                 // 46732 was its explicit target and took 417 damage while the
-                // false avoid held it 12 y from the boss for 9 s. Leave that cast
-                // to routine threat/cover handling without starving approach.
+                // false avoid held it12y from the boss for9s. Bait it away from
+                // the pet while the routine owns mitigation; do not evade a
+                // rectangle that continuously tracks the player himself.
                 var until = now + cast.RemainingCastTime + TimeSpan.FromMilliseconds(750);
                 ff14bot.Helpers.Logging.Write("[CrucibleTablitaurCast] id={0} actor={1:X} base={2:X} pos={3} heading={4:F4} ground={5} remaining={6:F3}", id, actor.ObjectId, actor.BaseId, actor.Location, actor.Heading, cast.CastLocation, cast.RemainingCastTime.TotalSeconds);
+                if (id == Slash && actor.BaseId == Elder && cast.TargetId == Core.Me.ObjectId)
+                {
+                    slashActor = actor.ObjectId;
+                    // Captured damage arrived1.08s after the cast bar ended.
+                    slashUntil = now + cast.RemainingCastTime + TimeSpan.FromSeconds(1.4);
+                    slashPoint = null;
+                }
                 if (id == Swipe || id == SwipeLong)
                     hazards.Add(Rect(actor.Location, actor.Heading, 30.5f, 60, until));
                 if (id == Swing || id == SwingLong || id == Stomp || id == StompLong)
@@ -117,6 +153,9 @@ namespace DutyMechanic.Dungeons
                 if (id == Spin && (actor.BaseId == Elder || actor.BaseId == Younger))
                 {
                     spinActor = actor.ObjectId;
+                    spinMotion = new CloudMotionPrediction();
+                    spinLead = default;
+                    spinHazard.Points = Circle(Center, 8.5f, default).Points;
                     coneCount = 0;
                     swipeActor = 0;
                     nextCone = null;
@@ -167,7 +206,12 @@ namespace DutyMechanic.Dungeons
                 nextCone = null;
             }
 
-            if (hazards.Count > 0 || knockbacks.Count > 0 || now < spinEnd && spinActor != 0)
+            if (now < slashUntil && PositionSlash())
+            {
+                // Positive bait positioning leaves rotation and mitigation
+                // schedulable; it owns only movement/facing while traveling.
+            }
+            else if (hazards.Count > 0 || knockbacks.Count > 0 || now < spinEnd && spinActor != 0)
             {
                 if (!held && !AvoidanceManager.IsRunningOutOfAvoid)
                     MovementManager.MoveStop();
@@ -187,8 +231,48 @@ namespace DutyMechanic.Dungeons
             if (now >= nextLog)
             {
                 nextLog = now.AddSeconds(1);
-                ff14bot.Helpers.Logging.Write("[CrucibleTablitaurState] player={0:F1} pos={1} bosses={2} hazards={3} knockbacks={4} spinner={5:X} cones={6}", Core.Me.CurrentHealthPercent, Core.Me.Location, string.Join(";", actors.Where(a => a.BaseId == Elder || a.BaseId == Younger).Select(a => a.BaseId.ToString("X") + ":" + a.CurrentHealthPercent.ToString("F1"))), hazards.Count, knockbacks.Count, spinActor, coneCount);
+                ff14bot.Helpers.Logging.Write("[CrucibleTablitaurState] player={0:F1} pos={1} bosses={2} hazards={3} knockbacks={4} spinner={5:X} cones={6} spinPosition={7} oneSecondLead={8}", Core.Me.CurrentHealthPercent, Core.Me.Location, string.Join(";", actors.Where(a => a.BaseId == Elder || a.BaseId == Younger).Select(a => a.BaseId.ToString("X") + ":" + a.CurrentHealthPercent.ToString("F1"))), hazards.Count, knockbacks.Count, spinActor, coneCount, spinHazard.Position, spinLead);
             }
+        }
+
+        private bool PositionSlash()
+        {
+            var boss = GameObjectManager.GetObjectByObjectId(slashActor) as BattleCharacter;
+            var pet = Core.Me.Pet;
+            if (boss == null || !boss.IsAlive || pet == null || !pet.IsAlive) return false;
+            var origin = new System.Numerics.Vector2(boss.Location.X, boss.Location.Z);
+            var familiar = new System.Numerics.Vector2(pet.Location.X, pet.Location.Z);
+            bool Safe(Vector3 point) => Math.Abs(point.X - Center.X) < 18.5f && Math.Abs(point.Z) < 18.5f &&
+                TablitaurSlashBait.PetIsClear(origin, new System.Numerics.Vector2(point.X, point.Z), familiar, pet.CombatReach);
+            if (!slashPoint.HasValue || !Safe(slashPoint.Value))
+            {
+                // Prefer the current melee point if already separated; otherwise
+                // use the nearest safe angle within actual axe reach. This phase
+                // overlaps Cheer, not the moving spin or the paired floor cleaves.
+                float reach = Math.Max(3, boss.CombatReach + Core.Me.CombatReach + (float)DataManager.GetSpellData(44879).Range - .5f);
+                slashPoint = Safe(Core.Me.Location) ? Core.Me.Location : Enumerable.Range(0, 32)
+                    .Select(i => boss.Location + new Vector3((float)Math.Sin(i * Math.PI / 16) * reach, 0, (float)Math.Cos(i * Math.PI / 16) * reach))
+                    .Where(Safe).OrderBy(p => p.Distance2D(Core.Me.Location)).Select(p => (Vector3?)p).FirstOrDefault();
+                if (slashPoint.HasValue)
+                    ff14bot.Helpers.Logging.Write("[CrucibleSlashBait] destination={0} boss={1} pet={2}", slashPoint, boss.Location, pet.Location);
+            }
+            if (!slashPoint.HasValue) return false;
+            CapabilityManager.Update(movement, CapabilityFlags.Movement, TimeSpan.FromMilliseconds(600), "Crucible: separate Slash from pet");
+            held = true;
+            if (AvoidanceManager.IsRunningOutOfAvoid) { moving = false; return true; }
+            if (Core.Me.Distance2D(slashPoint.Value) > .3f)
+            {
+                CapabilityManager.Update(movement, CapabilityFlags.Facing, TimeSpan.FromMilliseconds(600), "Crucible: Slash bait transit");
+                Navigator.MoveTo(new ff14bot.Pathing.MoveToParameters(slashPoint.Value, "Crucible: Slash pet separation") { DistanceTolerance = .3f, UseMount = false });
+                moving = true;
+            }
+            else
+            {
+                if (moving) Navigator.Stop();
+                moving = false;
+                CapabilityManager.Clear(movement, CapabilityFlags.Facing, "Crucible: Slash bait reached");
+            }
+            return true;
         }
 
         private void PositionDodge()
@@ -207,10 +291,15 @@ namespace DutyMechanic.Dungeons
             // If that extra space is unavailable, fall back to the proven margin.
             bool chasing = spinActor != 0 && DateTime.UtcNow < spinEnd;
             // Damage preference never reduces the chasing spinner's clearance.
-            var meleePreference = CrucibleMeleePreference.Capture();
-            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false, chasing ? 4f : .75f, chasing ? 4f : 1.5f, meleePreference);
+            // September24's spin chose a new melee goal every100–300ms and
+            // crossed the central swipe fan repeatedly. The chasing phase
+            // requires continuous clearance, not promotion toward the other
+            // brother. Preserve safe goals and validate the travel corridor;
+            // native escape remains the fallback if no such corridor exists.
+            var meleePreference = chasing ? null : CrucibleMeleePreference.Capture();
+            var chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, chasing, chasing ? 4f : .75f, chasing ? 4f : 1.5f, meleePreference);
             if (!chosen.HasValue && chasing)
-                chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, false, preference: meleePreference);
+                chosen = ManticoreSafePosition.Choose(start, new System.Numerics.Vector2(120, 0), 18.5f, polygons, dodgePoint, true);
             manualDodge = chosen.HasValue;
             if (!manualDodge)
             {

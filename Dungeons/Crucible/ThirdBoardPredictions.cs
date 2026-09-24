@@ -14,6 +14,7 @@ namespace DutyMechanic.Dungeons
         private readonly Dictionary<uint, Eye> eyes = new Dictionary<uint, Eye>();
         private V2? lastSirenPosition;
         private DateTime sirenPositionTime;
+        private bool sirenEdgeSeen;
 
         private void CapturePredictions(BattleCharacter[] actors, BattleCharacter boss, DateTime now)
         {
@@ -84,8 +85,15 @@ namespace DutyMechanic.Dungeons
                     // Predict rotating eyes from movement,
                     // not spawn order. Native cast snapshots replace predictions
                     // if contact detonates an eye before its nominal endpoint.
-                    var finish = center + ThirdBoardGeometry.Direction(start + Math.Sign(delta) * MathF.PI * .75f) * 20;
+                    // Eyes finish on the21y actor ring, outside the20y floor.
+                    // RB51900's refuge was4.34y from the old20y prediction but
+                    //5.15y from the real Farburst origin, so it was hit before
+                    // the200ms cast could correct the forecast.
+                    var finish = ThirdBoardGeometry.EyeEndpoint(start + Math.Sign(delta) * MathF.PI * .75f);
                     var until = now.AddSeconds(19.45);
+                    // Gaze resolves with this eye's detonation, not throughout
+                    // its travel. Keep an effect fence for delayed helper hits.
+                    eye.GazeAt = until;
                     if (eye.Donut)
                     {
                         AddRing(actor.ObjectId, 48508, finish, 4.5f, 50.5f, until);
@@ -102,9 +110,33 @@ namespace DutyMechanic.Dungeons
             if (boss.BaseId == 0x4CA1)
             {
                 var p = Point(boss.Location);
-                if (lastSirenPosition.HasValue && ThirdBoardGeometry.SirenRelocated(
-                    lastSirenPosition.Value, p, (now - sirenPositionTime).TotalSeconds) && !boss.IsCasting)
+                var activeMelody = hazards.FirstOrDefault(h => h.Action == 48566);
+                // The first teleport sample can still be interpolating.52656
+                // latched a flank1.6y from the settled endpoint. Refine only
+                // during the initial750ms and preserve the volley expiry;
+                // later boss motion must not rotate an already resolving cone.
+                if (activeMelody != null && activeMelody.Until - now > TimeSpan.FromSeconds(13.25) &&
+                    ThirdBoardGeometry.SirenAtMelodyEdge(p))
                 {
+                    var settled = ThirdBoardGeometry.SirenEdgeOrigin(p);
+                    float delta = V2.Distance(activeMelody.Origin, settled);
+                    if (delta > .5f && delta <= 3)
+                    {
+                        activeMelody.Origin = settled;
+                        activeMelody.Heading = ThirdBoardGeometry.Heading(ThirdBoardGeometry.Center(encounter) - settled);
+                        destination = null;
+                        nextPublication = default;
+                    }
+                }
+                if (V2.Distance(p, ThirdBoardGeometry.Center(0x4CA1)) < 18.5f) sirenEdgeSeen = false;
+                if ((!sirenEdgeSeen && ThirdBoardGeometry.SirenAtMelodyEdge(p) ||
+                    lastSirenPosition.HasValue && ThirdBoardGeometry.SirenRelocated(
+                    lastSirenPosition.Value, p, (now - sirenPositionTime).TotalSeconds)) && !boss.IsCasting)
+                {
+                    // Latch the endpoint until she returns to the room. A later
+                    // cast clearing Melody must not repeatedly recreate it while
+                    // she remains stationary on that same outer edge.
+                    sirenEdgeSeen = true;
                     var origin = ThirdBoardGeometry.SirenEdgeOrigin(p);
                     var previous = hazards.FirstOrDefault(h => h.Action == 48566);
                     // The manual trace jumps to the edge before the instant
@@ -148,6 +180,9 @@ namespace DutyMechanic.Dungeons
             }
 
             closest.Value.Resolved = true;
+            // Helper cast-start precedes the actual gaze effect. Retiring its
+            // movement forecast must not release facing in that final window.
+            closest.Value.GazeAt = DateTime.UtcNow.AddMilliseconds(650);
             hazards.RemoveAll(h => h.Actor == closest.Key && h.Action != 0);
         }
 
@@ -156,12 +191,14 @@ namespace DutyMechanic.Dungeons
             spawned.Clear();
             eyes.Clear();
             lastSirenPosition = null;
+            sirenEdgeSeen = false;
         }
 
         private sealed class Eye
         {
             internal V2 Start, Position;
             internal bool Donut, Predicted, Resolved, Gaze;
+            internal DateTime GazeAt;
         }
     }
 }

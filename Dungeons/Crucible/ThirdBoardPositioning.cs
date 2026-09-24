@@ -14,6 +14,9 @@ namespace DutyMechanic.Dungeons
         {
             var current = Point(Core.Me.Location);
             var pending = hazards.Where(h => h.Until > now).ToArray();
+            // Native avoidance owns this bounded inward correction. A latched
+            // Melody flank must not send us back toward its old edge endpoint.
+            if (boundaryRecovery.Active) return;
             bool forward = Core.Me.HasAura(2161), backward = Core.Me.HasAura(2162);
             bool left = Core.Me.HasAura(2163), right = Core.Me.HasAura(2164);
             if (Core.Me.HasAura(1257))
@@ -55,12 +58,12 @@ namespace DutyMechanic.Dungeons
 
             if (knockbacks.Count > 0)
             {
-                // Once a Landslip bar ends, movement belongs to the effect.
+                // Once a timed knockback bar ends, movement belongs to the effect.
                 // Keep pursuit leased out but never reissue the staging route
                 // during its interpolated displacement or delayed effect fence.
                 // Detection releases this hold once directional motion is seen;
                 // the bounded fence also releases a resisted/missed knockback.
-                if (knockbacks.Any(k => k.Lane != null && now >= k.ResolveAt))
+                if (knockbacks.Any(k => k.ResolveAt != default && now >= k.ResolveAt))
                 {
                     StopStaging();
                     SuppressPursuit();
@@ -110,17 +113,41 @@ namespace DutyMechanic.Dungeons
                 return;
             }
 
-            if (encounter == 0x4C93 && Core.Me.CurrentTarget is BattleCharacter sahagin && sahagin.BaseId == 0x4C95 && sahagin.HasAura(5434))
+            if (encounter == 0x4C93 && Core.Me.CurrentTarget is BattleCharacter sahagin && sahagin.BaseId == 0x4C95 && sahagin.HasAura(5434) &&
+                !(sahagin.IsCasting && sahagin.CastingSpellId == 48485 && sahagin.SpellCastInfo.Interruptible &&
+                  (Core.Me.HasAura(4650) || Core.Me.HasAura(4608)) && DataManager.GetSpellData(44902).Cooldown == TimeSpan.Zero))
             {
                 // Pet attacks do not trigger reflection. Keep the player beyond
                 // autoattack reach while the routine continues pet commands.
+                // Dreadwash48485 is the narrow exception: Soul Kinship (paused
+                //4650 or timed4608 after a pet-family swap) and
+                // a ready Soul Crush44902 let the routine approach to interrupt.
+                // Normal axes stay reflection-blocked; hazards still win below.
                 var source = Point(sahagin.Location);
                 float reach = sahagin.CombatReach + Core.Me.CombatReach + 5;
                 ChooseAndHold(current, p => ThirdBoardGeometry.InArena(p, encounter, .8f) && V2.Distance(p, source) >= reach && pending.All(h => !h.Contains(p)), p => V2.Distance(p, current), now);
                 return;
             }
 
-            var gaze = eyes.Values.Where(e => e.Gaze && !e.Resolved).Select(e => e.Position).ToArray();
+            //52584 held its back to the boss for entire travelling-eye waves.
+            // Reserve facing only near detonation, including the helper effect
+            // fence, or when accidental contact could trigger an early burst.
+            var gaze = eyes.Values.Where(e => e.Gaze &&
+                (ThirdBoardGeometry.GazeImminent(now, e.GazeAt) || !e.Resolved && V2.Distance(current, e.Position) < 5))
+                .Select(e => e.Position).ToArray();
+            //107164 spent41s without an axe during successive Water II circles,
+            // delaying the shell kill until Blanket Thunder resolved. Once RB
+            // finishes an escape, permit its ordinary obstacle-aware melee route
+            // between these circles. Knockbacks and reflection were handled above;
+            // retain all other mechanic leases and never override an active escape.
+            if (encounter == 0x4C93 && pending.Length > 0 && pending.All(h => h.Action == 48483) &&
+                !AvoidanceManager.IsRunningOutOfAvoid && pending.All(h => !h.Contains(current)) &&
+                Core.Me.CurrentTarget is BattleCharacter meleeTarget &&
+                (meleeTarget.BaseId == 0x4C93 || meleeTarget.BaseId == 0x4C94))
+            {
+                Release();
+                return;
+            }
             // RB alone owns geometric escapes. Keep pursuit suppressed through
             // the effect fence without routing back to an exact sampled point.
             if (pending.Length > 0 || !ThirdBoardGeometry.InArena(current, encounter))
@@ -137,12 +164,8 @@ namespace DutyMechanic.Dungeons
                 // A status-tagged eye is evidence; untethered decorative eyes
                 // must not stop damage for the entire encounter. Require a
                 // heading looking away from every currently tagged source.
-                var facing = Enumerable.Range(0, 64).Select(i => i * MathF.PI / 32).Where(h => gaze.All(p => V2.Dot(ThirdBoardGeometry.Direction(h), V2.Normalize(p - current)) < -.1f)).Select(h => (float? )h).FirstOrDefault();
-                if (facing.HasValue)
-                {
-                    SuppressPursuit(facing);
-                    return;
-                }
+                FaceAwayFromGaze(current, gaze);
+                return;
             }
 
             Release();
@@ -162,6 +185,8 @@ namespace DutyMechanic.Dungeons
             }
 
             var knockback = applicable[0];
+            if (knockback.Lane != null && !ThirdBoardGeometry.InsideLandslipLane(point, knockback.Origin, knockback.Heading))
+                return false;
             V2 direction;
             if (knockback.Radial)
             {
@@ -238,14 +263,23 @@ namespace DutyMechanic.Dungeons
 
         private void FaceAwayFromGaze(V2 current, V2[] gaze)
         {
-            if (gaze.Length == 0 || AvoidanceManager.IsRunningOutOfAvoid)
+            if (AvoidanceManager.IsRunningOutOfAvoid || MovementManager.IsMoving)
                 return;
-            var facing = Enumerable.Range(0, 64).Select(i => i * MathF.PI / 32).Where(h => gaze.All(p => V2.Dot(ThirdBoardGeometry.Direction(h), V2.Normalize(p - current)) < -.1f)).Select(h => (float? )h).FirstOrDefault();
+            // Catoblepas held ErrorNotInFront for28s at usable melee range.
+            // Keep mechanic ownership, but aim at the target when it is a safe
+            // gaze heading. With no tagged eyes, stationary damage can resume
+            // even while unrelated circles still suppress ordinary pursuit.
+            var target = Core.Me.CurrentTarget as BattleCharacter;
+            V2? attackTarget = target != null && target.IsAlive && target.IsTargetable &&
+                Core.Me.Distance2D(target.Location) <= target.CombatReach + Core.Me.CombatReach + 3
+                ? Point(target.Location) : (V2?)null;
+            var facing = ThirdBoardGeometry.SafeFacing(current, attackTarget, gaze, Core.Me.Heading);
             if (facing.HasValue)
                 SuppressPursuit(facing);
         }
 
         private float? marchHeading;
+        private DateTime nextMelodySprint;
         private bool PositionForMelody(V2 current, ThirdBoardHazard[] pending, DateTime now, float? marchTurn)
         {
             var melody = pending.FirstOrDefault(h => h.Action == 48566);
@@ -255,10 +289,19 @@ namespace DutyMechanic.Dungeons
             }
 
             bool Safe(V2 point) => ThirdBoardGeometry.MelodyRefuge(point, melody.Origin, pending, marchTurn.HasValue);
-            // Get beside the boss, not merely to the farthest edge of her cone.
-            // Retain that flank through the volley and prepare facing only once
-            // arrived; movement still uses the native graph and its heading.
-            ChooseAndHold(current, Safe, p => V2.Distance(p, current) + V2.Distance(p, melody.Origin), now);
+            //60084 chose a24y melee flank with only2s warning and took three
+            // pulses on the approach. Escape to the nearest valid refuge first;
+            // retain it through the volley instead of chasing the boss's edge.
+            if (!destination.HasValue || !Safe(destination.Value))
+                destination = ThirdBoardGeometry.ClosestMelodyRefuge(current, melody.Origin, pending, marchTurn.HasValue);
+            if (!Safe(current) && destination.HasValue && now >= nextMelodySprint &&
+                ThirdBoardGeometry.MelodyNeedsSprint(current,destination.Value) && !Core.Me.IsCasting && ActionManager.IsSprintReady)
+            {
+                nextMelodySprint = now.AddSeconds(1);
+                ActionManager.Sprint();
+                ff14bot.Helpers.Logging.Write("[CrucibleThirdMelody] Sprint requested for long initial escape.");
+            }
+            ChooseAndHold(current, Safe, p => V2.Distance(p, current), now, preferCurrent: false);
             if (Safe(current) && marchTurn.HasValue && !AvoidanceManager.IsRunningOutOfAvoid)
             {
                 marchHeading = ThirdBoardGeometry.Heading(ThirdBoardGeometry.Center(encounter) - current);

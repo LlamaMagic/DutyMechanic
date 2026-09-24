@@ -16,7 +16,6 @@ namespace DutyMechanic.Dungeons
     internal sealed class VoidmancerMechanics
     {
         private static readonly Vector3 Center = new Vector3(120, 0, 0);
-        private static readonly Vector2[] UnitCircle = Enumerable.Range(0, 64).Select(i => new Vector2((float)Math.Sin(i * Math.PI / 32), (float)Math.Cos(i * Math.PI / 32))).ToArray();
         private readonly Dictionary<uint, uint> casts = new Dictionary<uint, uint>();
         private readonly List<Circle> circles = new List<Circle>();
         private readonly Dictionary<uint, Circle> maladies = new Dictionary<uint, Circle>();
@@ -24,6 +23,11 @@ namespace DutyMechanic.Dungeons
         private DateTime baitUntil, nextLog, nextMarchPlan;
         private Vector3? destination;
         private float? marchHeading;
+        // A verified march corridor must retain its heading through the status
+        // handoff. RB11440 began a circle escape on the very frame Forced March
+        // appeared, turning a safe westward route into a boundary collision.
+        private DateTime marchCommitUntil;
+        private bool committedMarchStarted;
         private bool owned, moving;
         private DateTime darkOrbUntil;
         private Vector3? darkOrbPoint;
@@ -37,10 +41,13 @@ namespace DutyMechanic.Dungeons
             // Reference square 40x 40, with 0.5 y wall inset. A circle would remove
             // the corners required to minimize Death Drive's revived zombies.
             AvoidanceHelpers.AddAvoidSquareDonut(InArena, 39, 39, 100, 100, () => new[] { Center });
-            // Detached circle snapshots are not GameObject wrappers. Polygon
-            // producers retain their identity and scale one shared unit circle.
-            AvoidanceManager.AddAvoidPolygon<Circle>(InArena, null, 60, c => 0, c => c.Radius,
-                c => 15, c => UnitCircle, c => c.Position, Hazards, priority: AvoidancePriority.High);
+            // September24: polygon rasterization labeled the minimum-X edge of
+            // an8.5y malady circle safe while its continuous test kept escape
+            // active (equal-span loops at126.74,-3.67). Native circles use their
+            // own grid coverage and accept these detached, stable snapshots.
+            // Keep the semantic bait/march owner and authored margins unchanged.
+            AvoidanceManager.AddAvoidLocation<Circle>(() => InArena() && DateTime.UtcNow >= marchCommitUntil, () => Center, 60,
+                c => c.Radius, c => c.Position, Hazards);
         }
 
         private IEnumerable<Circle> Hazards()
@@ -119,12 +126,20 @@ namespace DutyMechanic.Dungeons
             bool forward = Core.Me.HasAura(2161), backward = Core.Me.HasAura(2162);
             bool left = Core.Me.HasAura(2163), right = Core.Me.HasAura(2164), forced = Core.Me.HasAura(1257);
             int directions = (forward ? 1 : 0) + (backward ? 1 : 0) + (left ? 1 : 0) + (right ? 1 : 0);
+            if (forced && now < marchCommitUntil) committedMarchStarted = true;
+            if (committedMarchStarted && !forced) marchCommitUntil = default;
             if (forced)
             {
                 // Client owns motion after the march starts. Preserve facing
                 // suppression, but never fight forced movement with MoveStop.
                 Hold();
                 moving = false;
+            }
+            else if (now < marchCommitUntil)
+            {
+                // The directional aura can disappear one pulse before1257.
+                // Do not release the planned heading in that narrow gap.
+                Hold();
             }
             else if (directions == 1)
                 PrepareMarch(hazards, backward ? (float)Math.PI : left ? (float)Math.PI / 2 : right ? -(float)Math.PI / 2 : 0, left || right);
@@ -242,7 +257,20 @@ namespace DutyMechanic.Dungeons
             }
             MoveAndHold(destination.Value);
             if (Core.Me.Distance2D(destination.Value) < .35f && !AvoidanceManager.IsRunningOutOfAvoid)
+            {
                 Core.Me.SetFacing(marchHeading.Value - turn);
+                var remaining = Core.Me.CharacterAuras.Where(a => a.Id >= 2161 && a.Id <= 2164)
+                    .Select(a => a.TimespanLeft.TotalSeconds).DefaultIfEmpty(99).Min();
+                // Validate the actual arrival, not just the ideal waypoint.
+                // Suppress only this encounter's circles for the final0.8s and
+                // observed3s forced travel. Boundary avoidance remains active.
+                if (remaining <= .8 && MarchSafe(Core.Me.Location, marchHeading.Value))
+                {
+                    marchCommitUntil = DateTime.UtcNow.AddSeconds(remaining + 3.5);
+                    committedMarchStarted = false;
+                    ff14bot.Helpers.Logging.Write("[CrucibleVoid] Verified march committed: pos={0} heading={1:F4} remaining={2:F2}", Core.Me.Location, Core.Me.Heading, remaining);
+                }
+            }
         }
 
         private static bool Safe(Vector3 p, Circle[] hazards) => Math.Abs(p.X - 120) <= 19.5f && Math.Abs(p.Z) <= 19.5f && !hazards.Any(h => h.Position.Distance2D(p) < h.Radius);
@@ -298,6 +326,8 @@ namespace DutyMechanic.Dungeons
             moving = false;
             destination = null;
             marchHeading = null;
+            marchCommitUntil = default;
+            committedMarchStarted = false;
         }
         private sealed class Circle
         {

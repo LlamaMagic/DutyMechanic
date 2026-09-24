@@ -1,0 +1,91 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// RB9548's14:47:37 donut was centered beside the east pit and inside the future
+// cardinal cross. Independent floor sampling preserves that counterexample;
+// timing checks ensure deferral never hides a bomb which has begun its cast.
+internal static class LoosefroxOverlapReplay
+{
+    internal static void Run()
+    {
+        var center = new Vector2(520, -420);
+        var donut = new Vector2(534.7357f, -423.43152f);
+        var pits = new[] { new Vector2(533,-434), new Vector2(538,-421), new Vector2(529.65f,-407), new Vector2(510.35f,-407), new Vector2(504,-423), new Vector2(516,-439) };
+        var bombs = new[] { new Vector2(505,-420), new Vector2(520,-435), new Vector2(535,-420), new Vector2(520,-405) };
+        var crosses = bombs.SelectMany(b => BombCrossCover.Centers(b, 6.2831f, center, 21.5f)).ToArray();
+        var castStart = new DateTime(2026,9,24,14,47,37,905,DateTimeKind.Utc);
+        var donutFence = castStart.AddSeconds(5.7 + .75);
+        var explosionStart = new DateTime(2026,9,24,14,47,46,622,DateTimeKind.Utc);
+        bool Floor(Vector2 p) => Vector2.Distance(p,center) <= 21.5f && pits.All(c => Vector2.Distance(p,c) >= 6.5f);
+        bool CrossSafe(Vector2 p) => crosses.All(c => Vector2.Distance(p,c) >= BombCrossCover.Radius);
+        var refuge = new System.Collections.Generic.List<Vector2>();
+        int prematureSafe = 0;
+        for (float x = donut.X - 3.5f; x < donut.X + 3.5f; x += .1f)
+        for (float z = donut.Y - 3.5f; z < donut.Y + 3.5f; z += .1f)
+        {
+            var p = new Vector2(x,z);
+            if (!Floor(p) || Vector2.Distance(p,donut) > 3.5f) continue;
+            refuge.Add(p);
+            if (CrossSafe(p)) prematureSafe++;
+        }
+        if (refuge.Count == 0 || prematureSafe != 0) throw new Exception("Captured refuge counterexample changed");
+        // Preserve whole native0.45y cells, not just mathematical point samples.
+        // A3.45y test radius lies inside the tessellated3.5y inner boundary.
+        for (int phaseX=0; phaseX<10; phaseX++)
+        for (int phaseZ=0; phaseZ<10; phaseZ++)
+        {
+            bool cellFound=false;
+            for (float x=donut.X-3.5f+phaseX*.045f; x<donut.X+3.5f; x+=.45f)
+            for (float z=donut.Y-3.5f+phaseZ*.045f; z<donut.Y+3.5f; z+=.45f)
+            {
+                var corners=new[] { new Vector2(x,z),new Vector2(x+.45f,z),new Vector2(x,z+.45f),new Vector2(x+.45f,z+.45f) };
+                if (corners.All(p=>Floor(p) && Vector2.Distance(p,donut)<=3.45f)) cellFound=true;
+            }
+            if (!cellFound) throw new Exception($"Donut refuge has no conservative grid cell at {phaseX},{phaseZ}");
+        }
+        if (LoosefroxHazardTiming.PublishBomb(true,castStart,donutFence)) throw new Exception("Future cross masks earlier donut refuge");
+        if (!LoosefroxHazardTiming.PublishBomb(false,castStart,donutFence)) throw new Exception("Actual bomb cast suppressed");
+        if (!LoosefroxHazardTiming.PublishBomb(true,donutFence,donutFence)) throw new Exception("Forecast fails to restore at effect fence");
+        if (!LoosefroxHazardTiming.PublishBomb(true,castStart,DateTime.MinValue)) throw new Exception("Ordinary early bomb warning lost");
+
+        // After the padded donut fence, prove a pit/boundary-safe departure can
+        // reach cross-safe floor before even the bomb's later cast begins, at6y/s.
+        // This establishes feasible timing, not native navmesh/grid acceptance.
+        bool egress = false;
+        foreach (var from in refuge)
+        {
+            for (float x = 521; x < 537 && !egress; x += .5f)
+            for (float z = -434; z < -409 && !egress; z += .5f)
+            {
+                var to = new Vector2(x,z);
+                if (!Floor(to) || !CrossSafe(to) || Vector2.Distance(from,to) / 6 > (explosionStart - donutFence).TotalSeconds) continue;
+                bool clear = true;
+                for (int step=0; step<=100; step++) if (!Floor(Vector2.Lerp(from,to,step/100f))) { clear=false; break; }
+                if (clear) egress=true;
+            }
+            if (egress) break;
+        }
+        if (!egress) throw new Exception("No timely pit-safe departure from captured refuge");
+        // RB75548's native escape kept running east after the donut appeared,
+        // crossing pits despite a short safe route back to its north-side pocket.
+        var capturedStart = new Vector2(521.401f, -434.591f);
+        var capturedDonut = new Vector2(515.2882f, -433.39093f);
+        bool InsetFloor(Vector2 p) => Vector2.Distance(p, center) <= 21.25f && pits.All(c => Vector2.Distance(p, c) >= 6.75f);
+        var goals = Enumerable.Range(-6,13).SelectMany(x => Enumerable.Range(-6,13).Select(z => capturedDonut + new Vector2(x*.5f,z*.5f)))
+            .Where(p => Vector2.Distance(p,capturedDonut)<=3 && InsetFloor(p)).OrderBy(p => Vector2.Distance(p,capturedStart));
+        var route = MasterArenaMovement.RouteToAny(capturedStart, goals, center, InsetFloor, Array.Empty<ThirdBoardHazard>(), castStart);
+        if(route.Length==0) throw new Exception("Captured south donut has no route");
+        float travel=0;
+        var previous=capturedStart;
+        foreach(var point in route)
+        {
+            for(int i=0;i<=100;i++) if(!InsetFloor(Vector2.Lerp(previous,point,i/100f))) throw new Exception("Donut route crosses pit or rim");
+            travel+=Vector2.Distance(previous,point); previous=point;
+        }
+        if(travel/6+.5>5.7 || Vector2.Distance(route.Last(),capturedDonut)>3) throw new Exception("Donut route misses impact/refuge");
+        Console.WriteLine($"Captured south donut route: {route.Length} nodes, {travel:F2}y, full pit/rim clearance.");
+        Console.WriteLine($"Loosefrox overlap: {refuge.Count} refuge samples, zero premature safe samples; staged departure feasible.");
+    }
+}

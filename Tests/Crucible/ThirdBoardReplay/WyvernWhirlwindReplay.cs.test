@@ -1,0 +1,43 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// Verify continuous capsule coverage independently of the sample generator.
+// A union that covers its own sample centers can still leak between circles.
+internal static class WyvernWhirlwindReplay
+{
+    internal static int Run()
+    {
+        int checks = 0;
+        foreach (bool large in new[] { false, true })
+        {
+            var centers = WyvernWhirlwindCover.Offsets(large, out float radius);
+            float length = (large ? 3.5f : 2.5f) + 3;
+            float padded = (large ? 3f : 2f) + .5f;
+            for (float x = -padded; x <= padded; x += .05f)
+                for (float z = -padded; z <= length + padded; z += .05f)
+                {
+                    var point = new Vector2(x, z);
+                    if (Vector2.Distance(point, new Vector2(0, Math.Clamp(z, 0, length))) > padded) continue;
+                    checks++;
+                    if (!centers.Any(c => Vector2.Distance(point, c) <= radius + .001f))
+                        throw new Exception("Whirlwind forecast contains a coverage gap.");
+                }
+            // Preserve side/rear escape corridors rather than replacing the
+            // forecast with a large bounding disk around the entire sweep.
+            if (centers.Any(c => Vector2.Distance(new Vector2(padded + .2f, length / 2), c) < radius) ||
+                centers.Any(c => Vector2.Distance(new Vector2(0, -padded - .2f), c) < radius))
+                throw new Exception("Whirlwind cover removes valid lateral/rear space.");
+        }
+        // RB7696's15:41:42 departure endpoint lay ahead of the old contact
+        // disk. The forecast must reject it before the next Strong Wind hit.
+        var captured = new Vector2(.90654f, 5.788f);
+        var small = WyvernWhirlwindCover.Offsets(false, out float smallRadius);
+        if (Vector2.Distance(captured, new Vector2(0, 1)) <= 4 ||
+            !small.Any(c => Vector2.Distance(captured, c) < smallRadius))
+            throw new Exception("Captured stop-ahead location lost predictive warning.");
+        Console.WriteLine("Wyvern current body, one-second lead and escape corridors verified.");
+        return checks;
+    }
+}

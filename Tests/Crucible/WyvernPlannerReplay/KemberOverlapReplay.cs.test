@@ -1,0 +1,142 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// RB48068 captured these exact planner inputs at11:49:53 on September24.
+// The later crossing returned no route, then native fallback crossed a pool
+// and whirlwind. Compare earliest-arrival search with the existing timed
+// experiment before changing margins or deploying a different executor.
+internal static class KemberOverlapReplay
+{
+    internal static void Run(bool trialSeven = false, bool trialNine = false, bool trialEleven = false)
+    {
+        var start = new Vector2(519.7398f, -6.1117883f);
+        var pools = new[] { new Vector2(536,-7), new Vector2(530,-12), new Vector2(510,-4), new Vector2(504,7), new Vector2(527,-4), new Vector2(530,4), new Vector2(510,12), new Vector2(513,4) };
+        var moving = new[] { new WyvernCrossingPlanner.MovingCircle { Origin = new Vector2(501.84818f,-3.00604f), Velocity = new Vector2(2,0), Radius = 3, Length = 3.5f },
+            new WyvernCrossingPlanner.MovingCircle { Origin = new Vector2(538.1368f,2.97546f), Velocity = new Vector2(-2,0), Radius = 3, Length = 3.5f } }
+            .Concat(new[] {521.9957f,525.9938f,501.97595f,533.9894f,529.9916f}.Select(x => new WyvernCrossingPlanner.MovingCircle { Origin = new Vector2(x,-13.16534f), Velocity = new Vector2(0,2), Radius = 2, Length = 2.5f }))
+            .Concat(new[] {505.97388f,517.9979f,509.97168f,513.9695f,537.9873f}.Select(x => new WyvernCrossingPlanner.MovingCircle { Origin = new Vector2(x,13.134966f), Velocity = new Vector2(0,-2), Radius = 2, Length = 2.5f })).ToArray();
+        // Trial7 (RB44960,14:09:44.649UTC) failed on the opposite pool layout.
+        // Preserve the same-frame origins and tiny heading components rather
+        // than treating one earlier successful replay as universal coverage.
+        if (trialSeven)
+        {
+            start = new Vector2(519.00024f, 5.2479434f);
+            pools = new[] {new Vector2(527,12),new Vector2(530,4),new Vector2(513,4),new Vector2(510,-4),new Vector2(513,-12),new Vector2(527,-4),new Vector2(536,10),new Vector2(504,-10)};
+            moving = new[] {
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(501.6555f,2.9754639f),Velocity=new Vector2(2,4.783471E-05f),Radius=3,Length=3.5f},
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(538.30927f,-3.0060425f),Velocity=new Vector2(-2,-.00014398097f),Radius=3,Length=3.5f}
+            }.Concat(new[]{509.97168f,513.9695f,505.97388f,517.9979f,537.9873f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,-13.337633f),Velocity=new Vector2(-9.5971416E-05f,2),Radius=2,Length=2.5f}))
+            .Concat(new[]{501.97595f,521.9957f,525.9938f,529.9916f,533.9894f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,13.307407f),Velocity=new Vector2(-1.7484555E-07f,-2),Radius=2,Length=2.5f})).ToArray();
+        }
+        // RB7000 at15:11:55.707 failed with the first pool layout but reversed
+        // small-tornado lanes. Keep this independent fixture: matching pools
+        // alone does not imply that the same departure schedule is safe.
+        if (trialNine)
+        {
+            start = new Vector2(519.52124f, -5.6593633f);
+            moving = new[] {
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(501.74628f,-3.0060425f),Velocity=new Vector2(2,4.783471E-05f),Radius=3,Length=3.5f},
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(538.2173f,2.9754639f),Velocity=new Vector2(-2,-.00014398097f),Radius=3,Length=3.5f}
+            }.Concat(new[]{513.9695f,509.97168f,505.97388f,517.9979f,537.9873f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,-13.245769f),Velocity=new Vector2(-9.5971416E-05f,2),Radius=2,Length=2.5f}))
+            .Concat(new[]{501.97595f,521.9957f,529.9916f,525.9938f,533.9894f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,13.215467f),Velocity=new Vector2(-1.7484555E-07f,-2),Radius=2,Length=2.5f})).ToArray();
+        }
+        // RB11440 at16:01:45.735 began much farther south after Typhoon.
+        // Native fallback crossed the pool at(513,4); retain this actual start
+        // instead of assuming the earlier center-line fixtures cover it.
+        if (trialEleven)
+        {
+            start = new Vector2(517.8708f, 7.6891603f);
+            pools = new[] {new Vector2(510,-4),new Vector2(513,-12),new Vector2(527,12),new Vector2(504,-10),new Vector2(527,-4),new Vector2(536,10),new Vector2(530,4),new Vector2(513,4)};
+            moving = new[] {
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(501.8474f,-3.0060425f),Velocity=new Vector2(2,4.783471E-05f),Radius=3,Length=3.5f},
+                new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(538.1168f,2.9754639f),Velocity=new Vector2(-2,-.00014398097f),Radius=3,Length=3.5f}
+            }.Concat(new[]{537.9873f,505.97388f,513.9695f,509.97168f,517.9979f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,-13.145336f),Velocity=new Vector2(-9.5971416E-05f,2),Radius=2,Length=2.5f}))
+            .Concat(new[]{501.97595f,525.9938f,521.9957f,529.9916f,533.9894f}.Select(x=>new WyvernCrossingPlanner.MovingCircle {Origin=new Vector2(x,13.114993f),Velocity=new Vector2(-1.7484555E-07f,-2),Radius=2,Length=2.5f})).ToArray();
+        }
+        Console.WriteLine(trialEleven ? "Trial11 south-start capture" : trialNine ? "Trial9 reversed-tornado capture" : trialSeven ? "Trial7 opposite-pool capture" : "Earlier Kember capture");
+        // Only Trail was active: +X-facing91-degree fan from(505,0).
+        // The polygon's rear vertex is half a yalm behind the origin; use
+        // the captured production construction rather than an X-only proxy.
+        double remaining = trialNine ? 7.6999814 : trialSeven ? 7.6999733 : 7.6999817;
+        float heading = trialSeven || trialNine ? 1.5707724f : 1.57077f;
+        var fan = new[] { new Vector2(0,-.5f) }.Concat(Enumerable.Range(0,49).Select(i =>
+        {
+            double angle = (-91 + 182.0*i/48)*Math.PI/180;
+            return new Vector2((float)Math.Sin(angle)*60.5f,(float)Math.Cos(angle)*60.5f);
+        })).Select(p => new Vector2(505 + p.X*MathF.Cos(heading)+p.Y*MathF.Sin(heading), -p.X*MathF.Sin(heading)+p.Y*MathF.Cos(heading))).ToArray();
+        bool Inside(Vector2 p)
+        {
+            bool inside = false;
+            for (int i=0,j=fan.Length-1; i<fan.Length; j=i++)
+                if ((fan[i].Y>p.Y)!=(fan[j].Y>p.Y) && p.X<(fan[j].X-fan[i].X)*(p.Y-fan[i].Y)/(fan[j].Y-fan[i].Y)+fan[i].X) inside=!inside;
+            return inside;
+        }
+        bool TimedSafe(Vector2 p,double t) => (t<remaining - 1.0 || Math.Abs(p.Y)<=4.3f) && (t<remaining - .2 || !Inside(p));
+        bool Goal(Vector2 p) => Math.Abs(p.Y)<4.3f && !Inside(p);
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var original = WyvernCrossingPlanner.Plan(start,pools,TimedSafe,Goal,remaining - .5,6,moving);
+        Console.WriteLine($"Captured earliest-arrival nodes={original.Length} elapsed={timer.Elapsed.TotalMilliseconds:F1}ms");
+        timer.Restart();
+        var timed = WyvernCrossingPlanner.Plan(start,pools,TimedSafe,Goal,remaining - .5,6,moving,retainLaterArrivals:true);
+        Console.WriteLine($"Captured timed nodes={timed.Length} elapsed={timer.Elapsed.TotalMilliseconds:F1}ms");
+        if (timed.Length == 0) return;
+        var schedule = WyvernCrossingSchedule.Build(start,timed,6,(p,t)=>TimedSafe(p,t+.2)&&WyvernCrossingPlanner.MovingSafe(p,t,moving)&&pools.All(c=>Vector2.Distance(p,c)>=5.5f));
+        if(schedule.Length==0) throw new Exception("Captured search has no complete safe schedule.");
+        Console.WriteLine($"Schedule entries={schedule.Length}; distinct positions={schedule.Select(s=>s.Position).Distinct().Count()}");
+        // Independently sample the physical envelopes under measured motion
+        // variation. Passing search alone is insufficient: hold times must not
+        // be discarded, and small launch/travel errors must remain safe.
+        foreach(float playerSpeed in new[]{5.9f,6f,6.1f})
+        foreach(float hazardSpeed in new[]{1.8f,2f,2.2f})
+        foreach(double delay in new[]{0,.05})
+        {
+            bool Safe(Vector2 p,double t)
+            {
+                foreach(var h in moving)
+                {
+                    var dir=Vector2.Normalize(h.Velocity);
+                    var delta=p-(h.Origin+dir*hazardSpeed*(float)t);
+                    var closest=dir*Math.Clamp(Vector2.Dot(delta,dir),0,h.Length);
+                    if((delta-closest).Length()<h.Radius+.5f) return false;
+                }
+                // Vector2.Lerp rounded an exact X=500.5 edge to500.49997 in
+                // trial11. One tenth of a milliyalm covers float roundoff only;
+                // it does not relax the half-yalm arena inset or hazard margins.
+                const float rounding = .0001f;
+                return pools.All(c=>Vector2.Distance(p,c)>=5.5f) && p.X>=500.5f-rounding && p.X<=539.5f+rounding && Math.Abs(p.Y)<=14.3f+rounding && TimedSafe(p,t);
+            }
+            double elapsed=delay;
+            var previous=start;
+            foreach(var step in schedule)
+            {
+                double duration=Vector2.Distance(previous,step.Position)/playerSpeed;
+                if(duration<.001) duration=Math.Max(0,step.Seconds+delay-elapsed);
+                int samples=Math.Max(1,(int)Math.Ceiling(duration/.01));
+                for(int n=0;n<=samples;n++)
+                    if(!Safe(Vector2.Lerp(previous,step.Position,n/(float)samples),elapsed+duration*n/samples))
+                    {
+                        // Preserve enough geometry to distinguish pool clearance
+                        // from a timing failure before changing safety margins.
+                        var failedPoint = Vector2.Lerp(previous,step.Position,n/(float)samples);
+                        double failedTime = elapsed+duration*n/samples;
+                        float clearance = moving.Min(h => {
+                            var dir=Vector2.Normalize(h.Velocity);
+                            var delta=failedPoint-(h.Origin+dir*hazardSpeed*(float)failedTime);
+                            return (delta-dir*Math.Clamp(Vector2.Dot(delta,dir),0,h.Length)).Length()-h.Radius-.5f;
+                        });
+                        Console.Error.WriteLine($"Captured route fails physical validation: speeds={playerSpeed}/{hazardSpeed}, delay={delay}, t={failedTime:F3}, point={failedPoint}, movingClearance={clearance:F3}, poolClearance={pools.Min(c=>Vector2.Distance(c,failedPoint))-5.5f:F3}, timedSafe={TimedSafe(failedPoint,failedTime)}");
+                        Environment.ExitCode=1;
+                        return;
+                    }
+                elapsed+=duration;
+                previous=step.Position;
+            }
+            if(!Goal(previous)||elapsed>remaining - .5) throw new Exception("Timed route misses captured goal/deadline.");
+            for(double t=elapsed;t<=9.1;t+=.01)
+                if(!Safe(previous,t)) throw new Exception("Timed route cannot safely hold through the effect.");
+        }
+        Console.WriteLine($"Captured schedule passes18 motion/launch variants with {schedule.Length-schedule.Select(s=>s.Position).Distinct().Count()} stationary waits; live executor remains unimplemented.");
+    }
+}

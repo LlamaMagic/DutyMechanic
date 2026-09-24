@@ -1,0 +1,51 @@
+using System;
+using System.Numerics;
+
+// September24 RB29940, 13:49:36.690 and 13:50:20.821: both Hammer
+// layouts failed navigation. Replay their captured helper centers independently
+// of hazard generation, including the encounter's six persistent sand pits.
+internal static class HammerFloorReplay
+{
+    internal static int Run()
+    {
+        var waves = new[]
+        {
+            new[] { new Vector2(7.5f,-12.99f),new Vector2(12.99f,7.5f),new Vector2(15,0),new Vector2(-15,0),new Vector2(-7.5f,12.99f),new Vector2(0,15),new Vector2(-12.99f,-7.5f),Vector2.Zero,new Vector2(-10,-21),new Vector2(23,0),new Vector2(18,-15),new Vector2(0,-15),new Vector2(5,-21),new Vector2(0,22),new Vector2(-13,18),new Vector2(13,15),new Vector2(-21,-5),new Vector2(-21,6) },
+            new[] { new Vector2(12.99f,-7.5f),new Vector2(7.5f,12.99f),new Vector2(15,0),new Vector2(-15,0),new Vector2(-12.99f,7.5f),new Vector2(0,15),new Vector2(-7.5f,-12.99f),Vector2.Zero,new Vector2(10,-20),new Vector2(10,20),new Vector2(20,8),new Vector2(0,-15),new Vector2(20,-11),new Vector2(-17,12),new Vector2(-23,-1),new Vector2(-5,21),new Vector2(-15,-14),new Vector2(-4,-23) }
+        };
+        var pits = new[] { new Vector2(13,-14),new Vector2(18,-1),new Vector2(9.65f,13),new Vector2(-9.65f,13),new Vector2(-16,-3),new Vector2(-4,-19) };
+        int checks = 0;
+        foreach (var wave in waves)
+        for (int px = 0; px < 10; px++)
+        for (int pz = 0; pz < 10; pz++)
+        {
+            int oldCells = 0, adjustedCells = 0;
+            for (float x = -22 + px * .045f; x < 22; x += .45f)
+            for (float z = -22 + pz * .045f; z < 22; z += .45f)
+            {
+                // All corners must remain inside the half-yalm wall inset.
+                var far = new Vector2(MathF.Max(MathF.Abs(x), MathF.Abs(x + .45f)), MathF.Max(MathF.Abs(z), MathF.Abs(z + .45f)));
+                if (far.LengthSquared() > 21.5f * 21.5f || Marked(x,z,pits,6.5f)) continue;
+                if (!Marked(x,z,wave,8.5f)) oldCells++;
+                if (!Marked(x,z,wave,8.25f)) adjustedCells++;
+            }
+            if (oldCells != 0 || adjustedCells == 0)
+                throw new Exception($"Hammer gap regression: phase {px},{pz}; old={oldCells}, adjusted={adjustedCells}");
+            checks++;
+        }
+        Console.WriteLine($"Hammer: {checks} captured-layout/grid-phase checks passed.");
+        return checks;
+    }
+
+    // Installed CompactHeightfield.GetSpansInCircle marks the corner facing
+    // each circle center; this adds grid coverage beyond the authored radius.
+    private static bool Marked(float x, float z, Vector2[] centers, float radius)
+    {
+        foreach (var c in centers)
+        {
+            var corner = new Vector2(c.X >= x + .45f ? x + .45f : x, c.Y >= z + .45f ? z + .45f : z);
+            if (Vector2.DistanceSquared(corner,c) < radius * radius) return true;
+        }
+        return false;
+    }
+}

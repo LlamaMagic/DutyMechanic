@@ -4,6 +4,17 @@ using System.Linq;
 using System.Numerics;
 using DutyMechanic.Dungeons;
 
+// Exact same-frame inputs replace the interpolated floor snapshots when
+// diagnosing September24's failed later crossing. This is offline only.
+if (args.Contains("--kember-overlap"))
+{
+    KemberOverlapReplay.Run();
+    KemberOverlapReplay.Run(trialSeven: true);
+    KemberOverlapReplay.Run(trialNine: true);
+    KemberOverlapReplay.Run(trialEleven: true);
+    return;
+}
+
 //98964 at01:44:14 crossed the510,-4 pool toward the505,0 helper.
 // Repeat the captured layout and its opposite orientation, sampling the actual
 // returned route independently. This proves geometry, not live mover timing.

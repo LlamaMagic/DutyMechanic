@@ -1,0 +1,75 @@
+using System;
+using System.Linq;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// Independent rectangular truth and the captured edge-cell footprint ensure the
+// replacement does not merely agree with its own circle-generation algorithm.
+internal static class BombCrossReplay
+{
+    internal static int Run()
+    {
+        int checks = 0, largest = 0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        foreach (var origin in new[] { new Vector2(10, -10), new Vector2(-10, 10), new Vector2(0, -14), new Vector2(14, 0) })
+        for (int turn = 0; turn < 16; turn++)
+        {
+            float heading = turn * MathF.PI / 8;
+            var circles = BombCrossCover.Centers(origin, heading, Vector2.Zero, 21.5f).ToArray();
+            largest = Math.Max(largest, circles.Length);
+            if (circles.Length > 32) throw new Exception("Bomb cover exceeded bounded primitive budget");
+            var forward = new Vector2(MathF.Sin(heading), MathF.Cos(heading));
+            var right = new Vector2(forward.Y, -forward.X);
+            for (float x = -21.5f; x <= 21.5f; x += .25f)
+            for (float z = -21.5f; z <= 21.5f; z += .25f)
+            {
+                var point = new Vector2(x, z);
+                if (point.LengthSquared() > 21.5f * 21.5f) continue;
+                var delta = point - origin;
+                float u = MathF.Abs(Vector2.Dot(delta, right)), v = MathF.Abs(Vector2.Dot(delta, forward));
+                bool rectangle = u <= 4.5f && v <= 40.5f || v <= 4.5f && u <= 40.5f;
+                bool covered = circles.Any(c => Vector2.DistanceSquared(point, c) <= BombCrossCover.Radius * BombCrossCover.Radius + .0001f);
+                if (rectangle && !covered) throw new Exception($"Uncovered cross: {origin}, {heading}, {point}");
+                // The clipped ends lie outside this floor; no cover may inflate
+                // either arm's width by more than the documented circle bulge.
+                if (covered && Math.Min(u, v) > 4.925f) throw new Exception("Unexpected loss of safe floor");
+                checks++;
+            }
+        }
+
+        var bomb = new Vector2(530, -430);
+        var edgeCover = BombCrossCover.Centers(bomb, 0, new Vector2(520, -420), 21.5f).ToArray();
+        var player = new Vector2(524.64f, -434.33f);
+        // Sweep possible live grid phases, rather than inventing its uncaptured
+        // bounds. Reproduce GetSpansInCircle's corner selection on0.45y cells.
+        for (int ix = 0; ix < 10; ix++)
+        for (int iz = 0; iz < 10; iz++)
+        {
+            var lower = player - new Vector2(ix * .045f, iz * .045f);
+            bool marked = edgeCover.Any(c =>
+            {
+                float x = c.X >= lower.X + .45f ? lower.X + .45f : lower.X;
+                float z = c.Y >= lower.Y + .45f ? lower.Y + .45f : lower.Y;
+                return Vector2.DistanceSquared(new Vector2(x, z), c) < BombCrossCover.Radius * BombCrossCover.Radius;
+            });
+            if (!marked) throw new Exception($"Captured bomb edge still has an unmarked circle cell: {ix},{iz}");
+            checks++;
+        }
+        // Voidmancer's captured malady edge produced the same equal-span loop.
+        // Its unchanged8.5y native radius must mark every possible player cell.
+        var malady = new Vector2(135, -5);
+        var maladyPlayer = new Vector2(126.74f, -3.67f);
+        for (int ix = 0; ix < 10; ix++)
+        for (int iz = 0; iz < 10; iz++)
+        {
+            var lower = maladyPlayer - new Vector2(ix * .045f, iz * .045f);
+            var nearest = new Vector2(malady.X >= lower.X + .45f ? lower.X + .45f : lower.X,
+                malady.Y >= lower.Y + .45f ? lower.Y + .45f : lower.Y);
+            if (Vector2.DistanceSquared(nearest, malady) >= 8.5f * 8.5f)
+                throw new Exception("Captured malady edge remains unmarked");
+            checks++;
+        }
+        Console.WriteLine($"Bomb/malady native circles: {checks} floor/raster checks; max {largest} circles per bomb; replay {watch.ElapsedMilliseconds}ms.");
+        return checks;
+    }
+}

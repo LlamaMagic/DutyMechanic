@@ -13,6 +13,21 @@ namespace DutyMechanic.Dungeons
         // contact. Reserve player radius(.5), arrival tolerance(.35), and .4y
         // of pulse travel. Keep this shared by native boundaries and planners.
         internal const float EdgeClearance = 1.25f;
+        // A gaze hold may still face the boss if every tagged eye is behind
+        // that heading. Prefer that attack angle, otherwise keep a safe current
+        // heading before sampling alternatives; never rotate through an eye.
+        internal static float? SafeFacing(Vector2 current, Vector2? target, Vector2[] gaze, float currentHeading)
+        {
+            bool Safe(float heading) => gaze.All(p => Vector2.DistanceSquared(p, current) > .01f &&
+                Vector2.Dot(Direction(heading), Vector2.Normalize(p - current)) < -.1f);
+            if (target.HasValue && Vector2.DistanceSquared(target.Value, current) > .01f)
+            {
+                float towardTarget = Heading(target.Value - current);
+                if (Safe(towardTarget)) return towardTarget;
+            }
+            if (Safe(currentHeading)) return currentHeading;
+            return Enumerable.Range(0, 64).Select(i => i * MathF.PI / 32).Where(Safe).Select(h => (float?)h).FirstOrDefault();
+        }
         // Staging leaves a .75-yalm navigable interior, validated with another
         // .5 yalm of clearance. Sample the interior as well as the perimeter so
         // a narrow hazard cannot hide between the center and outer ring.
@@ -51,6 +66,10 @@ namespace DutyMechanic.Dungeons
         internal static Vector2 Center(uint boss) => boss == 0x4CAA ? new Vector2(520, -420) : boss == 0x4C9B || boss == 0x4CA1 ? new Vector2(120, -420) : new Vector2(120, 0);
         internal static Vector2 Direction(float heading) => new Vector2(MathF.Sin(heading), MathF.Cos(heading));
         internal static float Heading(Vector2 direction) => MathF.Atan2(direction.X, direction.Y);
+        // Captured Farburst helper origins lie21y from center (140.984,-419.994),
+        // not on the20y player floor. A one-yalm forecast error consumes most
+        // of the safe donut interior near the boundary.
+        internal static Vector2 EyeEndpoint(float heading) => Center(0x4C9B) + Direction(heading) * 21;
         // Damage uptime is a preference after mechanic safety, never an excuse
         // to cross a hazard. Callers validate the full pending hazard set along
         // the approach, not merely its endpoint. Retaining an eligible held point
@@ -84,6 +103,20 @@ namespace DutyMechanic.Dungeons
             heading,
             heading + MathF.PI / 2
         }.Select(angle => new ThirdBoardHazard { Actor = actor, Action = 48611, Origin = origin, Heading = angle, Points = ThirdBoardHazard.Rectangle(5.5f, 15.5f, 15.5f), Until = until, Persistent = true }).ToArray();
+        // Alternating ten-yalm lanes push in opposite directions. RB88684
+        // stopped0.11y short of the z=-10 seam and was pushed into the wall.
+        // Require.75y inside the selected lane: player radius plus the mover's
+        // observed quarter-yalm arrival tolerance, independent of tiny heading
+        // differences between helpers. The45y extent is the captured cast lane.
+        internal static bool InsideLandslipLane(Vector2 point, Vector2 origin, float heading)
+        {
+            var direction = Direction(heading);
+            var offset = point - origin;
+            float along = Vector2.Dot(offset, direction);
+            float across = Math.Abs(offset.X * direction.Y - offset.Y * direction.X);
+            return along >= .75f && along <= 44.25f && across <= 4.25f;
+        }
+
         // Landslip's observed 13.7-yalm displacement spans several ticks, so an
         // adjacent-tick threshold misses it. Compare with the last
         // pre-effect position and require displacement along the authored lane.
@@ -99,10 +132,26 @@ namespace DutyMechanic.Dungeons
         // ordinary pursuit speed. The 14y gate accepts an interpolated edge
         // arrival without treating ordinary movement around arena center as Melody.
         internal static bool SirenRelocated(Vector2 before, Vector2 after, double seconds) => seconds > 0 && seconds <= .5 && Vector2.Distance(before, after) > 6 && Vector2.Distance(after, Center(0x4CA1)) > 14;
+        //52584 missed the first Melody when interpolated travel never exceeded
+        // the per-sample jump threshold. Its authored endpoint is21y from center,
+        // outside the legal player floor; ordinary center pursuit is excluded.
+        internal static bool SirenAtMelodyEdge(Vector2 point)
+        {
+            float radius = Vector2.Distance(point, Center(0x4CA1));
+            return radius >= 20.25f && radius <= 22;
+        }
         // Captured cardinal/diagonal Siren teleport endpoints are 21y from
         // center. Project interpolated positions onto that ring so a second
         // movement sample cannot drag the cone/refuge through the arena.
         internal static Vector2 SirenEdgeOrigin(Vector2 position) => Center(0x4CA1) + Vector2.Normalize(position - Center(0x4CA1)) * 21;
+        // The first Melody began about2s after teleport discovery in60084.
+        // Use travel distance before melee preference and request available
+        // Sprint when even straight-line travel consumes that warning budget.
+        internal static Vector2? ClosestMelodyRefuge(Vector2 current, Vector2 origin, ThirdBoardHazard[] hazards, bool prepareMarch) =>
+            Candidates(0x4CA1, .5f).Append(current)
+                .Where(p => MelodyRefuge(p, origin, hazards, prepareMarch))
+                .OrderBy(p => Vector2.DistanceSquared(p,current)).Select(p => (Vector2?)p).FirstOrDefault();
+        internal static bool MelodyNeedsSprint(Vector2 current, Vector2 refuge) => Vector2.Distance(current,refuge) > 6 * 1.5f;
         internal static bool MelodyRefuge(Vector2 point, Vector2 origin, ThirdBoardHazard[] hazards, bool prepareMarch)
         {
             // The old 12y proximity gate removed the usable flank once the
@@ -129,6 +178,12 @@ namespace DutyMechanic.Dungeons
             // along the future march rejected the intended inward runway.
             return Corridor(point, point + inward * 18.5f, 0x4CA1, hazards.Where(h => h.Action != 48566));
         }
+
+        // Two seconds covers queued attacks/auto-facing before a tagged eye
+        // resolves; half a second after the predicted fence tolerates latency.
+        // Unknown timing alone is not a permanent look-away command.
+        internal static bool GazeImminent(DateTime now, DateTime effect) => effect != default &&
+            now >= effect.AddSeconds(-2) && now <= effect.AddSeconds(.5);
 
         internal static ThirdBoardHazard[] SelectWave(ThirdBoardHazard[] pending, uint boss)
         {
@@ -211,7 +266,10 @@ namespace DutyMechanic.Dungeons
     internal sealed class ThirdBoardEyePublication
     {
         private DateTime nextUpdate;
+        private DateTime sampledAt;
+        private bool projected;
         internal ThirdBoardHazard Hazard { get; }
+        internal ThirdBoardCircle[] Circles { get; private set; }
 
         internal ThirdBoardEyePublication(ThirdBoardHazard source, DateTime now)
         {
@@ -225,6 +283,19 @@ namespace DutyMechanic.Dungeons
             };
             // .01y compensates for the inscribed 96-sided circle approximation.
             nextUpdate = now.AddMilliseconds(200);
+            sampledAt = now;
+            UpdateCircles(Vector2.Zero);
+        }
+
+        private void UpdateCircles(Vector2 travel)
+        {
+            // RB52656 crossed within1.19y of an eye despite its polygon avoid.
+            // Native circles cover the same swept contact envelope. Half-yalm
+            // spacing needs sqrt(3.01^2+.25^2)<3.03 radius to leave no gaps;
+            // at most nine circles cover the bounded one-second prediction.
+            int steps = Math.Max(1, (int)MathF.Ceiling(travel.Length() / .5f));
+            Circles = Enumerable.Range(0, steps + 1)
+                .Select(i => new ThirdBoardCircle(Hazard.Origin + travel * (i / (float)steps), 3.03f)).ToArray();
         }
 
         internal ThirdBoardHazard Read(ThirdBoardHazard source, DateTime now)
@@ -232,8 +303,28 @@ namespace DutyMechanic.Dungeons
             float displacement = Vector2.Distance(source.Origin, Hazard.Origin);
             if (displacement > .5f || now >= nextUpdate && displacement >= .25f)
             {
+                //107164 crossed a moving eye's future path and triggered an
+                // early Nearburst before reaching the next refuge. Reserve one
+                // second of its measured travel, not just its current body.
+                // Bound prediction to normal <=4y/s motion; teleports have no
+                // meaningful velocity. The shared capsule also covers the tail.
+                double elapsed = (now - sampledAt).TotalSeconds;
+                var velocity = elapsed > .01 && elapsed <= 1 ? (source.Origin - Hazard.Origin) / (float)elapsed : Vector2.Zero;
+                if (velocity.Length() > 4) velocity = Vector2.Zero;
+                Hazard.Points = ThirdBoardHazard.SweptCircle(3.01f, velocity);
+                projected = velocity.LengthSquared() > .001f;
                 Hazard.Origin = source.Origin;
+                UpdateCircles(velocity);
+                sampledAt = now;
                 nextUpdate = now.AddMilliseconds(200);
+            }
+            else if (projected && now >= nextUpdate)
+            {
+                // A stopped eye's Farburst refuge is narrow; do not retain its
+                // old forward projection after motion ends.
+                Hazard.Points = ThirdBoardHazard.Circle(3.01f);
+                UpdateCircles(Vector2.Zero);
+                projected = false;
             }
 
             Hazard.Until = source.Until;
@@ -243,6 +334,150 @@ namespace DutyMechanic.Dungeons
 
     // Values here are snapshots, never retained RB object wrappers. Polygons
     // and point containment use the same dimensions to avoid planner/graph drift.
+    // Siren's native escape can settle on the circular boundary's raster edge.
+    // Request a deeper native escape only after measured non-progress. Release
+    // with a full yalm of clearance, or after five seconds if other hazards make
+    // that impossible; never remove the original wall or repeatedly churn paths.
+    internal sealed class SirenBoundaryRecovery
+    {
+        internal const float NormalRadius = 20 - ThirdBoardGeometry.EdgeClearance;
+        internal const float EscapeRadius = NormalRadius - 1.5f;
+        internal bool Active { get; private set; }
+        private Vector2? anchor;
+        private DateTime since, deadline;
+        private bool attempted;
+
+        internal void Reset()
+        {
+            Active = attempted = false;
+            anchor = null;
+            since = deadline = default;
+        }
+
+        internal bool Update(Vector2 point, bool escaping, bool forced, DateTime now)
+        {
+            float radius = Vector2.Distance(point, ThirdBoardGeometry.Center(0x4CA1));
+            if (radius <= NormalRadius - 1)
+            {
+                Reset();
+                return false;
+            }
+            if (Active)
+            {
+                if (now >= deadline) Active = false;
+                return Active;
+            }
+            // Half a yalm includes polygon chords and the captured18.77y stall.
+            // A normal moving escape or forced march never triggers this fence.
+            if (!escaping || forced || radius < NormalRadius - .5f || attempted)
+            {
+                anchor = null;
+                return false;
+            }
+            if (!anchor.HasValue || Vector2.Distance(anchor.Value, point) > .35f)
+            {
+                anchor = point;
+                since = now;
+            }
+            else if (now - since >= TimeSpan.FromSeconds(2))
+            {
+                Active = attempted = true;
+                deadline = now.AddSeconds(5);
+            }
+            return Active;
+        }
+    }
+
+    // Guttler's cage edges reproduced the same native polygon raster mismatch
+    // as Second Board's bombs: continuous containment remained true while RB
+    // repeatedly chose its current grid span. Cover the padded rectangle with
+    // stable native circles instead. A two-yalm grid circumscribes each cell;
+    // the maximum extra clearance is0.415y, retaining the safe adjacent tiles.
+    internal readonly record struct ThirdBoardCircle(Vector2 Center, float Radius);
+
+    // RB51900 oscillated two yalms short of a valid Tsunami destination until
+    // knockback. Detect only a stable short final segment; the runtime must
+    // still validate every point against current hazards before direct travel.
+    internal sealed class ThirdBoardStagingProgress
+    {
+        private Vector2? anchor, goal;
+        private DateTime since;
+        internal void Reset() { anchor = goal = null; since = default; }
+        internal bool Stalled(Vector2 current, Vector2 destination, DateTime now)
+        {
+            float remaining = Vector2.Distance(current,destination);
+            if (remaining <= .35f || remaining > 4) { Reset(); return false; }
+            if (!anchor.HasValue || !goal.HasValue || Vector2.Distance(goal.Value,destination) > .1f || Vector2.Distance(anchor.Value,current) > .35f)
+            { anchor=current; goal=destination; since=now; return false; }
+            return now-since >= TimeSpan.FromSeconds(1);
+        }
+    }
+
+    // RB60084 oscillated at528.97,-401.16 on the thin polygon floor mask,
+    // then entered fire. Native circles avoid the polygon raster's false-safe
+    // edge cells. Greedy blocks retain the original half-yalm mask while
+    // bounding the object count; their circumscribed disks conservatively cover
+    // each blocked cell, including corners. This is cached per encounter.
+    internal static class GuttlerBoundaryCover
+    {
+        internal static ThirdBoardCircle[] Create()
+        {
+            const int columns = 69, rows = 113;
+            var blocked = new bool[columns, rows];
+            var center = ThirdBoardGeometry.Center(0x4CAA);
+            for (int x = 0; x < columns; x++)
+                for (int z = 0; z < rows; z++)
+                    blocked[x,z] = !ThirdBoardGeometry.InArena(center + new Vector2(-17 + x * .5f, -28 + z * .5f), 0x4CAA);
+            var result = new List<ThirdBoardCircle>();
+            for (int x = 0; x < columns; x++)
+                for (int z = 0; z < rows; z++)
+                {
+                    if (!blocked[x,z]) continue;
+                    int size = 1;
+                    for (int candidate = 2; candidate <= 4 && x + candidate <= columns && z + candidate <= rows; candidate++)
+                    {
+                        bool full = true;
+                        for (int dx = 0; dx < candidate && full; dx++)
+                            for (int dz = 0; dz < candidate; dz++)
+                                if (!blocked[x+dx,z+dz]) { full = false; break; }
+                        if (!full) break;
+                        size = candidate;
+                    }
+                    for (int dx = 0; dx < size; dx++)
+                        for (int dz = 0; dz < size; dz++) blocked[x+dx,z+dz] = false;
+                    result.Add(new ThirdBoardCircle(center + new Vector2(-17 + (x + (size-1)*.5f)*.5f, -28 + (z + (size-1)*.5f)*.5f), size*.5f/MathF.Sqrt(2)+.001f));
+                }
+            return result.ToArray();
+        }
+    }
+
+    internal static class GuttlerCageCover
+    {
+        internal static bool Supports(ThirdBoardHazard hazard) => hazard.Action == 48609 || hazard.Action == 48611;
+
+        internal static ThirdBoardCircle[] Create(ThirdBoardHazard hazard)
+        {
+            float halfLength = hazard.Action == 48611 ? 15.5f : 5.5f;
+            const float halfWidth = 5.5f;
+            int columns = (int)Math.Ceiling(2 * halfWidth / 2);
+            int rows = (int)Math.Ceiling(2 * halfLength / 2);
+            float width = 2 * halfWidth / columns, length = 2 * halfLength / rows;
+            float radius = MathF.Sqrt(width * width + length * length) / 2 + .001f;
+            float c = MathF.Cos(hazard.Heading), s = MathF.Sin(hazard.Heading);
+            var circles = new List<ThirdBoardCircle>();
+            for (int x = 0; x < columns; x++)
+                for (int y = 0; y < rows; y++)
+                {
+                    var local = new Vector2(-halfWidth + width * (x + .5f), -halfLength + length * (y + .5f));
+                    var center = hazard.Origin + new Vector2(local.X * c + local.Y * s, -local.X * s + local.Y * c);
+                    // Entirely distant circles cannot affect any legal floor.
+                    if (Vector2.Distance(center, ThirdBoardGeometry.Center(0x4CAA)) <= 30 + radius)
+                        circles.Add(new ThirdBoardCircle(center, radius));
+                }
+            return circles.ToArray();
+        }
+    }
+
     internal sealed class ThirdBoardHazard
     {
         internal uint Actor, Action;

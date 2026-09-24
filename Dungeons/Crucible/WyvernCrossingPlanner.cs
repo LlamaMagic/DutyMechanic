@@ -41,7 +41,8 @@ namespace DutyMechanic.Dungeons
 
         internal static Vector2[] Plan(Vector2 start, Vector2[] pools,
             Func<Vector2, double, bool> timedSafe, Func<Vector2, bool> goal,
-            double deadline, float speed = 5.5f, MovingCircle[] moving = null)
+            double deadline, float speed = 5.5f, MovingCircle[] moving = null,
+            bool retainLaterArrivals = false)
         {
             // The captured 40x 29.6 floor has a 0.5 y wall inset. Half-yalm cells
             // resolve its narrow pool corridors; quarter-yalm edge samples
@@ -49,12 +50,19 @@ namespace DutyMechanic.Dungeons
             // moving-hazard callers supply measured 6 y/s to preserve timing.
             const int width = 79, height = 57;
             const float radius = 5.5f;
-            var distance = new double[width * height];
+            // A tornado may block the earliest arrival but permit a later one.
+            // This opt-in search retains100ms arrival buckets; callers must use
+            // a timed schedule, not feed its waiting cycles to a walking mover.
+            const double timeBucket = .1;
+            const int plane = width * height;
+            bool timed = retainLaterArrivals && moving != null && moving.Length != 0;
+            var distance = new double[plane * (timed ? Math.Max(1, (int)(Math.Max(0, deadline) / timeBucket) + 1) : 1)];
             var parent = new int[distance.Length];
             Array.Fill(distance, double.PositiveInfinity);
             Array.Fill(parent, -1);
             var queue = new PriorityQueue<int, double>();
-            Vector2 Point(int index) => new Vector2(500.5f + index % width * .5f, -14 + index / width * .5f);
+            Vector2 Point(int index) => new Vector2(500.5f + index % plane % width * .5f, -14 + index % plane / width * .5f);
+            int State(int cell, double seconds) => cell + (timed ? plane * (int)(seconds / timeBucket) : 0);
             bool Segment(Vector2 from, Vector2 to, double elapsed)
             {
                 int samples = Math.Max(1, (int)Math.Ceiling(Vector2.Distance(from, to) / .25));
@@ -62,7 +70,10 @@ namespace DutyMechanic.Dungeons
                 {
                     var p = Vector2.Lerp(from, to, step / (float)samples);
                     if (p.X < 500.5f || p.X > 539.5f || Math.Abs(p.Y) > 14.3f ||
-                        !timedSafe(p, elapsed + Vector2.Distance(from, p) / speed) ||
+                        // Preserve a200ms arrival allowance for timed crossings;
+                        // measured speed/launch variation must not enter a lane
+                        // just as it snapshots. Tornado time remains unshifted.
+                        !timedSafe(p, elapsed + Vector2.Distance(from, p) / speed + (timed ? .2 : 0)) ||
                         !MovingSafe(p, elapsed + Vector2.Distance(from, p) / speed, moving))
                         return false;
                     foreach (var pool in pools)
@@ -93,14 +104,15 @@ namespace DutyMechanic.Dungeons
                 return new[] { start };
             // Connect the actual position to nearby grid nodes, rather than
             // snapping across a pool boundary or inventing an initial teleport.
-            for (int i = 0; i < distance.Length; i++)
+            for (int i = 0; i < plane; i++)
             {
                 var p = Point(i);
                 double seconds = Vector2.Distance(start, p) / speed;
                 if (seconds <= .2 && seconds <= deadline && Segment(start, p, 0))
                 {
-                    distance[i] = seconds;
-                    queue.Enqueue(i, seconds);
+                    int state = State(i, seconds);
+                    distance[state] = seconds;
+                    queue.Enqueue(state, seconds);
                 }
             }
             while (queue.TryDequeue(out int index, out double elapsed))
@@ -121,13 +133,16 @@ namespace DutyMechanic.Dungeons
                     {
                         if (dx == 0 && dz == 0)
                             continue;
-                        int x = index % width + dx, z = index / width + dz;
+                        int x = index % plane % width + dx, z = index % plane / width + dz;
                         if (x < 0 || x >= width || z < 0 || z >= height)
                             continue;
-                        int next = z * width + x;
-                        var to = Point(next);
+                        int cell = z * width + x;
+                        var to = Point(cell);
                         double arrival = elapsed + Vector2.Distance(from, to) / speed;
-                        if (arrival >= distance[next] || arrival > deadline || !Segment(from, to, elapsed))
+                        if (arrival > deadline)
+                            continue;
+                        int next = State(cell, arrival);
+                        if (arrival >= distance[next] || !Segment(from, to, elapsed))
                             continue;
                         parent[next] = index;
                         distance[next] = arrival;

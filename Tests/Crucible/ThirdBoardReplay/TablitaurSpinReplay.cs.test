@@ -1,0 +1,35 @@
+using System;
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// RB9548 at14:44:06.468: the old velocity-only sweep considered the player
+// clear; two seconds later the spinner hit and knocked him through the wall.
+// Check physical capsule clearance independently of the polygon generator.
+internal static class TablitaurSpinReplay
+{
+    internal static void Run()
+    {
+        var origin = new Vector2(121.709015f, -8.014556f);
+        var player = new Vector2(128.78738f, -16.829422f);
+        var velocity = new Vector2(2.9411142f, -1.1656593f);
+        float Clearance(Vector2 point, Vector2 lead)
+        {
+            float t = Math.Clamp(Vector2.Dot(point-origin, lead)/lead.LengthSquared(), 0, 1);
+            return Vector2.Distance(point, origin + lead*t);
+        }
+        var predicted = TablitaurSpinPrediction.Lead(origin, player, velocity);
+        if (Clearance(player, velocity) <= 8.5f || Clearance(player, predicted) >= 8.5f)
+            throw new Exception("Captured spin approach must warn before the old velocity-only capsule.");
+        // The counterclockwise turn must not retain an eastward forecast after
+        // the player passes west. Bound the extension and preserve rear clearance.
+        var west = origin + new Vector2(-12, 0);
+        predicted = TablitaurSpinPrediction.Lead(origin, west, new Vector2(3,0));
+        if (Clearance(west,predicted) >= 8.5f || predicted.Length()>5.001f ||
+            Clearance(origin+new Vector2(8.6f,0),predicted)<=8.5f)
+            throw new Exception("Chase turn lost target coverage or overextended the retreating side.");
+        predicted = TablitaurSpinPrediction.Lead(origin, west, new Vector2(6,0));
+        if (Math.Abs(predicted.Length()-6)> .001f || predicted.X>=0)
+            throw new Exception("Faster observed travel must retain a full second of target-directed warning.");
+        Console.WriteLine("Captured Tablitaur chase approach and turn coverage passed; live movement still requires verification.");
+    }
+}

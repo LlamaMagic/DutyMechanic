@@ -20,6 +20,7 @@ namespace DutyMechanic.Dungeons
         private readonly Dictionary<uint, uint> casts = new Dictionary<uint, uint>();
         private readonly List<Shape> hazards = new List<Shape>();
         private readonly Dictionary<uint, Shape> floor = new Dictionary<uint, Shape>();
+        private readonly Dictionary<uint, Shape[]> whirlwinds = new Dictionary<uint, Shape[]>();
         private readonly CapabilityManagerHandle knockbackHandle = CapabilityManager.CreateNewHandle();
         private Vector3 knockbackOrigin;
         private Vector3? destination;
@@ -40,7 +41,8 @@ namespace DutyMechanic.Dungeons
             // Floor damage is already active while a cast's footprint is still
             // traversable. Higher path cost for persistent pools prevents the
             // shortest escape from a large future cone cutting across live fire.
-            AvoidanceManager.AddAvoidPolygon<Shape>(() => InArena() && !crossingOwned, null, 60, h => -h.Heading, h => 1, h => 15, h => h.Points, h => h.Origin, () => CurrentHazards().Where(h => h.Persistent), priority: AvoidancePriority.High);
+            AvoidanceManager.AddAvoidPolygon<Shape>(() => InArena() && !crossingOwned, null, 60, h => -h.Heading, h => 1, h => 15, h => h.Points, h => h.Origin, () => CurrentHazards().Where(h => h.Persistent && h.Radius == 0), priority: AvoidancePriority.High);
+            AvoidanceManager.AddAvoidLocation<Shape>(() => InArena() && !crossingOwned, () => Center, 60, h => h.Radius, h => h.Origin, () => CurrentHazards().Where(h => h.Radius > 0));
         }
 
         private IEnumerable<Shape> CurrentHazards()
@@ -57,31 +59,43 @@ namespace DutyMechanic.Dungeons
                 if (actor.BaseId != 0x1EA66D && actor.BaseId != 0x4C59 && actor.BaseId != 0x4C5A)
                     continue;
                 seen.Add(actor.ObjectId);
+                if (actor.BaseId == 0x4C59 || actor.BaseId == 0x4C5A)
+                {
+                    // This forecast belongs only to ordinary native avoidance.
+                    // Trail's timed planner still owns its separately validated
+                    // crossing envelope; do not add a second movement owner.
+                    if (!whirlwinds.TryGetValue(actor.ObjectId, out var circles))
+                    {
+                        var offsets = WyvernWhirlwindCover.Offsets(actor.BaseId == 0x4C5A, out float radius);
+                        circles = offsets.Select(p => new Shape { Offset = p.Y, Radius = radius, Persistent = true }).ToArray();
+                        whirlwinds.Add(actor.ObjectId, circles);
+                    }
+                    var direction = new Vector3((float)Math.Sin(actor.Heading), 0, (float)Math.Cos(actor.Heading));
+                    foreach (var circle in circles)
+                    {
+                        circle.Origin = actor.Location + direction * circle.Offset;
+                        circle.Until = now.AddSeconds(1);
+                        result.Add(circle);
+                    }
+                    continue;
+                }
                 // AvoidInfo.Collection uses source-object identity to retain its
                 // active heightfield stamps. Recreating each Shape every pulse
                 // discarded that continuity, producing repeated run-out handoffs
                 // and Burns on both 83392 and 98488. Keep a stable per-actor object;
                 // update only its position, and remove it when the actor vanishes.
                 if (!floor.TryGetValue(actor.ObjectId, out var shape))
-                    floor[actor.ObjectId] = shape = Circle(actor.Location, actor.BaseId == 0x1EA66D ? 5.5f : actor.BaseId == 0x4C59 ? 4 : 5.5f, now.AddSeconds(1));
+                    floor[actor.ObjectId] = shape = Circle(actor.Location, 5.5f, now.AddSeconds(1));
                 shape.Origin = actor.Location;
                 shape.Persistent = true;
                 shape.Until = now.AddSeconds(1);
-                // Circumscribe the reference's forward capsules to cover the
-                // moving body, including 0.5 y margin. Refresh from live position;
-                // never leave an obsolete avoid after its actor disappears.
-                if (actor.BaseId == 0x4C59 || actor.BaseId == 0x4C5A)
-                {
-                    float length = actor.BaseId == 0x4C59 ? 2 : 3;
-                    var midpoint = actor.Location + new Vector3((float)Math.Sin(actor.Heading) * length / 2, 0, (float)Math.Cos(actor.Heading) * length / 2);
-                    shape.Origin = midpoint;
-                }
-
                 result.Add(shape);
             }
 
             foreach (uint id in floor.Keys.Where(id => !seen.Contains(id)).ToArray())
                 floor.Remove(id);
+            foreach (uint id in whirlwinds.Keys.Where(id => !seen.Contains(id)).ToArray())
+                whirlwinds.Remove(id);
             return result;
         }
 
@@ -94,6 +108,7 @@ namespace DutyMechanic.Dungeons
                 casts.Clear();
                 hazards.Clear();
                 floor.Clear();
+                whirlwinds.Clear();
                 knockbackUntil = default;
                 return;
             }
@@ -386,9 +401,11 @@ namespace DutyMechanic.Dungeons
             internal float Heading;
             internal DateTime Until;
             internal bool Persistent;
+            internal float Radius, Offset;
             internal Vector2[] Points;
             internal bool Contains(Vector3 point)
             {
+                if (Radius > 0) return point.Distance2D(Origin) < Radius;
                 float dx = point.X - Origin.X, dz = point.Z - Origin.Z;
                 float x = dx * (float)Math.Cos(Heading) - dz * (float)Math.Sin(Heading);
                 float z = dx * (float)Math.Sin(Heading) + dz * (float)Math.Cos(Heading);

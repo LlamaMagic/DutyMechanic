@@ -82,7 +82,7 @@ namespace DutyMechanic.Dungeons
                 40.5, 3.5, AvoidancePriority.High);
             AvoidanceManager.AddAvoidLocation<GroundHazard>(InBoneArena,
                 h => h.Radius, h => h.Center,
-                () => groundHazards.Where(h => (h.Action != 46922 || !firePlanValid) && h.Action != 46868 && (h.Action != 46908 || NextWebs().Contains(h)) && (h.Action != 46916 && h.Action != 46917 || NextMagma().Contains(h)) && (h.Action < 46902 || h.Action > 46905 || h.Action == 46902 && h == NextUplift()) && h.Until > DateTime.UtcNow),
+                () => groundHazards.Where(h => (h.Action != 46922 || !firePlanValid) && h.Action != 46868 && (h.Action != 46908 || NextWebs().Contains(h)) && (h.Action != 46916 && h.Action != 46917 || NextMagma().Contains(h)) && (h.Action < 46902 || h.Action > 46905 || h.Action == 46902 && h == NextUplift() && UpliftCircleReady(h)) && h.Until > DateTime.UtcNow),
                 h => true, false);
             // Ancient Aero is an actor-facing 40x 8 line. Use only this enemy
             // action and never broad cast-type matching that includes familiars.
@@ -205,6 +205,18 @@ namespace DutyMechanic.Dungeons
 
         private GroundHazard NextUplift() => groundHazards.Where(h => h.Action >= 46902 && h.Action <= 46905 && h.Until > DateTime.UtcNow)
             .OrderBy(h => h.Until).FirstOrDefault();
+
+        private bool UpliftCircleReady(GroundHazard circle)
+        {
+            // Webs finish clockwise while the next Uplift is already casting.
+            // Reserving its center immediately trapped Kember in the last webs
+            // at06:26:17 September24. Keep their resolved center available until
+            // 2.5s before Uplift's cast snapshot (Until includes1.1s effect grace).
+            // That leaves time to clear6.5y; outside this overlap retain the
+            // original full-cast warning and all subsequent ring timing.
+            return !groundHazards.Any(h => h.Action == 46908 && h.Until > DateTime.UtcNow) ||
+                circle.Until - DateTime.UtcNow <= TimeSpan.FromSeconds(3.6);
+        }
         private Vector3[] UpliftCenters(uint action)
         {
             var h = NextUplift();

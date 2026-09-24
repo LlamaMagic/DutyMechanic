@@ -6,8 +6,19 @@ using DutyMechanic.Dungeons;
 // These regressions preserve observed arena geometry and knockback distances,
 // not a claim that offline tests replace a completed automated Third Board run.
 int checks = 0;
+checks += BombCrossReplay.Run();
+checks += HammerFloorReplay.Run();
+TablitaurSpinReplay.Run();
+LoosefroxOverlapReplay.Run();
+checks += WyvernWhirlwindReplay.Run();
 void Check(bool value, string reason) { checks++; if (!value) throw new Exception(reason); }
 Vector2 P(float x, float z) => new Vector2(x, z);
+// RB11440's pet took976 damage beside Kember's814: replay that observed
+// geometry, its opposite-side refuge, and conservative hitbox margins.
+Check(!TablitaurSlashBait.PetIsClear(P(114.977f, -.015f), P(118.503f, .551f), P(118.852f, -2.640f), .5f), "Captured Slash double-hit must be unsafe");
+Check(TablitaurSlashBait.PetIsClear(P(114.977f, -.015f), P(108.5f, -.015f), P(118.852f, -2.640f), .5f), "Opposite boss side must separate the pet");
+Check(!TablitaurSlashBait.PetIsClear(P(0, 0), P(0, 7), P(4.8f, 3), .5f), "Pet hitbox near the line must remain unsafe");
+Check(!TablitaurSlashBait.PetIsClear(P(0, 0), P(0, 0), P(7, 0), .5f), "Undefined bait heading must not be accepted");
 ThirdBoardHazard Shape(Vector2 origin, Vector2[] points, float heading = 0) =>
     new ThirdBoardHazard { Origin = origin, Points = points, Heading = heading };
 const uint Guttler = 0x4CAA, Siren = 0x4CA1, Ymir = 0x4C93;
@@ -123,6 +134,22 @@ foreach (var direction in new[] { P(1, 0), P(-1, 0), P(0, 1), P(0, -1), Vector2.
 }
 var stationaryCloud = Shape(P(0, 0), ThirdBoardHazard.SweptCircle(1.5f, Vector2.Zero));
 Check(stationaryCloud.Contains(P(1.49f, 0)) && !stationaryCloud.Contains(P(1.6f, 0)), "Stationary/new cloud uses contact disk without invented heading");
+// September24 Tablitaur reached a stationary player before the disk-only
+// avoid forced another move. The reused one-second forecast must reject that
+// approaching contact point without consuming extra safe space behind it.
+for (int degrees = 0; degrees < 360; degrees += 15)
+{
+    var direction = P(MathF.Sin(degrees * MathF.PI / 180), MathF.Cos(degrees * MathF.PI / 180));
+    var motion = new CloudMotionPrediction();
+    motion.Observe(P(120, 0), cloudTime);
+    var origin = P(120, 0) + direction * .4f;
+    var travel = motion.Observe(origin, cloudTime.AddMilliseconds(100));
+    var spin = Shape(origin, ThirdBoardHazard.SweptCircle(8.5f, travel));
+    Check(spin.Contains(origin + direction * 12.4f), "Pursuing spin warns one second before contact in every heading");
+    Check(spin.Contains(origin - direction * 8.49f), "Spinner retains current rear contact radius");
+    Check(!spin.Contains(origin - direction * 8.6f), "Pursuing spin preserves retreating-side clearance");
+    Check(!spin.Contains(origin + direction * 12.6f), "Spin prediction is bounded to measured one-second travel");
+}
 // The closest/melee-aligned briar must lose to the farthest safe patch. Egress
 // cannot trade thorn clearance for a route into the flower or another hazard.
 var briars = new[] { P(2, 0), P(12, 0), P(8, 4) };
@@ -205,6 +232,9 @@ Check(ThirdBoardGeometry.SirenRelocated(P(120, -426), P(132, -408), .3), "Interp
 Check(!ThirdBoardGeometry.SirenRelocated(P(120, -420), P(123, -420), .4), "Ordinary pursuit is not teleport");
 Check(!ThirdBoardGeometry.SirenRelocated(P(120, -426), P(132, -408), 2), "Stale snapshot is not teleport evidence");
 Check(!ThirdBoardGeometry.SirenRelocated(P(105, -435), P(120, -420), .2), "Center relocation is not an edge cone");
+Check(ThirdBoardGeometry.SirenAtMelodyEdge(P(120, -441)), "Cardinal Melody arrival must survive missed movement samples.");
+Check(ThirdBoardGeometry.SirenAtMelodyEdge(P(134.849f, -434.849f)), "Captured diagonal Melody endpoint must trigger.");
+Check(!ThirdBoardGeometry.SirenAtMelodyEdge(P(120, -438.5f)), "Ordinary legal-floor pursuit must not predict Melody.");
 var liveMelody = Shape(P(105.151f, -434.849f), ThirdBoardHazard.Cone(50.5f, 46), MathF.PI / 4);
 Check(liveMelody.Contains(P(132.212f, -408.823f)), "Captured Siren failure lies inside the sustained cone");
 Check(ThirdBoardGeometry.Candidates(Siren).Any(p => !liveMelody.Contains(p) &&
@@ -227,6 +257,13 @@ Check(ThirdBoardGeometry.LandslipMoved(P(119.187f, 5.981f), P(119.188f, -7.725f)
 Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(119, 5.5f), MathF.PI), "Small staging drift is not resolution");
 Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(124, 6), MathF.PI), "Cross-lane motion is not resolution");
 Check(!ThirdBoardGeometry.LandslipMoved(P(119, 6), P(119, 12), MathF.PI), "Opposite displacement is not resolution");
+// The captured z=-10 destination lay on opposite-direction lanes; native
+// arrival stopped at-9.887 and selected the lethal eastward displacement.
+Check(!ThirdBoardGeometry.InsideLandslipLane(P(130.5f, -10), P(142, -15), 4.713f), "Reject captured lane seam");
+Check(!ThirdBoardGeometry.InsideLandslipLane(P(130.284f, -9.887f), P(142, -15), 4.713f), "Reject captured wrong-lane arrival");
+Check(ThirdBoardGeometry.InsideLandslipLane(P(130.5f, -11), P(142, -15), 4.713f), "Retain inward-pushing lane interior");
+foreach (int sign in new[] { -1, 1 })
+    Check(ThirdBoardGeometry.InsideLandslipLane(P(130.5f, -11 + sign * .25f), P(142, -15), 4.713f), "Arrival tolerance stays inside chosen lane");
 Console.WriteLine($"Third Board total including Landslip handoff: {checks} checks passed.");
 // Melody and march resolve sequentially. A safe flank must permit a later
 // inward march even when that future segment crosses the current cone.
@@ -335,8 +372,25 @@ Check(updates <= 15, "Normal moving eye must publish at most5Hz instead of bot-t
 eyeSource.Origin += P(10, 0);
 Check(eyePublication.Read(eyeSource, clock.AddSeconds(3.01)).Origin == eyeSource.Origin, "Unexpected displacement bypasses the publication timer");
 var stationaryOrigin = eyePublication.Hazard.Origin;
+// Tagged travelling eyes must permit damage until the impact window. A helper
+// observation extends that window rather than clearing facing at cast-start.
+Check(!ThirdBoardGeometry.GazeImminent(clock, clock.AddSeconds(19)), "Travelling gaze must not suppress19s of damage.");
+Check(ThirdBoardGeometry.GazeImminent(clock, clock.AddSeconds(1)), "Gaze must protect the action queue before impact.");
+Check(ThirdBoardGeometry.GazeImminent(clock, clock.AddSeconds(-.2)), "Gaze must cover delayed impact publication.");
+Check(!ThirdBoardGeometry.GazeImminent(clock, clock.AddSeconds(-1)), "Resolved gaze must release facing.");
 eyeSource.Origin += P(.1f, .1f);
 Check(eyePublication.Read(eyeSource, clock.AddSeconds(4)).Origin == stationaryOrigin, "Sub-quarter-yalm jitter must not replan a settled escape");
+
+// The107164 path met a2y/s eye before native avoidance replanned. A one-second
+// swept body must close that upcoming crossing while preserving its real tail.
+var approachingEye = Shape(P(108.23f, -423.84f), ThirdBoardHazard.Circle(2.5f));
+var approachingPublication = new ThirdBoardEyePublication(approachingEye, clock);
+approachingEye.Origin += P(.4f, -.16f);
+var approachingShape = approachingPublication.Read(approachingEye, clock.AddSeconds(.2));
+Check(approachingShape.Contains(P(113f, -424.5f)), "Moving-eye envelope must reserve its upcoming crossing.");
+Check(approachingShape.Contains(approachingEye.Origin + P(-2.5f, 0)), "Lead capsule must retain the contact tail.");
+approachingPublication.Read(approachingEye, clock.AddSeconds(.5));
+Check(!approachingShape.Contains(P(113f, -424.5f)), "Stationary eye must release its predicted lead.");
 
 foreach (float direction in new[] { 0f, MathF.PI / 2, MathF.PI, -MathF.PI / 2, 3.141f })
 {
@@ -886,3 +940,127 @@ Check(SecondMasterGeometry.DrakeCycloneNeedsSprint(P(534.576f, 10.393f), P(500, 
 Check(!SecondMasterGeometry.DrakeCycloneNeedsSprint(P(504, 10), P(500, 0), MathF.PI / 2, 4.7), "Already safe cone flank does not request Sprint");
 Check(!SecondMasterGeometry.DrakeCycloneNeedsSprint(P(510, 0), P(500, 0), MathF.PI / 2, 4.7), "Nearby cone escape preserves Sprint");
 Console.WriteLine($"Including Cyclone travel budget: {checks} checks passed.");
+
+// Stationary Catoblepas holds should keep melee uptime whenever the target
+// heading looks away from every gaze; unsafe bosses must never win that choice.
+var faceTarget = ThirdBoardGeometry.Heading(P(8,0));
+Check(ThirdBoardGeometry.SafeFacing(P(0,0), P(8,0), new[] {P(-8,0)}, 0) == faceTarget, "Safe boss heading should beat an arbitrary away sample");
+var faceAway = ThirdBoardGeometry.SafeFacing(P(0,0), P(8,0), new[] {P(8,0)}, MathF.PI);
+Check(faceAway.HasValue && Vector2.Dot(ThirdBoardGeometry.Direction(faceAway.Value), Vector2.UnitX) < -.1f, "Boss behind a gaze must not be faced");
+Check(ThirdBoardGeometry.SafeFacing(P(0,0), P(8,0), Array.Empty<Vector2>(), 0) == faceTarget, "No-gaze hold should restore target facing");
+Check(ThirdBoardGeometry.SafeFacing(P(0,0), P(8,0), new[] {P(-8,0),P(8,0)}, 0) == null, "Opposite gazes cannot fabricate a safe heading");
+Console.WriteLine($"Including safe melee facing: {checks} checks passed.");
+
+// Replay Siren's prolonged edge escape without permitting a general-purpose
+// avoidance reset. Movement, forced states, release hysteresis and retry bounds
+// keep the native owner authoritative and avoid repeated polygon churn.
+var sirenEdge = new SirenBoundaryRecovery();
+var stalledEdge = P(131.90706f, -405.49106f);
+Check(!sirenEdge.Update(stalledEdge, true, false, clock), "First edge sample must not trigger recovery");
+Check(!sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(1.9)), "Ordinary arrival tolerance gets time to settle");
+Check(sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(2)), "Captured Siren stall requests a deeper native goal");
+Check(sirenEdge.Update(P(131.5f,-405.9f), true, false, clock.AddSeconds(2.5)), "Recovery retains clearance beyond the first safe pixel");
+Check(!sirenEdge.Update(P(130,-406), true, false, clock.AddSeconds(3)), "Interior arrival releases extra boundary clearance");
+Check(!sirenEdge.Update(stalledEdge, true, true, clock.AddSeconds(4)), "Forced movement must not begin recovery");
+Check(!sirenEdge.Update(stalledEdge, false, false, clock.AddSeconds(7)), "A facing lease alone is not a native escape");
+sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(8));
+Check(sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(10)), "A new edge episode can recover");
+Check(!sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(15)), "Blocked recovery has a bounded lifetime");
+Check(!sirenEdge.Update(stalledEdge, true, false, clock.AddSeconds(30)), "Blocked recovery cannot repeatedly rebuild its polygons");
+sirenEdge.Reset();
+sirenEdge.Update(stalledEdge, true, false, clock);
+Check(!sirenEdge.Update(stalledEdge + P(-1,0), true, false, clock.AddSeconds(2)), "Progressing escape must not be classified as stalled");
+Console.WriteLine($"Including Siren boundary recovery: {checks} checks passed.");
+
+// Native cage coverage must contain every old padded point, preserve actual
+// alcoves, and cover RB16848's oscillating position beside the central cage.
+var cageOrigins = new[] { P(510,-400), P(530,-400), P(520,-420), P(520,-440) };
+var cageShapes = cageOrigins.SelectMany(p => ThirdBoardGeometry.CageForecast(1,p,0,clock)).ToArray();
+var cageCover = cageShapes.SelectMany(GuttlerCageCover.Create).ToArray();
+bool Covered(Vector2 p) => cageCover.Any(c => Vector2.DistanceSquared(p,c.Center) <= c.Radius*c.Radius);
+Check(Covered(P(514.72f,-425.43f)), "Captured false-safe cage endpoint remains blocked in native circles");
+int safeCagePoints=0;
+foreach(var p in ThirdBoardGeometry.Candidates(Guttler,.25f))
+{
+    if(cageShapes.Any(h=>h.Contains(p))) Check(Covered(p), "Circle cover leaves a cage gap");
+    else if(!Covered(p)) safeCagePoints++;
+}
+Check(safeCagePoints>20, "Cage circle cover must retain reachable floor refuges");
+Check(cageCover.Length <= 768, "Four-cage cover must stay bounded");
+Console.WriteLine($"Including Guttler cage coverage: {checks} checks passed; {cageCover.Length} circles, {safeCagePoints} safe samples.");
+
+// Captured Tsunami destination was valid but the graph settled short on the
+// rim. Permit only the small, clear final segment after measured non-progress.
+var stagingProgress=new ThirdBoardStagingProgress();
+var tsunamiShort=P(135.55f,-18.73f); var tsunamiGoal=P(136.5f,-17);
+Check(!stagingProgress.Stalled(tsunamiShort,tsunamiGoal,clock), "Normal first staging pulse cannot bypass the graph");
+Check(stagingProgress.Stalled(tsunamiShort,tsunamiGoal,clock.AddSeconds(1)), "Captured stable endpoint must trigger bounded recovery");
+Check(ThirdBoardGeometry.Corridor(tsunamiShort,tsunamiGoal,Ymir,Array.Empty<ThirdBoardHazard>()), "Captured final segment must stay within the arena");
+Check(!ThirdBoardGeometry.Corridor(tsunamiShort,tsunamiGoal,Ymir,new[]{Shape(tsunamiGoal,ThirdBoardHazard.Circle(1))}), "A new hazard must prevent direct recovery");
+Check(!stagingProgress.Stalled(tsunamiShort,P(130,-10),clock.AddSeconds(2)), "Long route must remain graph-owned");
+Check(!stagingProgress.Stalled(tsunamiGoal,tsunamiGoal,clock.AddSeconds(3)), "Arrival clears stall state");
+Console.WriteLine($"Including short staging recovery: {checks} checks passed.");
+
+// Farburst's real actor ring is outside the playable floor; this exact refuge
+// was erroneously accepted against the former20y prediction and took573 damage.
+var farOrigin=ThirdBoardGeometry.EyeEndpoint(MathF.PI/2);
+Check(Vector2.Distance(farOrigin,P(140.984f,-419.994f))<.03f,"Forecast must match captured Farburst endpoint");
+Check(Vector2.Distance(P(136.624f,-422.730f),farOrigin)>5,"Captured failed refuge must not be called safe");
+Check(ThirdBoardGeometry.InArena(P(137.5f,-420),0x4C9B) && Vector2.Distance(P(137.5f,-420),farOrigin)<4.5f,"Corrected donut must retain a safe floor refuge");
+Console.WriteLine($"Including measured eye endpoint: {checks} checks passed.");
+
+// RB60084's north-east boundary stall entered fire. Check the entire authored
+// mask, not only that point, and retain traversable corridors to all six bays.
+var floorCover = GuttlerBoundaryCover.Create();
+bool FloorCovered(Vector2 p) => floorCover.Any(c => Vector2.DistanceSquared(p,c.Center) <= c.Radius*c.Radius);
+Check(FloorCovered(P(528.97f,-401.16f)), "Captured boundary stall must be covered by native circles");
+for(float x=-17;x<=17;x+=.5f)
+    for(float z=-28;z<=28;z+=.5f)
+    {
+        var p=P(520+x,-420+z);
+        if(ThirdBoardGeometry.InArena(p,Guttler)) continue;
+        foreach(var offset in new[]{P(-.25f,-.25f),P(-.25f,.25f),P(.25f,-.25f),P(.25f,.25f)})
+            Check(FloorCovered(p+offset), "Blocked floor cell corner cannot escape circle coverage");
+    }
+foreach(var bay in new[]{P(520,-397.5f),P(520,-442.5f),P(508,-412.5f),P(508,-422.5f),P(532,-417.5f),P(532,-427.5f)})
+{
+    var entry=P(520,bay.Y);
+    if(bay.X==520) entry=P(520,-420);
+    for(int step=0;step<=100;step++) Check(!FloorCovered(Vector2.Lerp(entry,bay,step/100f)), "Every alcove must remain connected to the room");
+}
+Check(floorCover.Length<=1000,"Boundary circle count must remain bounded");
+Console.WriteLine($"Including Guttler native floor: {checks} checks passed; {floorCover.Length} circles.");
+
+// Preserve the captured long first-Melody approach as a timing regression:
+// geometric safety at a boss-side endpoint cannot outrank escaping sooner.
+var firstMelodyOrigin=P(119.9569f,-399.00003f);
+var firstMelodyStart=P(119.911064f,-425.79816f);
+var firstMelody=Shape(firstMelodyOrigin,ThirdBoardHazard.Cone(50.5f,46),MathF.PI);
+firstMelody.Action=48566;
+var nearestMelody=ThirdBoardGeometry.ClosestMelodyRefuge(firstMelodyStart,firstMelodyOrigin,new[]{firstMelody},false);
+Check(nearestMelody.HasValue && Vector2.Distance(firstMelodyStart,nearestMelody.Value)<Vector2.Distance(firstMelodyStart,P(116,-402))-3,"Nearest Melody exit must beat the captured long melee route");
+Check(ThirdBoardGeometry.MelodyRefuge(nearestMelody.Value,firstMelodyOrigin,new[]{firstMelody},false),"Short Melody endpoint must preserve the complete clearance disk");
+Check(ThirdBoardGeometry.MelodyNeedsSprint(firstMelodyStart,nearestMelody.Value),"Captured long Melody escape requests available Sprint");
+Check(!ThirdBoardGeometry.MelodyNeedsSprint(nearestMelody.Value,nearestMelody.Value),"Safe stationary refuge must not waste Sprint");
+Console.WriteLine($"Including urgent Melody escape: {checks} checks passed; travel {Vector2.Distance(firstMelodyStart,nearestMelody.Value):F2}y.");
+
+//52656 crossed an eye during an active native escape. Its graph representation
+// must cover both the live contact and every point in the predictive capsule.
+foreach (var velocity in new[]{P(0,0),P(2,-.8f),P(-2,1),P(0,4)})
+{
+    var contact=Shape(P(130,-415),ThirdBoardHazard.Circle(2.5f));
+    var publication=new ThirdBoardEyePublication(contact,clock);
+    contact.Origin+=velocity*.2f;
+    publication.Read(contact,clock.AddSeconds(.2));
+    var circles=publication.Circles;
+    Check(circles.Length<=9,"Moving-eye native coverage must have bounded cost");
+    for(int step=0;step<=40;step++)
+        for(int angle=0;angle<96;angle++)
+        {
+            var p=contact.Origin+velocity*(step/40f)+ThirdBoardGeometry.Direction(angle*MathF.PI/48)*3.01f;
+            Check(circles.Any(c=>Vector2.DistanceSquared(p,c.Center)<=c.Radius*c.Radius),"Native eye capsule cannot leave gaps");
+        }
+    publication.Read(contact,clock.AddSeconds(.6));
+    Check(publication.Circles.All(c=>c.Center==contact.Origin),"Stopped eye must release its native projected lead");
+}
+Console.WriteLine($"Including native eye coverage: {checks} checks passed.");

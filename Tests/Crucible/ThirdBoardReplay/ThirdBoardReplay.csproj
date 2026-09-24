@@ -5,6 +5,16 @@
   <ItemGroup>
     <Compile Include="*.cs.test" />
     <Compile Include="../../../Dungeons/Crucible/ThirdBoardGeometry.cs" Link="ThirdBoardGeometry.cs" />
+    <!-- Verify bomb coverage independently of RB's defective polygon edge raster. -->
+    <Compile Include="../../../Dungeons/Crucible/BombCrossCover.cs" Link="BombCrossCover.cs" />
+    <!-- The pursuing spin must warn before a target turn becomes past velocity. -->
+    <Compile Include="../../../Dungeons/Crucible/TablitaurSpinPrediction.cs" Link="TablitaurSpinPrediction.cs" />
+    <!-- Replay the captured double-hit positions and separated pet bait. -->
+    <Compile Include="../../../Dungeons/Crucible/TablitaurSlashBait.cs" Link="TablitaurSlashBait.cs" />
+    <!-- Replay the captured donut-before-bombs order and its available refuge. -->
+    <Compile Include="../../../Dungeons/Crucible/LoosefroxHazardTiming.cs" Link="LoosefroxHazardTiming.cs" />
+    <!-- Cover the moving body and predictive lead without closing side exits. -->
+    <Compile Include="../../../Dungeons/Crucible/WyvernWhirlwindCover.cs" Link="WyvernWhirlwindCover.cs" />
     <!-- Cover Second Master hazard geometry, refuges and forced movement. -->
     <Compile Include="../../../Dungeons/Crucible/SecondMasterGeometry.cs" Link="SecondMasterGeometry.cs" />
     <!-- Master routes must preserve the bleeding boundary on every edge,
