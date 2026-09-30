@@ -17,6 +17,13 @@ internal static class DungeonManager
 {
     private static readonly Dictionary<ZoneId, Type> AvailableDungeons = new Dictionary<ZoneId, Type>()
     {
+            // Solo Variant territories are separate from Criterion and Savage.
+            // Each handler selects its route mechanics from live encounter actors.
+            { (ZoneId)1069, typeof(SildihnSubterrane) },
+            { (ZoneId)1137, typeof(MountRokkon) },
+            { (ZoneId)1176, typeof(AloaloIsland) },
+            { (ZoneId)1315, typeof(MerchantsTale) },
+
             // Crucible boards use distinct territories and encounter lifetimes.
             { (ZoneId)1339, typeof(FirstBoardOfUnbroken) },
             { (ZoneId)1340, typeof(SecondBoardOfUnbroken) },

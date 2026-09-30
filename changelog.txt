@@ -1,0 +1,7 @@
+DutyMechanic Changelog
+
+Unreleased
+
+Variant Dungeons
+- Add boss mechanics for supported solo routes in The Sil'dihn Subterrane, Mount Rokkon, Aloalo Island and The Merchant's Tale.
+- Keep detailed Variant encounter traces disabled during normal play while retaining them for developer diagnostics.

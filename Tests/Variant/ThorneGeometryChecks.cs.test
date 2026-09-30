@@ -1,0 +1,174 @@
+// Retain flare timing and polygon clearance regressions from the captured sequences.
+using System.Numerics;
+
+namespace DutyMechanic.Dungeons;
+
+internal static class ThorneGeometryChecks
+{
+    private static int count;
+    private static void Check(bool condition, string reason)
+    {
+        if (!condition)
+        {
+            throw new System.Exception(reason);
+        }
+
+        count++;
+    }
+
+    private static bool Inside(System.Numerics.Vector2[] polygon, float x, float y)
+    {
+        bool hit = false;
+        for (int i = 0, j = polygon.Length - 1; i < polygon.Length; j = i++)
+        {
+            var a = polygon[i];
+            var b = polygon[j];
+            if ((a.Y > y) != (b.Y > y) && x < (b.X - a.X) * (y - a.Y) / (b.Y - a.Y) + a.X)
+            {
+                hit = !hit;
+            }
+        }
+
+        return hit;
+    }
+
+    public static int Run()
+    {
+        foreach (uint id in new uint[]
+        {
+            28906,
+            28907,
+            28926,
+            28927,
+            28966,
+            28919,
+            0
+        }
+
+        )
+        {
+            Check(ThorneGeometryPlan.Polygons(id).Length == 0, "Non-geometric or unverified event gained a polygon: " + id);
+            Check(ThorneGeometryPlan.CircleRadius(id) == 0, "Non-geometric event gained a circle: " + id);
+        }
+
+        foreach (uint id in new uint[]
+        {
+            28922,
+            28929
+        }
+
+        )
+        {
+            var p = ThorneGeometryPlan.Polygons(id)[0];
+            float shift = ThorneGeometryPlan.ConeBackshift(id);
+            Check(Inside(p, 12, 16 + shift), "Sacred Flay was narrowed to45 total degrees.");
+            Check(!Inside(p, 18, 12 + shift), "Sacred Flay was expanded beyond its90-degree sector.");
+            Check(!Inside(p, 0, -2 + shift), "Sacred Flay reaches behind its padded pivot.");
+        }
+
+        var fore = ThorneGeometryPlan.Polygons(28908)[0];
+        // Independent containment and recorded-hit replay check the new native lane
+        // owner, including wrapped heading comparison and rejection after return4.
+        var carriage = ThorneGeometryPlan.Polygons(28920)[0];
+        Check(Inside(carriage, 3.25f, 44) && !Inside(carriage, 3.75f, 44), "Carriage width/clearance is wrong.");
+        Check(Inside(carriage, 0, 45.25f) && !Inside(carriage, 0, 46), "Carriage forward reach is wrong.");
+        foreach (uint layout in new uint[]
+        {
+            9316108,
+            9316109,
+            9316110,
+            9316111
+        }
+
+        )
+        {
+            Check(ThorneGeometryPlan.CarriageHeading(layout, 1).HasValue, "Known warned family was lost.");
+            Check(!ThorneGeometryPlan.CarriageHeading(layout, 4).HasValue && !ThorneGeometryPlan.CarriageHeading(layout, 2).HasValue, "Inactive/unknown state registered lanes.");
+        }
+
+        Check(!ThorneGeometryPlan.CarriageHeading(0, 1).HasValue, "Network index was accepted as layout ID.");
+        Check(ThorneGeometryPlan.SameCarriageHeading(.78536224f, ThorneGeometryPlan.CarriageHeading(9316108, 1).Value), "Captured SW source did not match its family.");
+        Check(ThorneGeometryPlan.SameCarriageHeading(3.9269068f, ThorneGeometryPlan.CarriageHeading(9316111, 1).Value), "Captured NE source did not match its family.");
+        Check(!ThorneGeometryPlan.SameCarriageHeading(.78536224f, ThorneGeometryPlan.CarriageHeading(9316111, 1).Value), "Opposite family was selected.");
+        Check(ThorneGeometryPlan.SameCarriageHeading(-(float)Math.PI / 4, ThorneGeometryPlan.CarriageHeading(9316109, 1).Value), "Wrapped NW heading was rejected.");
+        Check(!ThorneGeometryPlan.SameCarriageHeading(float.NaN, 0), "Invalid heading gained geometry.");
+        //14:09 and14:10 damage samples are inside the owning actor's independent
+        // forward/cross projections; reversing the rotation would fail these checks.
+        foreach (var hit in new[]
+        {
+            new float[]
+            {
+                298,
+                -208,
+                286.344f,
+                -223.340f,
+                3.9269068f
+            },
+            new float[]
+            {
+                271.5f,
+                -243.5f,
+                291.658f,
+                -223.429f,
+                .78536224f
+            }
+        }
+
+        )
+        {
+            var dx = hit[2] - hit[0];
+            var dz = hit[3] - hit[1];
+            var h = hit[4];
+            Check(Inside(carriage, dx * (float)Math.Cos(h) - dz * (float)Math.Sin(h), dx * (float)Math.Sin(h) + dz * (float)Math.Cos(h)), "Recorded carriage hit fell outside forecast.");
+        }
+
+        Check(Inside(fore, 20, 2), "Fore Honor lost the side of its front half-plane.");
+        Check(!Inside(fore, 0, -2), "Fore Honor incorrectly covers the rear.");
+        foreach (uint id in new uint[]
+        {
+            28921,
+            28928
+        }
+
+        )
+        {
+            var p = ThorneGeometryPlan.Polygons(id)[0];
+            Check(Inside(p, 8.25f, 25), "Beacon lost edge clearance.");
+            Check(!Inside(p, 9, 25), "Beacon exceeds its intended width.");
+            Check(Inside(p, 0, -.25f), "Beacon lost rear-edge clearance.");
+            Check(!Inside(p, 0, -1), "Beacon incorrectly becomes a bidirectional line.");
+        }
+
+        var cross = ThorneGeometryPlan.Polygons(28925);
+        Check(cross.Length == 2 && Inside(cross[0], 0, -40) && Inside(cross[1], -40, 0), "Explosion lost a negative cross arm.");
+        Check(!Inside(cross[0], 4, 4) && !Inside(cross[1], 4, 4), "Explosion closes the diagonal safe pocket.");
+        Check(ThorneGeometryPlan.CircleRadius(28923) == 10.5f, "Signal Flare clearance changed.");
+        Check(ThorneGeometryPlan.ArenaHalfWidth == 17, "The combat floor must retain inward clearance.");
+        // The captured three groups arrive1.54s apart. Unordered actor enumeration must
+        // still leave one group free, hand off after expiry, and never resurrect old casts.
+        var now = new DateTime(2026, 9, 29, 0, 15, 40, DateTimeKind.Utc);
+        var ends = Enumerable.Range(0, 9).Select(i => now.AddMilliseconds(600 + i / 3 * 1540)).Reverse().ToArray();
+        var first = ThorneGeometryPlan.SelectFlareWarnings(ends, e => e, now).ToArray();
+        Check(first.Length == 6 && first.All(e => e <= now.AddMilliseconds(2140)), "Later flare group erased temporary safe space.");
+        var next = ThorneGeometryPlan.SelectFlareWarnings(ends, e => e, now.AddMilliseconds(600)).ToArray();
+        Check(next.Length == 6 && next.All(e => e > now.AddMilliseconds(600)), "Expired first group did not release its safe destination.");
+        Check(ThorneGeometryPlan.SelectFlareWarnings(ends, e => e, now.AddMilliseconds(2140)).Count() == 3, "Third flare group was lost after second impact.");
+        Check(!ThorneGeometryPlan.SelectFlareWarnings(ends, e => e, now.AddMilliseconds(3680)).Any(), "Completed flare sequence retained stale avoidance.");
+        // September30's third-group damage arrived864ms after its reported finish.
+        // Replay all three captured groups: the old600ms fence lost the final group
+        // before damage; the new fence must still leave a later staging group initially.
+        var capture = new DateTime(2026, 9, 30, 3, 45, 54, 488, DateTimeKind.Utc);
+        var flareEnds = new[]
+        {
+            capture.AddMilliseconds(6666),
+            capture.AddMilliseconds(8182),
+            capture.AddMilliseconds(9688)
+        }.SelectMany(e => Enumerable.Repeat(e + ThorneGeometryPlan.ImpactRetention(28923), 3)).ToArray();
+        Check(ThorneGeometryPlan.SelectFlareWarnings(flareEnds, e => e, capture).Count() == 6, "Longer retention published all nine initial circles.");
+        Check(ThorneGeometryPlan.SelectFlareWarnings(flareEnds, e => e, capture.AddMilliseconds(7666)).Count() == 6, "First captured group did not hand off at its retained deadline.");
+        Check(ThorneGeometryPlan.SelectFlareWarnings(flareEnds, e => e, new DateTime(2026, 9, 30, 3, 46, 5, 40, DateTimeKind.Utc)).Count() == 3, "Final flare group expired before the captured two-stack hit.");
+        Check(!ThorneGeometryPlan.SelectFlareWarnings(flareEnds, e => e, capture.AddMilliseconds(10688)).Any(), "Captured final flare group failed to expire.");
+        Check(ThorneGeometryPlan.ImpactRetention(28908) == TimeSpan.FromMilliseconds(600), "Fore Honor deadline changed with the flare-only fix.");
+        return count;
+    }
+}

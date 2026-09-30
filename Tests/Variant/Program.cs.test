@@ -1,0 +1,223 @@
+using System.Numerics;
+using DutyMechanic.Dungeons;
+
+// September28 captured Wash Out pushes west from the east wall; Dust Bluster is radial
+// from the cast location. Verify semantic landing constraints, not just point generation.
+var count = 0;
+void Check(bool ok, string message)
+{
+    if (!ok)
+    {
+        throw new Exception(message);
+    }
+
+    count++;
+}
+
+bool Clear(Vector2 _) => false;
+var empty = Array.Empty<Vector2>();
+var west = 3 * MathF.PI / 2;
+Check(SilkieKnockbackPlan.Landing(Vector2.Zero, Vector2.Zero, 0, false) == null, "Undefined radial direction stays rejected");
+Check(!SilkieKnockbackPlan.Safe(Vector2.Zero, new(30, 0), west, true, empty, Clear), "Center cannot survive a35-yalm westward push");
+var wash = SilkieKnockbackPlan.Choose(Vector2.Zero, null, new(30, 0), west, true, empty, Clear);
+Check(wash.HasValue && wash.Value.X >= 16 && wash.Value.X <= 19, "Wash Out stages in the east strip");
+Check(SilkieKnockbackPlan.Landing(wash.Value, new(30, 0), west, true).Value.X is >= -19 and <= -16, "Wash Out lands on the west floor");
+Check(!SilkieKnockbackPlan.Safe(new(18, 0), new(30, 0), west, true, new[] { Vector2.Zero }, Clear), "A pool halfway along the push rejects clear endpoints");
+var detour = SilkieKnockbackPlan.Choose(Vector2.Zero, wash, new(30, 0), west, true, new[] { Vector2.Zero }, Clear);
+Check(detour.HasValue && Math.Abs(detour.Value.Y) > 5.5f, "A new water pool invalidates the old lane");
+Check(SilkieKnockbackPlan.Choose(new(-10, 4), detour, new(30, 0), west, true, new[] { Vector2.Zero }, Clear) == detour, "A still-safe destination stays stable across player movement");
+var radial = SilkieKnockbackPlan.Choose(new(8, 0), null, Vector2.Zero, 0, false, empty, Clear);
+Check(radial.HasValue && SilkieKnockbackPlan.Safe(radial.Value, Vector2.Zero, 0, false, empty, Clear), "Radial start and landing share a safe floor");
+Check(SilkieKnockbackPlan.Choose(Vector2.Zero, null, Vector2.Zero, 0, false, empty, _ => true) == null, "No solution returns no invented fallback");
+Check(!SilkieKnockbackPlan.Safe(new(3, 0), Vector2.Zero, 0, false, empty, p => p.X > 10), "An overlapping landing hazard is respected");
+// Cover all four cardinal helper headings; a fixed east-side assumption is invalid.
+foreach (var heading in new[]
+{
+    0f,
+    MathF.PI / 2,
+    MathF.PI,
+    west
+}
+
+)
+{
+    var p = SilkieKnockbackPlan.Choose(Vector2.Zero, null, Vector2.Zero, heading, true, empty, Clear);
+    Check(p.HasValue && SilkieKnockbackPlan.Safe(p.Value, Vector2.Zero, heading, true, empty, Clear), "Cardinal push stays inside the square");
+}
+
+// Left arena center(-213,101), captured source(-223,96), future blue keg(-203,111).
+// The old start on that keg landed beyond the east boundary. Invert the radial push
+// and check small actual-position errors, not only the exact algebraic center.
+var runoffSource = new Vector2(-10, -5);
+var runoffLanding = new Vector2(10, 10);
+var runoffStage = GeryonRunoffPlan.Stage(runoffSource, runoffLanding);
+Check(runoffStage.HasValue, "Captured Runoff has a valid interior start");
+for (var i = 0; i < 8; i++)
+{
+    var start = runoffStage.Value + new Vector2(MathF.Sin(i * MathF.PI / 4), MathF.Cos(i * MathF.PI / 4)) * .15f;
+    var landing = start + Vector2.Normalize(start - runoffSource) * 18;
+    Check(Vector2.Distance(landing, runoffLanding) < 2.5f, "Arrival tolerance still lands inside the padded keg hole");
+}
+
+Check(GeryonRunoffPlan.Stage(Vector2.Zero, new(10, 0)) == null, "A keg inside the push distance cannot invent a safe landing");
+Check(GeryonRunoffPlan.Stage(new(-30, 0), new(20, 0)) == null, "Out-of-floor landing is rejected");
+// September30 boulders at arena-local(+/-10,+/-10). Include arrival drift and
+// negative front/side cases so a sign error cannot put the player before the rock.
+foreach (var rock in new[]
+{
+    new Vector2(-10, -10),
+    new Vector2(10, -10),
+    new Vector2(-10, 10),
+    new Vector2(10, 10)
+}
+
+)
+{
+    var shelter = GladiatorShelterPlan.Destination(Vector2.Zero, rock);
+    Check(shelter.HasValue, "Every captured boulder has interior shelter");
+    Check(!GladiatorShelterPlan.Protected(Vector2.Zero, rock, rock * .5f), "Boss-facing side is exposed");
+    Check(!GladiatorShelterPlan.Protected(Vector2.Zero, rock, -rock), "Opposite corner is exposed");
+    for (var i = 0; i < 8; i++)
+    {
+        Check(GladiatorShelterPlan.Protected(Vector2.Zero, rock, shelter.Value + new Vector2(MathF.Sin(i * MathF.PI / 4), MathF.Cos(i * MathF.PI / 4)) * .45f), "Arrival drift remains within padded shadow and outside physical boulder");
+    }
+}
+
+Check(GladiatorShelterPlan.Destination(Vector2.Zero, Vector2.Zero) == null, "Coincident source is ambiguous");
+Check(GladiatorShelterPlan.Destination(Vector2.Zero, new(18, 18)) == null, "Never stage beyond the arena boundary");
+Check(GladiatorShelterPlan.Destination(new(float.NaN, 0), new(10, 10)) == null, "Invalid coordinates fail closed");
+Console.WriteLine($"Passed {count} Variant landing/shelter checks.");
+RunGaze();
+RunSewage();
+Console.WriteLine($"PASS: {ThorneGeometryChecks.Run()} Thorne geometry and sequence checks.");
+// Rotate and translate captured pairs to reject origin-dependent gaze solutions.
+void RunGaze()
+{
+    var count = 0;
+    foreach (var fixture in new[]
+    {
+        (new Vector2(855.045f, 49.478f), new[] { new Vector2(831.615f, 67.385f), new Vector2(831.615f, 30.615f) }),
+        (new Vector2(850.784f, 44.290f), new[] { new Vector2(831.615f, 30.615f), new Vector2(868.385f, 67.385f) }),
+        (new Vector2(850.784f, 44.290f), new[] { new Vector2(868.385f, 30.615f), new Vector2(831.615f, 67.385f) }),
+        (Vector2.Zero, new[] { new Vector2(-10, 0), new Vector2(10, 0) })
+    }
+
+    )
+    {
+        var(player, sources) = fixture;
+        for (var i = 0; i < 16; i++)
+        {
+            foreach (var shift in new[]
+            {
+                Vector2.Zero,
+                new Vector2(-1200, 345)
+            }
+
+            )
+            {
+                var angle = i * MathF.PI / 8;
+                Vector2 Transform(Vector2 p) => new(p.X * MathF.Cos(angle) - p.Y * MathF.Sin(angle) + shift.X, p.X * MathF.Sin(angle) + p.Y * MathF.Cos(angle) + shift.Y);
+                var p = Transform(player);
+                var s = sources.Select(Transform).ToArray();
+                if (!AloaloStatueGazePlan.TryHeading(p, s, out var heading))
+                {
+                    throw new Exception("Captured pair rejected");
+                }
+
+                var facing = new Vector2(MathF.Sin(heading), MathF.Cos(heading));
+                foreach (var origin in s)
+                {
+                    if (Vector2.Dot(facing, Vector2.Normalize(origin - p)) > MathF.Cos(55 * MathF.PI / 180) + .0001f)
+                    {
+                        throw new Exception("Facing lacks55-degree gaze clearance");
+                    }
+                }
+
+                count++;
+            }
+        }
+    }
+
+    foreach (var invalid in new[]
+    {
+        Array.Empty<Vector2>(),
+        new[]
+        {
+            Vector2.Zero
+        },
+        new[]
+        {
+            new Vector2(-10, 0),
+            new Vector2(10, 0),
+            new Vector2(0, -10),
+            new Vector2(0, 10)
+        }
+    }
+
+    )
+    {
+        if (AloaloStatueGazePlan.TryHeading(Vector2.Zero, invalid, out _))
+        {
+            throw new Exception("Ambiguous heading accepted");
+        }
+
+        count++;
+    }
+
+    Console.WriteLine($"PASS {count} captured-pair transformations and ambiguity checks.");
+}
+
+void RunSewage()
+{
+    // Replay the measured warning/armed/impact lifecycle. Assertions focus on safe recovery
+    // and ownership order, because publishing all four warnings leaves no navigable floor.
+    var s = new SildihnRightSewageSequence();
+    var t = new DateTime(2026, 9, 28, 18, 51, 50, DateTimeKind.Utc);
+    var checks = 0;
+    void Expect(int[] wanted, string why)
+    {
+        ++checks;
+        if (!s.EarliestPair().SequenceEqual(wanted))
+        {
+            throw new Exception(why);
+        }
+    }
+
+    void At(double sec, params int[] state) => s.Update(state, t.AddSeconds(sec));
+    At(0, 1, 1, 1, 1);
+    Expect(Array.Empty<int>(), "Mid-sequence startup cannot infer order");
+    At(1, 4, 4, 4, 4);
+    At(2, 4, 1, 1, 4);
+    Expect(new[] { 1, 2 }, "First NE/SW warnings own the floor");
+    At(4.5, 1, 1, 1, 1);
+    Expect(new[] { 1, 2 }, "Later NW/SE warnings must not cover the whole arena");
+    At(6, 1, 16, 16, 1);
+    Expect(new[] { 1, 2 }, "Armed state retains the original pair");
+    At(8, 16, 16, 16, 16);
+    Expect(new[] { 1, 2 }, "Both armed still resolve in warning order");
+    At(10, 16, 4, 4, 16);
+    Expect(new[] { 0, 3 }, "First impact hands ownership to the second pair");
+    At(12, 4, 4, 4, 4);
+    Expect(Array.Empty<int>(), "Idle clears forecasts");
+    At(13, 1, 4, 4, 1);
+    At(13.2, 1, 1, 4, 1);
+    Expect(Array.Empty<int>(), "Merged groups are ambiguous and cannot cover all floor");
+    At(13.8, 1, 1, 1, 1);
+    Expect(Array.Empty<int>(), "Ambiguous first group remains unpublishable");
+    At(26, 1, 1, 1, 1);
+    Expect(Array.Empty<int>(), "Stale forecasts expire");
+    At(27, 1, 1, 1, 1);
+    Expect(Array.Empty<int>(), "Expired sequence cannot rearm without idle");
+    At(28, 4, 4, 4, 4);
+    At(29, 16, 4, 4, 16);
+    Expect(Array.Empty<int>(), "Missed warning cannot invent an order");
+    At(30, 4, 4, 4, 4);
+    At(31, 1, 4, 4, 1);
+    At(32, -1, 4, 4, 1);
+    Expect(Array.Empty<int>(), "Unknown or missing map state invalidates sequence");
+    At(33, 4, 4, 4, 4);
+    At(34, 1, 4, 4, 1);
+    s.Reset();
+    Expect(Array.Empty<int>(), "Encounter reset clears ownership");
+    Console.WriteLine($"PASS: {checks} sewage sequence checks");
+}
