@@ -51,17 +51,6 @@ It will automatically install the files into the correct folders and keep them u
 
 ### Crucible of the Unbroken
 
-First, Second, Third and both Master's Board handlers live in `Dungeons/Crucible`, registered for territories 1339–1343. The later boards cover the selected six-encounter routes; alternate branches remain unsupported. Entry, board navigation, purchases and Beastmaster rotation belong to the calling profile/plugin and combat routine.
-
-The handlers preserve safe melee positions where possible, but mechanic positioning takes priority. Third Board includes knockback staging, forced march, moving-eye predictions and Guttler's alcove geometry. First Master's Board includes transformation pads, far briar shelter and post-pull exit, sequential Ice Dragon/Gargoyle attacks, persistent ground hazards and moving Poison Clouds. Local navigation recovery is limited to the encounters where native pathfinding failed; other geometry remains under native avoidance.
-
-Second Master's Board covers Flauros, Drake/Abaddon, Durga, Sphinx, Gigantis and Lauda. Its positioning includes tornado shelters, charge and knockback staging, Sphinx answers, elemental slime baits, and Lauda's cage/blade overlaps. First Master's Acid Rain follows individual impacts rather than a fixed circular route. These handlers retain encounter-specific movement ownership so ordinary combat can continue from safe positions.
-
-September 24 tuning adds early moving-hazard forecasts, native circle coverage for narrow rasterization failures, and receipt-timed knockback holds. Third Board prioritizes active contact and boundaries above resolving attacks and future eye forecasts because RB assigns one avoidance cost per span rather than adding overlapping costs. This last priority change is built and replay-checked but not live-validated. Third Board still has unresolved Catoblepas contact damage, Siren forced-march/bind failures and Guttler attrition; do not interpret these changes as reliable Legendary farming. Companion rotation and interrupt changes are in Panda Crucible 0.6.0.
-
-When updating an installation that previously received development sources from PandaCrucible, close that RB instance normally and remove the old flat `Dungeons` copies of the ten files now in `Dungeons/Crucible` after backing them up outside the plugin. Keeping both layouts causes duplicate type definitions. PandaCrucible no longer installs or patches DutyMechanic.
-
-Offline geometry replays are under `Tests/Crucible`: run `dotnet run --project Tests/Crucible/ArchPathReplay`, and likewise `FirePlannerReplay`, `ManticoreReplay`, `WyvernPlannerReplay` and `ThirdBoardReplay`. The latter also covers both Master boards, including navigation, Acid Rain, refuges and forced movement. Fixtures use `.cs.test` so RB's recursive source compiler does not load console entry points. Each replay links production geometry; it does not establish live client timing or unattended reliability. The latest Acid Rain pursuit and early tornado-shelter timing still need live validation.
-
-⚠️ Some classes may not survive certain bosses. ⚠️ If you can't clear even after tuning combat routine settings, try running the previous dungeon until you out-level and can skip the "difficult" one. Also, tank privilege is real. Tanks will have the best success.
+The standalone Panda Crucible botbase owns its encounter mechanics and movement.
+DutyMechanic does not register Crucible territories or ship duplicate handlers.
 

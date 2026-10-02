@@ -24,17 +24,8 @@ internal static class DungeonManager
             { (ZoneId)1176, typeof(AloaloIsland) },
             { (ZoneId)1315, typeof(MerchantsTale) },
 
-            // Crucible boards use distinct territories and encounter lifetimes.
-            { (ZoneId)1339, typeof(FirstBoardOfUnbroken) },
-            { (ZoneId)1340, typeof(SecondBoardOfUnbroken) },
-            // Third Board has separate actors and arena geometry; its controller
-            // still gates entry to the six captured route encounters.
-            { (ZoneId)1341, typeof(ThirdBoardOfUnbroken) },
-            // First Master's Board is a distinct territory; registration must
-            // travel with its captured-route handler or combat has no mechanics.
-            { (ZoneId)1342, typeof(FirstMastersBoard) },
-            // Second Master has its own territory and encounter sequence.
-            { (ZoneId)1343, typeof(SecondMastersBoard) },
+            // Crucible territories 1339-1343 belong to the standalone botbase.
+
 
             // 2.0 - A Realm Reborn
             { ZoneId.HallOfTheNoviceArena, typeof(HallOfTheNoviceArena) },
