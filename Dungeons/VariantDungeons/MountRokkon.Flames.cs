@@ -18,8 +18,8 @@ public sealed partial class MountRokkon
         // Radius 2.4 plus 0.5 padding covers contact; the six-yalm forecast exposes
         // its approaching corridor without blocking its entire remaining path.
         AvoidanceManager.AddAvoidPolygon<BattleCharacter>(InMoko, null, 80, c => -c.Heading, _ => 1, _ => 15, _ => FlameCapsule(), c => c.Location, () => GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(c => c.IsValid && c.BaseId == 0x3F87 && c.NpcId == 12363 && c.IsVisible && c.Distance2D(MokoCenter) < 32), priority: AvoidancePriority.High);
-    // Spiritflame 34214's ordinary placed circles remain with generic avoidance.
-    // This provider owns only moving contact hazards and issues no movement.
+        // BossAvoidance owns Spiritflame 34214's placed circles separately.
+        // This provider owns only moving contact hazards and issues no movement.
     }
 
     private static readonly Vector2[] SpiritflameFootprint = BuildFlameCapsule();

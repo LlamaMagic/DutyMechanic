@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace DutyMechanic.Dungeons;
 /// <summary>
 /// Handles Merchant's Tale's solo Variant bosses across its route arenas.
-/// OrderBot and the combat routine retain combat; SideStep retains unrelated telegraphs.
+/// OrderBot and the combat routine retain combat; DutyMechanic owns boss hazards and restores SideStep for trash.
 /// Advanced and Criterion territories are deliberately outside this handler's registration.
 /// </summary>
 public sealed class MerchantsTale : AbstractDungeon
@@ -86,6 +86,7 @@ public sealed class MerchantsTale : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> EnterDungeonAsync()
     {
+        RegisterNativeBossAvoidance();
         SetMechanicGapCloserBlock(false);
         ClearForecasts();
         RegisterPariAvoidance();
@@ -93,11 +94,6 @@ public sealed class MerchantsTale : AbstractDungeon
         RegisterRukhkhAvoidance();
         RegisterSwordmasterAvoidance();
         RegisterDandanAvoidance();
-        foreach (var action in OwnedActions)
-        {
-            LlamaLibrary.Helpers.SideStep.Override(action);
-        }
-
         // At 15:27:08, generic Firecrackers avoidance choseZ-384.475 and ran through the
         // still-open entrance, resetting the boss. Constrain RB's shared path selection to
         // the 35x 35 floor with 0.5-yalm inset on every edge; preserve both safe corner wedges.
@@ -124,32 +120,15 @@ public sealed class MerchantsTale : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> ExitDungeonAsync()
     {
+        ReleaseNativeBossAvoidance();
         ReleaseDandan();
-        foreach (var action in DandanOwnedActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         ReleaseSwordmaster();
-        foreach (var action in SwordmasterOwnedActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         ReleaseRukhkh();
-        foreach (var action in RukhkhOwnedActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         ClearDaryaForecasts();
         ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveDaryaMarch;
-        foreach (var action in DaryaOwnedActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         SetMechanicGapCloserBlock(false);
         ClearForecasts();
         ClearPariForecasts();
-        foreach (var action in PariOwnedActions)
-        {
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
-        }
-
-        foreach (var action in OwnedActions)
-        {
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
-        }
-
         return Task.FromResult(false);
     }
 
@@ -352,12 +331,7 @@ public sealed class MerchantsTale : AbstractDungeon
                     End = now + ships.Max(b => b.SpellCastInfo.RemainingCastTime) + TimeSpan.FromSeconds(1.4)
                 };
                 // Suppress late duplicate ship/helper rectangles only after a validated
-                // preview exists. An unfamiliar topology retains generic avoidance as fallback.
-                foreach (var action in VoyageActions)
-                {
-                    LlamaLibrary.Helpers.SideStep.Override(action);
-                }
-
+                // preview exists. An unfamiliar topology retains native cast rectangles as fallback.
                 _ownsVoyage = true;
             }
         }
@@ -394,11 +368,6 @@ public sealed class MerchantsTale : AbstractDungeon
         if (!_ownsVoyage)
         {
             return;
-        }
-
-        foreach (var action in VoyageActions)
-        {
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         }
 
         _ownsVoyage = false;
@@ -536,11 +505,6 @@ public sealed class MerchantsTale : AbstractDungeon
         RegisterGaleAvoidance();
         RegisterWindAvoidance();
         ClearPariForecasts();
-        foreach (var action in PariOwnedActions)
-        {
-            LlamaLibrary.Helpers.SideStep.Override(action);
-        }
-
         AvoidanceHelpers.AddAvoidSquareDonut(InPari, 39, 39, 140, 140, () => new[] { PariCenter });
         // Publish only the earliest impact group. Crosses and charge segments overlap in
         // time; reserving all future mutually exclusive regions can erase every safe point.
@@ -1241,8 +1205,6 @@ public sealed class MerchantsTale : AbstractDungeon
         // Murky Waters 45615 targeted arena center in the 00:21:43 capture.
         // It is unavoidable damage; preserve routine healing/mitigation ownership.
         SpellsToMitigate.Add(45615);
-        foreach (var action in DandanOwnedActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
         ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveDandan;
         ff14bot.NeoProfile.BotEvents.OnPulse += ObserveDandan;
         AvoidanceHelpers.AddAvoidDonut(InDandan, () => DandanCenter, 100, 19);
@@ -1271,7 +1233,7 @@ public sealed class MerchantsTale : AbstractDungeon
         // excludes the third set(~4s later). Rings group only simultaneous helpers
         // within 0.5s. Charges/cones stay in the same native owner's region union.
         var first = live.Where(s => s.Sequential).Select(s => s.Resolve).DefaultIfEmpty(DateTime.MaxValue).Min();
-        return _dandanCharges.Where(s => s.End > now).Concat(_dandanTentacles.Where(s => s.End > now)).Concat(live.Where(s => !s.Sequential || s.Resolve <= first.AddSeconds(first == DateTime.MaxValue ? 0 : s.Maw ? 2.5 : .5)))// 01:04:49: current-position-only avoidance crossed a bubble's path,
+        return _dandanCharges.Where(s => s.End > now).Concat(_dandanTentacles.Where(s => s.End > now)).Concat(live.Where(s => !s.Sequential || s.Resolve <= first.AddSeconds(first == DateTime.MaxValue ? 0 : s.Maw ? 2.5 : .5))) // 01:04:49: current-position-only avoidance crossed a bubble's path,
         // causing Bind 2518, BubbleGaol 5047 and death while otherwise clean.
         // Reserve one second of measured travel as overlapping circles; this
         // shares Maw's owner so it cannot choose a refuge across that lane.
@@ -2015,8 +1977,6 @@ public sealed class MerchantsTale : AbstractDungeon
     {
         ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveSwordmaster;
         ff14bot.NeoProfile.BotEvents.OnPulse += ObserveSwordmaster;
-        foreach (var action in SwordmasterOwnedActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
         // Malefic Quartering 46608 applies the captured directional status after its
         // raidwide. Mitigation remains with the routine; the debuff changes geometry.
         SpellsToMitigate.Add(46608);
@@ -2107,7 +2067,7 @@ public sealed class MerchantsTale : AbstractDungeon
         // Plummet's meteor is distance-scaled damage: the sheet's 60y reach is not
         // an exclusion radius. It covered the entire floor at 20:38:44 and blocked
         // escape from ordinary circles. Reserve the reference 26y safe-distance
-        // threshold plus 0.5y padding; keep the smaller circles with SideStep.
+        // threshold plus 0.5y padding; the native cast collector owns the smaller circles.
         AvoidanceManager.AddAvoidLocation<CastShape>(InSwordmaster, _ => 26.5f, c => c.Location, () => _swordmasterMeteors.Values.Where(c => c.End > DateTime.UtcNow));
         // A tethered rock displaces the player 20y and stuns them. Stage 6y inward
         // of the appropriate corner, leaving the landing inside the 39y floor.
@@ -2562,8 +2522,6 @@ public sealed class MerchantsTale : AbstractDungeon
         // BotEvents.OnPulse is still the bot thread and can retain short previews.
         ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveRukhkh;
         ff14bot.NeoProfile.BotEvents.OnPulse += ObserveRukhkh;
-        foreach (var action in RukhkhOwnedActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
         AvoidanceHelpers.AddAvoidDonut(InGateRukhkh, () => GateRukhkhCenter, 100, 17.5);
         // Helpers originate at center;20y reaches beyond the entire 18y floor.
         // The 45-degree fan's straight edges are expanded 0.5y by shifting its tip.
@@ -3317,8 +3275,6 @@ public sealed class MerchantsTale : AbstractDungeon
         // Delayed balls share the wave planner's 0.5y margin and remain active
         // through damage. Override their generic duplicate and the knockback omen.
         AvoidanceManager.AddAvoidLocation<Vector3>(InDarya, _ => 5.5f, p => p, () => _daryaDelayedBalls.Values.Where(b => b.End > DateTime.UtcNow).Select(b => b.Location));
-        foreach (var action in DaryaOwnedActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
         AvoidanceHelpers.AddAvoidSquareDonut(InDarya, 39, 39, 140, 140, () => new[] { DaryaCenter });
         // Surging Current 47052 has no omen and received no generic avoid. Its helper
         // shares the boss's forward direction. Reserve the conservative frontal half
@@ -3493,5 +3449,250 @@ public sealed class MerchantsTale : AbstractDungeon
         _daryaTideSwitch = _daryaTideEnd = default;
         _daryaSwimFinish = _daryaBubbleEnd = default;
         _daryaBubbleCastSeen = false;
+    }
+
+    // Normal Variant casts formerly delegated to generic telegraph decoding. Dimensions
+    // are the normal encounter values plus 0.5y; ground attacks use cast destinations.
+    // Visual casts, raidwides, self-targeted solo spreads and tankbusters are not avoids.
+    private sealed record NativeBossCast(uint Action, float Radius, float Length, float HalfWidth, bool Ground = false, bool OtherTarget = false);
+    private static readonly NativeBossCast[] NativeBossCasts =
+    {
+        new(44252, 8.5f, 0, 0), // Lamp Oil helper, not its visual parent.
+        new(44344, 0, 36.5f, 2.5f), // Dousing Spirit's Aetherial Blizzard.
+        new(45765, 11.5f, 0, 0, true), // Beaksbane ground circles.
+        new(45758, 10.5f, 0, 0), // Big Burst proximity: 10y refuge, not the 30y damage falloff.
+        new(45510, 12.5f, 0, 0), // Swoop is self-centered; captured CastLocation is zero.
+        new(45512, 12.5f, 0, 0, true), // Transcendent Flight destination.
+        new(45486, 8.5f, 0, 0), // Sparks damage; 45485 is only the short preview.
+        new(46619, 8.5f, 0, 0, true), // Earth-rending Eight circle before crosses.
+        new(46639, 5.5f, 0, 0, true),
+        new(46640, 10.5f, 0, 0, true),
+        new(46633, 3.5f, 0, 0, true), // Plummet boulders; preserve later shelter logic.
+        new(45605, 20.5f, 0, 0), // Tidal Guillotine; existing cone planner retains sequencing.
+        new(47398, 5.5f, 0, 0, false, true), // Dropsea on another player only.
+        new(45802, 0, 70.5f, 3.5f, false, true), // Hydrocannon aimed at another player.
+        // Unfamiliar ship topology still needs actual cast rectangles as a fallback.
+        // Suppress these while the validated Voyage preview owns the complete path.
+        new(47042, 0, 8.5f, 6.5f),
+        new(43360, 0, 12.5f, 6.5f),
+        new(43361, 0, 12.5f, 6.5f),
+        new(43362, 0, 12.5f, 6.5f),
+        new(43363, 0, 8.5f, 6.5f),
+        new(43364, 0, 22.5f, 6.5f),
+        new(43646, 0, 21.5f, 6.5f),
+        new(43674, 0, 20.5f, 6.5f),
+        new(43679, 0, 22.5f, 6.5f),
+        new(43729, 0, 20.5f, 6.5f)
+    };
+    private sealed class NativeBossHazard
+    {
+        internal NativeBossCast Spec;
+        internal Vector3 Position;
+        internal float Heading;
+        internal DateTime Finish, End;
+        internal Vector2[] Points;
+    }
+
+    private readonly Dictionary<ulong, NativeBossHazard> _nativeBossHazards = new();
+    private readonly CapabilityManagerHandle _sparksMovementHandle = CapabilityManager.CreateNewHandle();
+    private bool _sparksMovementOwned;
+    private PluginContainer _merchantSideStep, _merchantDutyPlugin;
+    private bool _sideStepSuspended, _changingSideStep;
+    private DateTime _ownershipErrorAfter;
+    private bool MerchantBossActive() => InGenie() || InPari() || InGateRukhkh() || InSwordmaster() || InDarya() || InDandan();
+    private void RegisterNativeBossAvoidance()
+    {
+        // Registration stays dungeon-local; the pulse sees casts even when a combat
+        // coroutine is awaiting. No UI/HTTP thread pulses any native manager.
+        _merchantSideStep = PluginHelpers.GetSideStepPlugin();
+        _merchantDutyPlugin = PluginManager.Plugins.FirstOrDefault(p => p.Plugin.GetType().Assembly == GetType().Assembly);
+        if (_merchantDutyPlugin != null)
+            _merchantDutyPlugin.PropertyChanged += MerchantPluginChanged;
+        if (_merchantSideStep != null)
+            _merchantSideStep.PropertyChanged += MerchantSideStepChanged;
+        ff14bot.NeoProfile.BotEvents.OnPulse += ObserveNativeBossAvoidance;
+        TreeRoot.OnStop += MerchantBossStopped;
+        AvoidanceManager.AddAvoidPolygon<NativeBossHazard>(MerchantBossActive, null, 100, h => -h.Heading, _ => 1, _ => 15, h => h.Points, h => h.Position, ActiveNativeBossHazards, priority: AvoidancePriority.High);
+        SpellsToTankBust.UnionWith(new uint[] { 46645, 45802 });
+        SpellsToMitigate.UnionWith(new uint[] { 45748, 45764, 45803, 45772, 45773, 45804, 46632, 46638, 45615 });
+    }
+
+    private void MerchantBossStopped(ff14bot.AClasses.BotBase bot) => ReleaseNativeBossAvoidance();
+    private void MerchantPluginChanged(object sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == "Enabled" && _merchantDutyPlugin != null && !_merchantDutyPlugin.Enabled)
+            ReleaseNativeBossAvoidance();
+    }
+
+    private void MerchantSideStepChanged(object sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        // A deliberate user toggle supersedes our saved enable state.
+        if (!_changingSideStep && args.PropertyName == "Enabled")
+            _sideStepSuspended = false;
+    }
+
+    private void RestoreMerchantSideStep()
+    {
+        if (!_sideStepSuspended)
+            return;
+        _sideStepSuspended = false;
+        _changingSideStep = true;
+        try
+        {
+            if (_merchantSideStep != null)
+                _merchantSideStep.Enabled = true;
+        }
+        finally
+        {
+            _changingSideStep = false;
+        }
+
+        ff14bot.Helpers.Logging.Write("[Merchant] Boss ended; SideStep restored for traversal and trash.");
+    }
+
+    private void ReleaseNativeBossAvoidance()
+    {
+        ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveNativeBossAvoidance;
+        TreeRoot.OnStop -= MerchantBossStopped;
+        if (_merchantDutyPlugin != null)
+            _merchantDutyPlugin.PropertyChanged -= MerchantPluginChanged;
+        if (_merchantSideStep != null)
+            _merchantSideStep.PropertyChanged -= MerchantSideStepChanged;
+        _nativeBossHazards.Clear();
+        ReleaseSparksMovement();
+        RestoreMerchantSideStep();
+    }
+
+    private void SuspendMerchantSideStep()
+    {
+        if (_merchantSideStep == null || !_merchantSideStep.Enabled)
+            return;
+        // SideStep 7.4 OnDisabled clears its tracking list WITHOUT removing its
+        // AvoidInfos. Snapshot that exact ownership before disabling; never Clear()
+        // or RemoveAllAvoids, which would erase this dungeon's registrations too.
+        // This version-specific adapter fails closed on an unfamiliar plugin layout.
+        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var type = _merchantSideStep.Plugin.GetType();
+        var tracked = type.GetField("_tracked", flags)?.GetValue(_merchantSideStep.Plugin) as IEnumerable<AvoidInfo>;
+        var zone = type.GetField("_zoneTracked", flags)?.GetValue(_merchantSideStep.Plugin) as IEnumerable<AvoidInfo>;
+        if (tracked == null || zone == null)
+            throw new InvalidOperationException("SideStep ownership lists unavailable; refusing an unsafe handoff.");
+        var owned = tracked.Concat(zone).Distinct().ToArray();
+        _changingSideStep = true;
+        try
+        {
+            _merchantSideStep.Enabled = false;
+            _sideStepSuspended = true;
+        }
+        finally
+        {
+            _changingSideStep = false;
+        }
+
+        foreach (var avoid in owned)
+            AvoidanceManager.RemoveAvoid(avoid);
+        ff14bot.Helpers.Logging.Write($"[Merchant] DutyMechanic owns boss avoidance; SideStep suspended, removed {owned.Length} SideStep hazards.");
+    }
+
+    private void ObserveNativeBossAvoidance(object sender, EventArgs args)
+    {
+        if (!TreeRoot.IsRunning || ff14bot.Behavior.CommonBehaviors.IsLoading || Core.Me == null || !Core.Me.IsValid || !MerchantBossActive())
+        {
+            _nativeBossHazards.Clear();
+            ReleaseSparksMovement();
+            RestoreMerchantSideStep();
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        try
+        {
+            SuspendMerchantSideStep();
+        }
+        catch (Exception ex)
+        {
+            if (now >= _ownershipErrorAfter)
+            {
+                _ownershipErrorAfter = now.AddSeconds(30);
+                ff14bot.Helpers.Logging.Write($"[Merchant] SideStep handoff unavailable: {ex.Message}");
+            }
+
+            return;
+        }
+
+        foreach (var key in _nativeBossHazards.Where(p => p.Value.End < now).Select(p => p.Key).ToArray())
+            _nativeBossHazards.Remove(key);
+        var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(a => a.IsValid && a.Distance2D(Core.Me.Location) < 110).ToArray();
+        foreach (var actor in actors.Where(a => a.IsCasting))
+        {
+            var spec = NativeBossCasts.FirstOrDefault(s => s.Action == actor.CastingSpellId);
+            if (spec == null)
+                continue;
+            var cast = actor.SpellCastInfo;
+            var key = ((ulong)actor.ObjectId << 32) | spec.Action;
+            var finish = now + cast.RemainingCastTime;
+            // Same helper may repeat the same action; compare estimated finish, not
+            // merely action ID. Retain scalar geometry through a 1s effect handoff.
+            if (_nativeBossHazards.TryGetValue(key, out var existing) && Math.Abs((finish - existing.Finish).TotalSeconds) < .75)
+                continue;
+            var position = spec.Ground ? cast.CastLocation : actor.Location;
+            if (spec.Ground && position == Vector3.Zero)
+                continue; // Do not invent a ground destination.
+            if (spec.OtherTarget)
+            {
+                if (cast.TargetId == Core.Me.ObjectId)
+                    continue; // Unavoidable solo hit; keep mitigation schedulable.
+                var target = actors.FirstOrDefault(a => a.ObjectId == cast.TargetId);
+                if (target == null)
+                    continue;
+                if (spec.Radius > 0)
+                    position = target.Location;
+            }
+
+            _nativeBossHazards[key] = new NativeBossHazard
+            {
+                Spec = spec,
+                Position = position,
+                Heading = spec.Radius > 0 ? 0 : actor.Heading,
+                Finish = finish,
+                End = finish.AddSeconds(1),
+                Points = spec.Radius > 0 ? DandanDisc(spec.Radius) : new[]
+                {
+                    new Vector2(-spec.HalfWidth, -.5f),
+                    new Vector2(spec.HalfWidth, -.5f),
+                    new Vector2(spec.HalfWidth, spec.Length),
+                    new Vector2(-spec.HalfWidth, spec.Length)
+                }
+            };
+            ff14bot.Helpers.Logging.Write($"[Merchant] Native boss hazard action={spec.Action} caster=0x{actor.ObjectId:X8} position={position} finish={finish:O}");
+        }
+
+        // The October 2 Pari death showed two returns toward the boss between Sparks
+        // escapes. Lease ONLY routine movement across the wave; RB still owns dodging
+        // and the routine continues rotation/healing. No manual safe-point controller.
+        if (InPari() && _nativeBossHazards.Values.Any(h => h.Spec.Action == 45486 && h.End > now))
+        {
+            CapabilityManager.Update(_sparksMovementHandle, CapabilityFlags.Movement, 1000, "Pari Sparks: retain refuge between helper waves");
+            _sparksMovementOwned = true;
+        }
+        else
+            ReleaseSparksMovement();
+    }
+
+    private void ReleaseSparksMovement()
+    {
+        if (_sparksMovementOwned)
+            CapabilityManager.Clear(_sparksMovementHandle, CapabilityFlags.Movement, "Pari Sparks ended");
+        _sparksMovementOwned = false;
+    }
+
+    private IEnumerable<NativeBossHazard> ActiveNativeBossHazards()
+    {
+        var active = _nativeBossHazards.Values.Where(h => h.End > DateTime.UtcNow && !(VoyageActions.Contains(h.Spec.Action) && VoyageActive())).ToArray();
+        var sparks = active.Where(h => h.Spec.Action == 45486).ToArray();
+        var first = sparks.Length == 0 ? DateTime.MaxValue : sparks.Min(h => h.Finish);
+        // Four staggered Sparks groups must resolve in order. Reserving every future
+        // circle simultaneously would remove the gaps required to dodge the first wave.
+        return active.Where(h => h.Spec.Action != 45486 || h.Finish <= first.AddSeconds(.5));
     }
 }

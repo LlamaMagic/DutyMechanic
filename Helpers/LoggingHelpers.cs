@@ -1,8 +1,9 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
+using ff14bot.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,9 +21,15 @@ public static class LoggingHelpers
     private static readonly Dictionary<uint, uint> TrackedMechanicCastsByCaster = [];
     private static readonly Dictionary<uint, int> TrackedVulnerabilityStacksByAura = [];
     private static readonly Dictionary<string, string> TrackedActorSignalSignatures = [];
-    private static readonly Queue<RecentMechanicCast> RecentMechanicCasts = [];
-    private const int MechanicContextWindowSeconds = 12;
-    private const int MechanicContextMaximumEntries = 24;
+    // Keep long casts through their estimated finish plus delayed follow-ups. Bounded
+    // counts prevent helper bursts from growing memory; evictions are explicitly reported.
+    private const int MechanicContextMaximumEntries = 128;
+    private static readonly MechanicDiagnosticHistory<string> RecentMechanicCasts = new(MechanicContextMaximumEntries);
+    private static readonly MechanicDiagnosticHistory<string> RecentMovement = new(32);
+    private static DateTime nextMovementSampleUtc;
+    private static DateTime movementAfterFailureUntilUtc;
+    private static int failureSequence;
+    private static DateTime nextMovementErrorUtc;
     private static bool mechanicDiagnosticsWereEnabled;
     private static bool diagnosticPlayerWasAlive;
     private static ushort diagnosticZoneId;
@@ -65,7 +72,7 @@ public static class LoggingHelpers
             ResetMechanicDiagnosticState();
             mechanicDiagnosticsWereEnabled = true;
             Logger.Information(
-                "[MechanicDiag] Enabled; recording encounter casts, vulnerability gains, deaths, and registered actor watches.");
+                "[MechanicDiag] Enabled; recording encounter casts, vulnerability gains, deaths, and registered actor watches. Cast history: estimated finish + 30s (128 entries); failure movement: 15s before/3s after at 500ms.");
         }
 
         if (Core.Player == null || !Core.Player.IsValid)
@@ -74,6 +81,7 @@ public static class LoggingHelpers
             TrackedVulnerabilityStacksByAura.Clear();
             TrackedActorSignalSignatures.Clear();
             RecentMechanicCasts.Clear();
+            ResetMovementDiagnostics();
             diagnosticPlayerWasAlive = false;
             return;
         }
@@ -84,6 +92,7 @@ public static class LoggingHelpers
             TrackedVulnerabilityStacksByAura.Clear();
             TrackedActorSignalSignatures.Clear();
             RecentMechanicCasts.Clear();
+            ResetMovementDiagnostics();
             diagnosticZoneId = WorldManager.ZoneId;
             diagnosticSubZoneId = WorldManager.SubZoneId;
             diagnosticPlayerWasAlive = Core.Player.IsAlive;
@@ -95,6 +104,7 @@ public static class LoggingHelpers
         DateTime nowUtc = DateTime.UtcNow;
         RemoveExpiredMechanicContext(nowUtc);
         LogMechanicCastStarts(nowUtc);
+        CaptureMovementContext(nowUtc);
         LogVulnerabilityChanges(nowUtc);
         LogPlayerDeath(nowUtc);
     }
@@ -222,11 +232,9 @@ public static class LoggingHelpers
                 $"hp={Core.Player.CurrentHealth}/{Core.Player.MaxHealth} avoids={AvoidanceManager.Avoids.Count} " +
                 $"escapingAvoid={AvoidanceManager.IsRunningOutOfAvoid}.");
 
-            RecentMechanicCasts.Enqueue(new RecentMechanicCast(nowUtc, summary));
-            while (RecentMechanicCasts.Count > MechanicContextMaximumEntries)
-            {
-                RecentMechanicCasts.Dequeue();
-            }
+            RecentMechanicCasts.Add(nowUtc,
+                MechanicDiagnosticHistory<string>.CastExpiry(nowUtc, spell.RemainingCastTime.TotalSeconds),
+                summary + $" estimatedRemainingMs={spell.RemainingCastTime.TotalMilliseconds:F0}");
         }
 
         foreach (uint completedCasterId in TrackedMechanicCastsByCaster.Keys
@@ -274,6 +282,7 @@ public static class LoggingHelpers
                 $"source=0x{aura.CasterId:X8} player={Format(Core.Player.Location)} " +
                 $"hp={Core.Player.CurrentHealth}/{Core.Player.MaxHealth} avoids={AvoidanceManager.Avoids.Count} " +
                 $"escapingAvoid={AvoidanceManager.IsRunningOutOfAvoid} recentCasts=[{FormatRecentMechanicContext(nowUtc)}].");
+            LogFailureMovement(nowUtc, "vulnerability");
         }
 
         foreach (uint expiredAuraId in TrackedVulnerabilityStacksByAura.Keys
@@ -300,6 +309,7 @@ public static class LoggingHelpers
             Logger.Warning(
                 $"[MechanicDiag] PLAYER_DEATH player={Format(Core.Player.Location)} " +
                 $"vulnerability=[{vulnerabilityState}] recentCasts=[{FormatRecentMechanicContext(nowUtc)}].");
+            LogFailureMovement(nowUtc, "death");
         }
 
         diagnosticPlayerWasAlive = Core.Player.IsAlive;
@@ -323,11 +333,7 @@ public static class LoggingHelpers
     /// <param name="nowUtc">Current bot-thread observation time.</param>
     private static void RemoveExpiredMechanicContext(DateTime nowUtc)
     {
-        DateTime oldestAllowed = nowUtc.AddSeconds(-MechanicContextWindowSeconds);
-        while (RecentMechanicCasts.Count > 0 && RecentMechanicCasts.Peek().ObservedAtUtc < oldestAllowed)
-        {
-            RecentMechanicCasts.Dequeue();
-        }
+        RecentMechanicCasts.Prune(nowUtc);
     }
 
     /// <summary>
@@ -342,8 +348,8 @@ public static class LoggingHelpers
             return "none";
         }
 
-        return string.Join("; ", RecentMechanicCasts.Select(cast =>
-            $"{(nowUtc - cast.ObservedAtUtc).TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}msAgo {cast.Summary}"));
+        return $"capacityEvictions={RecentMechanicCasts.Dropped}; " + string.Join("; ", RecentMechanicCasts.Snapshot(nowUtc).Select(cast =>
+            $"{(nowUtc - cast.ObservedAtUtc).TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}msAgo {cast.Value}"));
     }
 
     /// <summary>
@@ -355,6 +361,7 @@ public static class LoggingHelpers
         TrackedVulnerabilityStacksByAura.Clear();
         TrackedActorSignalSignatures.Clear();
         RecentMechanicCasts.Clear();
+        ResetMovementDiagnostics();
         diagnosticPlayerWasAlive = false;
         diagnosticZoneId = 0;
         diagnosticSubZoneId = 0;
@@ -417,10 +424,60 @@ public static class LoggingHelpers
             $"auras=[{auras}] vfx=[{vfx}] tethers=[{tethers}]";
     }
 
-    /// <summary>
-    /// Immutable cast evidence retained beyond the frame that exposed the caster wrapper.
-    /// </summary>
-    /// <param name="ObservedAtUtc">UTC observation time used to age the entry.</param>
-    /// <param name="Summary">Stable scalar cast identity copied from the current frame.</param>
-    private readonly record struct RecentMechanicCast(DateTime ObservedAtUtc, string Summary);
+    // Sampling is passive and bot-thread only. SlideMover exposes its last commanded
+    // point, not an authoritative active goal or movement owner; label it accordingly.
+    // Existing avoidance/capability logs remain the authority for control transitions.
+    private static void CaptureMovementContext(DateTime nowUtc)
+    {
+        if (nowUtc < nextMovementSampleUtc) return;
+        nextMovementSampleUtc = nowUtc.AddMilliseconds(500);
+        RecentMovement.Prune(nowUtc);
+        if (!Core.Player.InCombat && nowUtc > movementAfterFailureUntilUtc && RecentMechanicCasts.Count == 0) return;
+        try
+        {
+            string lastCommand = Navigator.PlayerMover is SlideMover slide
+                ? Format(slide.LastMoveLocation) : "unavailable";
+            var avoids = AvoidanceManager.Avoids;
+            // Read cached scalar geometry only; never evaluate avoid producers or pulse managers.
+            string shapes = string.Join(";", avoids.Take(8).Select(a =>
+                $"{a.GetType().Name}/{a.Object?.GetType().Name ?? "none"}@{Format(a.Location)}"));
+            string sample = $"player={Format(Core.Player.Location)} heading={Format(Core.Player.Heading)} " +
+                $"hp={Core.Player.CurrentHealth}/{Core.Player.MaxHealth} combat={Core.Player.InCombat} " +
+                $"target=0x{Core.Player.CurrentTargetId:X8} mover={Navigator.PlayerMover?.GetType().Name ?? "none"} " +
+                $"lastMoveCommand={lastCommand} escapingAvoid={AvoidanceManager.IsRunningOutOfAvoid} " +
+                $"avoidCount={avoids.Count} shapesFirst8=[{shapes}]";
+            RecentMovement.Add(nowUtc, nowUtc.AddSeconds(15), sample);
+            if (nowUtc <= movementAfterFailureUntilUtc)
+                Logger.Information($"[MechanicDiag] MOVEMENT_AFTER failure={failureSequence} utc={nowUtc:O} {sample}");
+        }
+        catch (Exception ex)
+        {
+            // Diagnostics cannot interrupt the encounter if an optional host surface vanishes.
+            if (nowUtc >= nextMovementErrorUtc)
+            {
+                nextMovementErrorUtc = nowUtc.AddSeconds(30);
+                Logger.Warning($"[MechanicDiag] MOVEMENT_UNAVAILABLE {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    private static void LogFailureMovement(DateTime nowUtc, string reason)
+    {
+        failureSequence++;
+        Logger.Warning($"[MechanicDiag] MOVEMENT_CONTEXT failure={failureSequence} reason={reason} " +
+            $"samples={RecentMovement.Count} capacityEvictions={RecentMovement.Dropped} " +
+            "windowSeconds=15 sampleIntervalMs=500; lastMoveCommand may be stale; cast context is not hit attribution.");
+        foreach (var entry in RecentMovement.Snapshot(nowUtc))
+            Logger.Information($"[MechanicDiag] MOVEMENT_BEFORE failure={failureSequence} utc={entry.ObservedAtUtc:O} {entry.Value}");
+        movementAfterFailureUntilUtc = nowUtc.AddSeconds(3);
+    }
+
+    private static void ResetMovementDiagnostics()
+    {
+        RecentMovement.Clear();
+        nextMovementSampleUtc = DateTime.MinValue;
+        movementAfterFailureUntilUtc = DateTime.MinValue;
+        nextMovementErrorUtc = DateTime.MinValue;
+        failureSequence = 0;
+    }
 }

@@ -54,3 +54,29 @@ Rokkon's detached capture regressions are under `Tests/Variant/Rokkon`. Run each
 use isolated type names. Together they check cloud sequencing, timed travel,
 knockback landings, roots, towers, smoke, swipes and moving hazards against the
 production partials. These tests do not claim live CN or TC encounter validation.
+
+## Boss ownership and retained failure context
+
+The follow-up October 2 integration moves the remaining normal boss telegraphs for
+Rokkon and Merchant's Tale into their dungeon handlers. SideStep resumes for trash
+and traversal after the handler releases its suspension. Merchant's version-specific
+handoff removes only SideStep's captured registered avoids; unfamiliar layouts retain
+the fallback and report the missing contract. Neither handler clears global avoidance.
+
+Rokkon has live boss acquisition/restoration evidence, including a clean right-route
+Yozakura fight. A later Shishio cloud hit remains unresolved. Merchant's new ownership
+handoff has begun live validation; earlier thirteen-route clears do not validate all
+newly transferred casts. Keep the existing Dandan limitations above until fresh
+captures establish their outcomes.
+
+Diagnostic cast history now lasts through estimated cast completion plus thirty
+seconds, bounded to 128 entries. Failure reports also retain fifteen seconds of
+movement context and three seconds afterward. These scalar snapshots are passive;
+last movement commands may be stale and nearby casts do not prove damage attribution.
+The diagnostic switch remains off in published source.
+
+Run `Tests/Variant/Test-MerchantOwnership.ps1` and the Rokkon ownership replay alongside
+the existing geometry checks. `Tests/Diagnostics/DiagnosticHistory.csproj` tests real
+history expiry, capacity and reset behavior. `Tests/Diagnostics/Verify-Invariants.ps1`
+checks lifecycle wiring and the retained-history implementation; its checks replace
+the older validator's assumptions about a FIFO queue and a fixed cast-start window.

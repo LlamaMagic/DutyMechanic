@@ -18,15 +18,6 @@ public sealed partial class MountRokkon
     private const uint SeasonsVisual = 33665;
     private const uint SeasonsRectanglePreview = 33667;
     private const uint SeasonsConePreview = 33668;
-    private static readonly uint[] SeasonsActions =
-    {
-        33667,
-        33668,
-        33669,
-        33670,
-        33671,
-        33672
-    };
     private readonly List<SeasonWave> _seasonWaves = new();
     private int _seasonPair;
     private bool _seasonPreparing;
@@ -34,10 +25,7 @@ public sealed partial class MountRokkon
     private void RegisterSeasons()
     {
         ResetSeasons();
-        // Preview omens are not damage. One predictive owner replaces both previews
-        // and impacts; retaining generic preview avoids would steer into later waves.
-        foreach (var action in SeasonsActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
+        // Boss-wide ownership keeps harmless previews out of generic avoidance.
         ff14bot.NeoProfile.BotEvents.OnPulse += ObserveSeasons;
         var padding = .5f / (float)Math.Sin(Math.PI / 8);
         AvoidanceManager.AddAvoidPolygon<Impact>(InYozakura, null, 80, c => -c.Heading, _ => 1, _ => 15, _ => Rectangle(3, .5f, 46.5f), c => c.Location, () => ActiveSeasonPair().Where(c => c.Action == SeasonsRectanglePreview), priority: AvoidancePriority.High);
@@ -47,8 +35,6 @@ public sealed partial class MountRokkon
     private void ReleaseSeasons()
     {
         ff14bot.NeoProfile.BotEvents.OnPulse -= ObserveSeasons;
-        foreach (var action in SeasonsActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         ResetSeasons();
     }
 
@@ -61,6 +47,7 @@ public sealed partial class MountRokkon
 
     private void ObserveSeasons(object sender, EventArgs args)
     {
+        UpdateBossAvoidanceOwner();
         // OnPulse remains on the bot thread while avoidance holds the behavior tree.
         // Read scalar geometry here without awaiting or retaining native wrappers;
         // the explicit gaze/tower owners below also maintain their leased movement.

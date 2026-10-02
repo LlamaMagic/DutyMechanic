@@ -54,6 +54,20 @@ public sealed partial class MountRokkon : AbstractDungeon
     private static readonly Vector3 MokoCenter = new(-700, -20, 540);
     private static readonly uint[] OwnedActions =
     {
+        // Remaining ordinary telegraphs move with the boss-wide avoidance owner.
+        33640,
+        33664,
+        33674,
+        34196,
+        34217,
+        34218,
+        34200,
+        34210,
+        34212,
+        34214,
+        34012,
+        34021,
+        34039,
         SealFire,
         SealWind,
         SealRain,
@@ -172,13 +186,7 @@ public sealed partial class MountRokkon : AbstractDungeon
         RegisterEnenraSmoke();
         RegisterRightYozakura();
         RegisterShishio();
-        foreach (var action in OwnedActions)
-            LlamaLibrary.Helpers.SideStep.Override(action);
-        // Single, first-double, and second-double variants each encode back/left/front/right
-        // safety in four consecutive rows. Generic omen 15 followed the initial facing and
-        // missed right 34186 and front 34185 in the 01:14 baseline; own all directional rows.
-        for (uint action = 34183; action <= 34194; action++)
-            LlamaLibrary.Helpers.SideStep.Override(action);
+        RegisterBossAvoidance();
         // Left/right shrink to a 40-yalm square; middle is 39 from the start.
         // A 0.5 inset on each edge preserves corners through the floor transition.
         AvoidanceHelpers.AddAvoidSquareDonut(() => InYozakura() && Core.Me.Location.X < 500, 39, 39, 140, 140, () => new[] { YozakuraCenter });
@@ -203,7 +211,7 @@ public sealed partial class MountRokkon : AbstractDungeon
         // Its last second follows the preceding circles: stage within 4.5 yalms
         // for an in-bounds landing, then let the next donut draw us back inward.
         AvoidanceHelpers.AddAvoidDonut(InYozakura, // The sentinel branch also needs time to choose a mud-free landing;
-        // its moving wind cannot be solved by entering the center at the last instant.
+ // its moving wind cannot be solved by entering the center at the last instant.
         () => PendingImpacts().Where(c => c.Action == DriftingPetals && !_petalsOwned && (InRightYozakura() || c.End <= DateTime.UtcNow.AddSeconds(1.5))).Select(c => c.Location).ToArray(), 60.5, 4.5);
         // The rainy baseline gained two vulnerabilities after generic lines disappeared at
         // cast end (01:02:15 UTC). Keep all eight near-simultaneous lines through the server
@@ -252,6 +260,7 @@ public sealed partial class MountRokkon : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> ExitDungeonAsync()
     {
+        ReleaseBossAvoidance();
         ReleaseSeasons();
         ReleaseRightPetals();
         ReleaseCloudLines();
@@ -268,10 +277,6 @@ public sealed partial class MountRokkon : AbstractDungeon
         _enenraSmoke.Clear();
         _impacts.Clear();
         _giri = _nextGiri = null;
-        foreach (var action in OwnedActions)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
-        for (uint action = 34183; action <= 34194; action++)
-            LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
         return Task.FromResult(false);
     }
 
@@ -341,7 +346,7 @@ public sealed partial class MountRokkon : AbstractDungeon
             // Unsagely Spin's actor animates away from its fixed omen center.
             if (impact.Action is not (33774 or 33766 or 33776 or 33777 or 33763 or 33764 or 33765))
             {
-                impact.Location = impact.Action is AzureAuspice or Clearout or LevinblossomStrike or Icebloom or 33696 or 32840 or 32855 or 33701 or 33762 or 34809 or 34811 or 33771 or 33773 or 33775 or 34604 ? actor.OmenMatrix.Center : actor.Location;
+                impact.Location = impact.Action is 33674 or 34196 or 34217 or 34212 or 34214 or 34021 or 34039 or AzureAuspice or Clearout or LevinblossomStrike or Icebloom or 33696 or 32840 or 32855 or 33701 or 33762 or 34809 or 34811 or 33771 or 33773 or 33775 or 34604 ? actor.OmenMatrix.Center : actor.Location;
                 impact.Heading = actor.Heading;
             }
             else
