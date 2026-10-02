@@ -118,9 +118,21 @@ public static class LoggingHelpers
             return;
         }
 
-        string signature = string.Join("; ", GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+        List<BattleCharacter> watchedActors = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
             .Where(actor => actor != null && actor.IsValid)
             .Where(actorSelector)
+            .OrderBy(actor => actor.ObjectId)
+            .ToList();
+
+        // RebornBuddy's BattleCharacter enumeration can omit Core.Player even though marker VFX are
+        // attached to that wrapper. Include it explicitly when selected, while de-duplicating by
+        // ObjectId so encounter captures can distinguish self-target markers from party markers.
+        if (actorSelector(Core.Player) && watchedActors.All(actor => actor.ObjectId != Core.Player.ObjectId))
+        {
+            watchedActors.Add(Core.Player);
+        }
+
+        string signature = string.Join("; ", watchedActors
             .OrderBy(actor => actor.ObjectId)
             .Select(DescribeActorSignal));
         if (TrackedActorSignalSignatures.TryGetValue(scope, out string previousSignature) &&
