@@ -97,6 +97,8 @@ public sealed partial class MountRokkon
                 // disappearance. Continue the existing narrow movement owner on
                 // bot pulses; it yields stationary so heals remain schedulable.
                 HandleGoraiPrayer();
+                // Keep the timed orb transfer alive while avoidance holds the tree.
+                HandleGoraiOrbs();
             }
             else
             {
@@ -105,6 +107,7 @@ public sealed partial class MountRokkon
                 _pursuit = null;
                 _goraiBalladActive = false;
                 ReleaseGoraiPrayer();
+                ReleaseGoraiOrbs();
             }
 
             // The gaze/circle overlap deliberately owns facing and a short outward
@@ -143,6 +146,7 @@ public sealed partial class MountRokkon
             _enenraSmoke.Clear();
             _goraiBalladActive = false;
             ReleaseGoraiPrayer();
+            ReleaseGoraiOrbs();
             ReleaseFluff();
             ResetRootChase();
             ReleaseRightPetals();
@@ -188,10 +192,15 @@ public sealed partial class MountRokkon
                 }
 
                 if (!wave.Shapes.ContainsKey(actor.ObjectId))
-                    wave.Shapes.Add(actor.ObjectId, new Impact { Action = action, Location = actor.Location, Heading = actor.Heading, // Captured RB preview end 15:15:20.47 -> impact fence 28.72.
-                    // This includes RB's early cast-end reporting and 0.35s impact
-                    // retention. Real damage casts refine each matching shape below.
-                    End = previewEnd.AddSeconds(8.25) });
+                    wave.Shapes.Add(actor.ObjectId, new Impact
+                    {
+                        Action = action,
+                        Location = actor.Location,
+                        Heading = actor.Heading,
+                        // Account for early cast-end reporting and 0.35s impact
+                        // retention. Damage casts refine the matching shape below.
+                        End = previewEnd.AddSeconds(8.25)
+                    });
             }
             else if (action is >= 33669 and <= 33672)
             {

@@ -211,7 +211,7 @@ public sealed partial class MountRokkon : AbstractDungeon
         // Its last second follows the preceding circles: stage within 4.5 yalms
         // for an in-bounds landing, then let the next donut draw us back inward.
         AvoidanceHelpers.AddAvoidDonut(InYozakura, // The sentinel branch also needs time to choose a mud-free landing;
- // its moving wind cannot be solved by entering the center at the last instant.
+        // its moving wind cannot be solved by entering the center at the last instant.
         () => PendingImpacts().Where(c => c.Action == DriftingPetals && !_petalsOwned && (InRightYozakura() || c.End <= DateTime.UtcNow.AddSeconds(1.5))).Select(c => c.Location).ToArray(), 60.5, 4.5);
         // The rainy baseline gained two vulnerabilities after generic lines disappeared at
         // cast end (01:02:15 UTC). Keep all eight near-simultaneous lines through the server
@@ -269,6 +269,7 @@ public sealed partial class MountRokkon : AbstractDungeon
         _goraiOrbs.Clear();
         _goraiBalladActive = false;
         ReleaseGoraiPrayer();
+        ReleaseGoraiOrbs();
         ReleaseFluff();
         ResetRootChase();
         RegisterShishioClouds();
@@ -346,7 +347,16 @@ public sealed partial class MountRokkon : AbstractDungeon
             // Unsagely Spin's actor animates away from its fixed omen center.
             if (impact.Action is not (33774 or 33766 or 33776 or 33777 or 33763 or 33764 or 33765))
             {
-                impact.Location = impact.Action is 33674 or 34196 or 34217 or 34212 or 34214 or 34021 or 34039 or AzureAuspice or Clearout or LevinblossomStrike or Icebloom or 33696 or 32840 or 32855 or 33701 or 33762 or 34809 or 34811 or 33771 or 33773 or 33775 or 34604 ? actor.OmenMatrix.Center : actor.Location;
+                var origin = impact.Action is
+                    33674 or 34196 or 34217 or 34212 or 34214 or 34021 or 34039 or
+                    AzureAuspice or Clearout or LevinblossomStrike or Icebloom or
+                    33696 or 32840 or 32855 or 33701 or 33762 or 34809 or 34811 or
+                    33771 or 33773 or 33775 or 34604 ? actor.OmenMatrix.Center : actor.Location;
+                // These omens can disappear before their damage resolves. Retain
+                // the last arena-local origin through the existing impact window;
+                // 75 yalms matches the observer's actor discovery radius.
+                if (impact.Action is not (LevinblossomStrike or Icebloom or 34196 or Clearout) || origin.Distance2D(center) < 75)
+                    impact.Location = origin;
                 impact.Heading = actor.Heading;
             }
             else
@@ -383,6 +393,15 @@ public sealed partial class MountRokkon : AbstractDungeon
             // shelter owner must not restore dry-ground movement before that hit.
             var retentionMs = impact.Action is 33693 or 33694 ? 1700 : impact.Action is Clearout or BoundlessAzure or BoundlessScarlet or 33776 or 33777 ? 1500 : impact.Action == 33772 ? 1400 : impact.Action == 32856 ? 1350 : impact.Action is 33774 or 33766 ? 1300 : impact.Action is LevinblossomStrike or Icebloom or 34023 or 34024 or 34026 or 34027 or 34028 or 33696 or 33757 or 34725 or 34732 ? 1100 : 750;
             impact.End = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(retentionMs);
+            // Captured Levinblossom and Iron Rain damage followed cast end by
+            // up to 1.212s. Retain 1.4s to include the sampling margin.
+            if (impact.Action is LevinblossomStrike or 34196)
+                impact.End = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(1400);
+            // Fireblossom hit 1.324s after cast end. Its 1.6s window prevents
+            // routine movement returning to the circle before impact; helper
+            // flares have separate timing and must not inherit this extension.
+            if (impact.Action == 33640)
+                impact.End = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(1600);
             // October 2 11:11:10.389: Bedrock's 8.7s report ended 19.089,
             // but the recorded damage/launch began 20.216 and vulnerability 20.474.
             // Keep each concentric wave through that 1.385s observed delay; an

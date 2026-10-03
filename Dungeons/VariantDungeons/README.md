@@ -80,3 +80,28 @@ the existing geometry checks. `Tests/Diagnostics/DiagnosticHistory.csproj` tests
 history expiry, capacity and reset behavior. `Tests/Diagnostics/Verify-Invariants.ps1`
 checks lifecycle wiring and the retained-history implementation; its checks replace
 the older validator's assumptions about a FIFO queue and a fixed cast-start window.
+
+## Retained telegraphs and escape handoffs
+
+The next integration preserves Rokkon's last valid Levinblossom, Icebloom, Iron
+Rain and Clearout origins when native omen data disappears. Measured post-cast
+hits justify longer Levinblossom, Iron Rain and Fireblossom retention; Fireblossom
+also leases gap closers so Slither cannot return into a resolving circle.
+Gorai's timed orb transfer avoids the disconnected paths produced by treating
+future explosions as current obstacles. It requires four known orbs, one small
+orb, an unobstructed platform and enough travel time. Unknown overlaps and late
+arrivals retain native avoidance. Lifecycle cleanup releases only its own lease.
+
+Merchant prepares Firecrackers' safe side during the preceding cannon waves,
+stops residual forward input when Sparks avoidance hands back movement, and
+interrupts the observed Red Mage hardcasts during specific active escapes.
+Sandplume interrupts Verfire only; the other captured cases include Verstone.
+The published cleanup preserves the source tokens, geometry and timing, while
+shortening incident narratives and expanding dense control flow for maintenance.
+
+Additional replays: `Tests/Variant/Test-GenieOverlap.ps1`,
+`Tests/Variant/Test-SwordmasterCastEscape.ps1`, and the Rokkon Gorai-orb and
+Levin-retention scripts. These exercise production selectors and captured geometry.
+Lash's Verstone interruption has live evidence; Gorai orb movement, Sand Pearl's
+Verstone case and the latest Sandplume change still require live acceptance.
+No claim of CN/TC encounter validation is made by these detached checks.

@@ -99,8 +99,8 @@ public sealed class MerchantsTale : AbstractDungeon
         // the 35x 35 floor with 0.5-yalm inset on every edge; preserve both safe corner wedges.
         // This is a navigation constraint, not a competing manual movement owner.
         AvoidanceHelpers.AddAvoidSquareDonut(InGenie, 34, 34, 140, 140, () => new[] { GenieCenter });
-        // All cast geometry goes through one earliest-impact set. Two cannon waves and the
-        // following Firecrackers must not reserve their mutually exclusive future safe regions.
+        // Keep cannon waves separate, but include the following Firecrackers safe side
+        // during that sequence so the final short handoff does not require crossing the room.
         // Voyage resolves before Fanning Flame; defer those later fans until the ship hold ends.
         AvoidanceManager.AddAvoidPolygon<CastShape>(InGenie, null, 80, c => -c.Heading, _ => 1, _ => 15, ShapePoints, c => c.Location, ActiveCasts, priority: AvoidancePriority.High);
         // Pyromagicks repeats have no cast bars. The live helpers stepped 8yalms roughly 2.4s
@@ -351,9 +351,16 @@ public sealed class MerchantsTale : AbstractDungeon
         }
 
         var first = active.Min(c => c.End);
-        // A 0.5s group tolerance merges simultaneously sampled helpers, while the captured
-        // two-second cannon and fan intervals remain separate. Later shapes stay pending.
-        return active.Where(c => c.End <= first.AddSeconds(.5));
+        // The October 2 15:30 capture left the player 13 yalms into the wrong half
+        // when Firecrackers became active, less than two seconds before impact.
+        // Its paired cleaves share safe strips with either cannon wave. Reserve
+        // that side early, without activating both mutually exclusive cannon sets.
+        // Five seconds covers the observed 4.6s first-cannon/cleave separation;
+        // unrelated later fans and Rainbow waves retain their original ordering.
+        var earliest = active.Where(c => c.End <= first.AddSeconds(.5)).ToArray();
+        var followup = active.Where(c => (c.Action is 43353 or 43354) && c.End <= first.AddSeconds(5)).ToArray();
+        var prepareFirecrackers = earliest.Any(c => c.Action == 43349) && followup.Any(c => c.Action == 43353) && followup.Any(c => c.Action == 43354);
+        return prepareFirecrackers ? earliest.Concat(followup).Distinct() : earliest;
     }
 
     private bool VoyageActive() => InGenie() && _voyage != null && _voyage.End > DateTime.UtcNow;
@@ -2089,6 +2096,21 @@ public sealed class MerchantsTale : AbstractDungeon
         return pending.Where(c => (c.End - first).TotalSeconds < .3);
     }
 
+    private string SwordmasterCastEscape(DateTime now, uint action, bool escaping)
+    {
+        // October 2: Verfire delayed the Waiting Wounds row crossing at 23:37:49;
+        // Verstone spanned both Lash impacts at 23:46:33 and 23:47:19. Yield only
+        // those observed damage casts during native egress. Healing and instant
+        // actions remain routine-owned; a forecast alone never cancels a cast.
+        if (!escaping || action is not (7510 or 7511))
+            return null;
+        if (_swordmasterWounds.Values.Any(c => c.End > now))
+            return "Waiting Wounds";
+        if (_swordmasterCasts.Values.Any(c => c.Action == 46614 && c.End > now))
+            return "Lash of Light";
+        return _swordmasterConfluence.Values.Any(c => c.End > now) ? "Confluence" : null;
+    }
+
     private IEnumerable<CastShape> ActiveSwordmasterCasts()
     {
         // Shifting Horizon's second pair starts 2s before the first pair resolves.
@@ -3496,6 +3518,8 @@ public sealed class MerchantsTale : AbstractDungeon
     private readonly Dictionary<ulong, NativeBossHazard> _nativeBossHazards = new();
     private readonly CapabilityManagerHandle _sparksMovementHandle = CapabilityManager.CreateNewHandle();
     private bool _sparksMovementOwned;
+    private bool _sparksWasEscaping;
+    private DateTime _merchantCastCancelAfter;
     private PluginContainer _merchantSideStep, _merchantDutyPlugin;
     private bool _sideStepSuspended, _changingSideStep;
     private DateTime _ownershipErrorAfter;
@@ -3605,6 +3629,33 @@ public sealed class MerchantsTale : AbstractDungeon
         }
 
         var now = DateTime.UtcNow;
+        // Verfire (7510) and Verstone (7511) held the player still during the
+        // captured cannon, Watersong, pearl and Swordmaster escapes. Interrupt
+        // only those damage casts while native avoidance is already moving out;
+        // healing, instants and forecasts without an active escape keep casting.
+        if (Core.Me.IsAlive && Core.Me.InCombat && Core.Me.IsCasting &&
+            (Core.Me.CastingSpellId is 7510 or 7511) && AvoidanceManager.IsRunningOutOfAvoid &&
+            now >= _merchantCastCancelAfter)
+        {
+            var escape =
+                InGenie() && _casts.Values.Any(c => c.Action == 43349 && c.End > now) ? "cannon" :
+                InDarya() && _daryaFamiliarLines.Values.Any(line => line.Start <= now && line.End > now) ? "Watersong" :
+                InGateRukhkh() && now < _rukhkhPearlEnd &&
+                    _rukhkhPearls.Values.Any(pearl => Core.Me.Distance2D(pearl.Location) < pearl.Radius) ? "Sand Pearl" :
+                // Sandplume's captured stall involved Verfire only. Keep this
+                // exception limited to the currently published cone wave.
+                InGateRukhkh() && Core.Me.CastingSpellId == 7510 &&
+                    ActiveRukhkhFans().Any(c => c.Action is 45752 or 46836) ? "Sandplume" :
+                InSwordmaster() ? SwordmasterCastEscape(now, Core.Me.CastingSpellId, AvoidanceManager.IsRunningOutOfAvoid) : null;
+            if (escape != null)
+            {
+                _merchantCastCancelAfter = now.AddSeconds(1);
+                var interruptedAction = Core.Me.CastingSpellId;
+                ActionManager.StopCasting();
+                ff14bot.Helpers.Logging.Write($"[Merchant] Interrupted action={interruptedAction} for active {escape} escape.");
+            }
+        }
+
         try
         {
             SuspendMerchantSideStep();
@@ -3670,10 +3721,22 @@ public sealed class MerchantsTale : AbstractDungeon
         // The October 2 Pari death showed two returns toward the boss between Sparks
         // escapes. Lease ONLY routine movement across the wave; RB still owns dodging
         // and the routine continues rotation/healing. No manual safe-point controller.
-        if (InPari() && _nativeBossHazards.Values.Any(h => h.Spec.Action == 45486 && h.End > now))
+        if (Core.Me.IsAlive && Core.Me.InCombat && InPari() && _nativeBossHazards.Values.Any(h => h.Spec.Action == 45486 && h.End > now))
         {
+            var escaping = AvoidanceManager.IsRunningOutOfAvoid;
             CapabilityManager.Update(_sparksMovementHandle, CapabilityFlags.Movement, 1000, "Pari Sparks: retain refuge between helper waves");
+            // October 2's full-health west-edge death followed an escape with forward
+            // input still active. The routine's movement lease bypasses its arrival
+            // cleanup. As with Dandan, stop residual input once when taking the hold
+            // or receiving movement back from avoidance, never during an escape.
+            if ((!_sparksMovementOwned || _sparksWasEscaping) && !escaping)
+            {
+                ff14bot.Navigation.Navigator.PlayerMover.MoveStop();
+                ff14bot.Helpers.Logging.Write("[Merchant Pari] Sparks refuge handoff: residual movement stopped.");
+            }
+
             _sparksMovementOwned = true;
+            _sparksWasEscaping = escaping;
         }
         else
             ReleaseSparksMovement();
@@ -3683,7 +3746,7 @@ public sealed class MerchantsTale : AbstractDungeon
     {
         if (_sparksMovementOwned)
             CapabilityManager.Clear(_sparksMovementHandle, CapabilityFlags.Movement, "Pari Sparks ended");
-        _sparksMovementOwned = false;
+        _sparksMovementOwned = _sparksWasEscaping = false;
     }
 
     private IEnumerable<NativeBossHazard> ActiveNativeBossHazards()

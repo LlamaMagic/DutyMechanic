@@ -4,7 +4,9 @@ using System.Linq;
 using Clio.Utilities;
 using DutyMechanic.Helpers;
 using ff14bot;
+using ff14bot.Behavior;
 using ff14bot.Managers;
+using ff14bot.Navigation;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 
@@ -19,6 +21,10 @@ public sealed partial class MountRokkon
     private readonly Dictionary<uint, LevinOrb> _goraiOrbs = new();
     private bool _goraiBalladActive;
     private ushort _goraiFloorState;
+    private readonly CapabilityManagerHandle _orbMovement = CapabilityManager.CreateNewHandle();
+    private Vector3? _orbDestination;
+    private bool _orbMoving;
+    private DateTime _orbCancelAt;
     private void ObserveGoraiFloor()
     {
         if (WorldManager.ZoneId != 1137 || Core.Me.Distance2D(GoraiCenter) > 45 || DirectorManager.ActiveDirector is not ff14bot.Directors.InstanceContentDirector d || !d.IsValid)
@@ -48,6 +54,7 @@ public sealed partial class MountRokkon
         // empty. Plectrum 34008 expands strips/circles; Melody 34009 splits strips
         // and makes stone rings. These are one simultaneous parent-owned group.
         _goraiShapes.Clear();
+        ReleaseGoraiOrbs();
         _goraiOrbs.Clear();
         _goraiBalladActive = false;
         _goraiFloorState = 0;
@@ -68,7 +75,7 @@ public sealed partial class MountRokkon
         // allowed a large-orb hit. Exactly one gains 2970/value 609 about nine seconds
         // before impact. Only then publish the simultaneous 18/8-yalm set, padded 0.5;
         // publishing four large circles before the shrink would erase all safe floor.
-        AvoidanceManager.AddAvoidLocation<LevinOrb>(InGorai, o => o.Radius, o => o.Location, () => _goraiOrbs.Values.Where(o => o.End > DateTime.UtcNow));
+        AvoidanceManager.AddAvoidLocation<LevinOrb>(() => InGorai() && !_orbDestination.HasValue, o => o.Radius, o => o.Location, () => _goraiOrbs.Values.Where(o => o.End > DateTime.UtcNow));
     }
 
     private IEnumerable<Impact> GoraiRingWave()
@@ -143,6 +150,109 @@ public sealed partial class MountRokkon
         internal Vector3 Location;
         internal float Radius;
         internal DateTime End;
+    }
+
+    private void HandleGoraiOrbs()
+    {
+        var now = DateTime.UtcNow;
+        var orbs = _goraiOrbs.Values.Where(o => o.End > now).ToArray();
+        // October 2 21:36/21:39: static future circles disconnected the safe corner
+        // and produced repeated no-path wipes. Transfer only on the unobstructed
+        // square after Hammer and other retained hazards resolve. Unknown overlaps
+        // retain ordinary avoidance; this owner must never compete with a tower.
+        if (orbs.Length != 4 || orbs.Count(o => o.Radius == 8.5f) != 1 ||
+            _goraiCage.HasValue || FirstPrayerTower() != null || _pursuit != null ||
+            GoraiShapes().Any() || PendingImpacts().Any(c => c.Action != 34035))
+        {
+            ReleaseGoraiOrbs();
+            return;
+        }
+
+        var player = Core.Me.Location;
+        var geometry = orbs.Select(o => (o.Location, o.Radius)).ToArray();
+        // End includes 1.1s observed post-cast damage retention. Arrive 250ms before
+        // the reported cast end, allowing another 250ms for movement startup.
+        var seconds = (orbs.Min(o => o.End) - now).TotalSeconds - 1.35;
+        var goal = PlanGoraiOrbs(player, _orbDestination, geometry, seconds);
+        if (!goal.HasValue)
+        {
+            ReleaseGoraiOrbs();
+            return;
+        }
+
+        if (!_orbDestination.HasValue)
+            ff14bot.Helpers.Logging.Write("[Rokkon] Gorai orb transfer to {0}; {1:F1}s before cast end margin.", goal.Value, seconds);
+        _orbDestination = goal;
+        CapabilityManager.Update(_orbMovement, CapabilityFlags.Movement | CapabilityFlags.GapCloser, TimeSpan.FromSeconds(1), "Stay in Gorai's small-orb safe corner through impact");
+        // Removing only our orb regions takes effect on the next avoidance tick.
+        // Unrelated escape always retains priority; never cancel its movement.
+        if (AvoidanceManager.IsRunningOutOfAvoid)
+        {
+            _orbMoving = false;
+            return;
+        }
+
+        if (player.Distance2D(goal.Value) <= .2f)
+        {
+            if (_orbMoving)
+                Navigator.PlayerMover.MoveStop();
+            _orbMoving = false;
+            return; // Keep the combat routine and healing schedulable while holding.
+        }
+
+        if (Core.Me.IsCasting && now >= _orbCancelAt)
+        {
+            _orbCancelAt = now.AddMilliseconds(750);
+            ActionManager.StopCasting();
+        }
+
+        Navigator.PlayerMover.MoveTowards(goal.Value);
+        _orbMoving = true;
+    }
+
+    private static Vector3? PlanGoraiOrbs(Vector3 player, Vector3? preferred, (Vector3 location, float radius)[] orbs, double seconds)
+    {
+        var center = new Vector3(741, 91, -190);
+        // A 0.75-yalm wall inset keeps samples on the reduced platform. Use a
+        // conservative 4.5-yalm/s travel speed plus 250ms startup time.
+        bool Inside(Vector3 p) => Math.Abs(p.X - center.X) <= 19.25f && Math.Abs(p.Z - center.Z) <= 19.25f;
+        bool Safe(Vector3 p) => Inside(p) && orbs.All(o => p.Distance2D(o.location) >= o.radius + .5f);
+        bool Reachable(Vector3 p) => player.Distance2D(p) <= .2f || player.Distance2D(p) / 4.5 + .25 <= seconds;
+        if (orbs.Length != 4 || orbs.Count(o => o.radius == 8.5f) != 1 || !Inside(player))
+            return null;
+        // Preserve the destination through impact, even after the travel deadline.
+        // The extra 0.5y clearance covers arrival tolerance without accepting an edge.
+        if (preferred.HasValue && Safe(preferred.Value) && Reachable(preferred.Value))
+            return preferred;
+        if (Safe(player))
+            return player;
+        Vector3? best = null;
+        var distance = float.MaxValue;
+        // One-yalm samples include inset corners. The convex, empty arena makes
+        // a straight segment valid once all other retained damage has resolved.
+        for (var x = -19; x <= 19; x++)
+            for (var z = -19; z <= 19; z++)
+            {
+                var candidate = center + new Vector3(x, 0, z);
+                var d = player.Distance2D(candidate);
+                if (d < distance && Safe(candidate) && Reachable(candidate))
+                {
+                    best = candidate;
+                    distance = d;
+                }
+            }
+
+        return best;
+    }
+
+    private void ReleaseGoraiOrbs()
+    {
+        if (_orbMoving && !AvoidanceManager.IsRunningOutOfAvoid)
+            Navigator.PlayerMover.MoveStop();
+        _orbMoving = false;
+        if (_orbDestination.HasValue)
+            CapabilityManager.Clear(_orbMovement, CapabilityFlags.Movement | CapabilityFlags.GapCloser, "Gorai orb ownership ended");
+        _orbDestination = null;
     }
 
     private void RetainGoraiShape(string key, uint action, Vector3 location, float heading, DateTime end)

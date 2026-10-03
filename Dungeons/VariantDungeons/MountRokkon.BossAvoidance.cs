@@ -3,6 +3,8 @@ using System.Linq;
 using Clio.Utilities;
 using ff14bot;
 using ff14bot.Behavior;
+using ff14bot.Enums;
+using ff14bot.Helpers;
 using ff14bot.Managers;
 using ff14bot.Pathing.Avoidance;
 
@@ -13,6 +15,8 @@ public sealed partial class MountRokkon
     private static Vector2[] TenguUnsafeLandingLane() => Rectangle(3f, -6.5f, 40.5f);
     private PluginContainer _mechanicPlugin;
     private bool _sideStepSuspended;
+    private readonly CapabilityManagerHandle _fireGapCloser = CapabilityManager.CreateNewHandle();
+    private bool _fireGapCloserOwned;
     private void RegisterBossAvoidance()
     {
         // These ordinary telegraphs previously belonged to SideStep. Captured
@@ -62,6 +66,17 @@ public sealed partial class MountRokkon
             return;
         }
 
+        // October 2 17:36:58: Slither returned from safety into 33640 while its
+        // circle was still active. Lease only gap closers through the retained
+        // impact; ordinary avoidance, damage and healing remain schedulable.
+        // A separate handle cannot release the cloud/tower movement owners.
+        if (InYozakura() && PendingImpacts().Any(c => c.Action == 33640))
+        {
+            CapabilityManager.Update(_fireGapCloser, CapabilityFlags.GapCloser, TimeSpan.FromSeconds(1), "Stay outside the pending Fireblossom");
+            _fireGapCloserOwned = true;
+        }
+        else
+            ReleaseFireGapCloser();
         if (SidestepPlugin?.Enabled == true)
         {
             SidestepPlugin.Enabled = false;
@@ -72,6 +87,7 @@ public sealed partial class MountRokkon
 
     private void RestoreBossSideStep(ff14bot.AClasses.BotBase bot)
     {
+        ReleaseFireGapCloser();
         // Restore only our own suspension, including a stop before DungeonManager
         // gets another coroutine tick. Never turn on a plugin we found disabled.
         if (!_sideStepSuspended)
@@ -80,6 +96,14 @@ public sealed partial class MountRokkon
         if (SidestepPlugin != null)
             SidestepPlugin.Enabled = true;
         DutyMechanic.Logging.Logger.Information("[Rokkon] Boss avoidance released; SideStep restored.");
+    }
+
+    private void ReleaseFireGapCloser()
+    {
+        if (!_fireGapCloserOwned)
+            return;
+        CapabilityManager.Clear(_fireGapCloser, CapabilityFlags.GapCloser, "Fireblossom resolved or encounter ended");
+        _fireGapCloserOwned = false;
     }
 
     private void ReleaseBossAvoidance()

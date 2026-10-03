@@ -69,8 +69,17 @@ function Read-Method([string]$Name) {
     }
     $boss.Substring($start, $end - $start)
 }
+# Exercise the new gap-closer lease with the real ownership methods so a stop
+# cannot leave movement capabilities borrowed after the boss releases SideStep.
 $lifecycle = @'
 using System;
+using System.Linq;
+public enum CapabilityFlags { GapCloser }
+public static class CapabilityManager {
+    public static bool Held;
+    public static void Update(object handle, CapabilityFlags flags, TimeSpan duration, string reason) => Held = true;
+    public static void Clear(object handle, CapabilityFlags flags, string reason) => Held = false;
+}
 namespace ff14bot.AClasses { public class BotBase {} }
 namespace DutyMechanic.Logging { public static class Logger { public static void Information(string s) {} } }
 public class TestPluginContainer { public bool Enabled=true; }
@@ -79,6 +88,10 @@ public class RokkonOwnerReplay {
     private TestPluginContainer _mechanicPlugin=new TestPluginContainer();
     private static TestPluginContainer SidestepPlugin=new TestPluginContainer();
     private bool _sideStepSuspended, bossActive;
+    private object _fireGapCloser = new();
+    private bool _fireGapCloserOwned, fireActive;
+    private record Impact(uint Action);
+    private Impact[] PendingImpacts() => fireActive ? new[] { new Impact(33640) } : Array.Empty<Impact>();
     private bool InYozakura()=>bossActive;
     private bool InMoko()=>false;
     private bool InGorai()=>false;
@@ -94,8 +107,17 @@ public class RokkonOwnerReplay {
         owner.Check(!SidestepPlugin.Enabled && owner._sideStepSuspended,"Boss must acquire suspension");
         owner.UpdateBossAvoidanceOwner();
         owner.Check(!SidestepPlugin.Enabled,"Unchanged boss must retain suspension");
+        owner.fireActive=true;
+        owner.UpdateBossAvoidanceOwner();
+        owner.Check(CapabilityManager.Held,"Pending Fireblossom blocks gap closers");
+        owner.fireActive=false;
+        owner.UpdateBossAvoidanceOwner();
+        owner.Check(!CapabilityManager.Held,"Resolved Fireblossom releases gap closers");
+        owner.fireActive=true;
+        owner.UpdateBossAvoidanceOwner();
         owner.bossActive=false;
         owner.UpdateBossAvoidanceOwner();
+        owner.Check(!CapabilityManager.Held,"Boss exit releases an active gap-closer lease");
         owner.Check(SidestepPlugin.Enabled && !owner._sideStepSuspended,"Boss end must restore");
         SidestepPlugin.Enabled=false;
         owner.bossActive=true;
@@ -106,6 +128,7 @@ public class RokkonOwnerReplay {
         owner.UpdateBossAvoidanceOwner();
         owner.RestoreBossSideStep(null);
         owner.Check(SidestepPlugin.Enabled,"Synchronous stop must restore without another pulse");
+        owner.Check(!CapabilityManager.Held,"Stop releases the gap-closer lease without a pulse");
         owner.UpdateBossAvoidanceOwner();
         owner._mechanicPlugin.Enabled=false;
         owner.UpdateBossAvoidanceOwner();
@@ -117,6 +140,6 @@ public class RokkonOwnerReplay {
         owner.Check(SidestepPlugin.Enabled,"Stopped tree must release");
     }
 '@
-Add-Type -TypeDefinition ($lifecycle + "`n" + (Read-Method 'UpdateBossAvoidanceOwner') + "`n" + (Read-Method 'RestoreBossSideStep') + "`n}")
+Add-Type -TypeDefinition ($lifecycle + "`n" + (Read-Method 'UpdateBossAvoidanceOwner') + "`n" + (Read-Method 'RestoreBossSideStep') + "`n" + (Read-Method 'ReleaseFireGapCloser') + "`n}")
 [RokkonOwnerReplay]::Run()
-'Passed eight boss/trash/stop/disable ownership checks.'
+'Passed twelve boss/trash/stop/disable and gap-closer ownership checks.'
