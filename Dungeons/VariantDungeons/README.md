@@ -105,3 +105,23 @@ Levin-retention scripts. These exercise production selectors and captured geomet
 Lash's Verstone interruption has live evidence; Gorai orb movement, Sand Pearl's
 Verstone case and the latest Sandplume change still require live acceptance.
 No claim of CN/TC encounter validation is made by these detached checks.
+
+## October 4 publication audit
+
+The current development copies add Pari's combined Nights opening, scoped Jolt
+interruption during a later half-room escape, and observed Fanning Flame, Carpet
+Ride and Sparks cast interruptions. The combined opening keeps the beam and first
+sweep under one region; unsupported orientations retain the ordered fallback.
+`Tests/Variant/Test-PariNights.ps1` replays production geometry and interruption
+eligibility, including safe positions, expired stages and unrelated actions.
+
+Rokkon now retains Vasoconstrictor's placed circles through its measured delayed
+impact, prevents gap closers from leaving Yoki-uzu shelter, and sends Gorai's
+movement and gap-closer capabilities through separate API calls. Combined flags
+were rejected by the runtime. Preserve the independent acquisition and release.
+The retained-origin regression includes Vasoconstrictor in the production guard.
+
+The October 3 monitor records clean opening Nights and Sparks interruptions;
+Jolt's later-sweep fix and the matching Rokkon route fixes still await live
+acceptance. Monitoring remains stopped at the user's request. Publishing these
+sources does not restart gameplay or establish regional encounter validation.

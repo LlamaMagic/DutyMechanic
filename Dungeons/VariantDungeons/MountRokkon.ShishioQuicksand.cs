@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Clio.Utilities;
 using ff14bot;
+using ff14bot.Behavior;
 using ff14bot.Managers;
 using ff14bot.Pathing.Avoidance;
 
@@ -11,8 +12,11 @@ public sealed partial class MountRokkon
     private Impact _shishioSand;
     private uint _shishioSandId;
     private DateTime _nextSandSprint;
+    private readonly CapabilityManagerHandle _sandGapCloser = CapabilityManager.CreateNewHandle();
+    private bool _sandGapCloserHeld;
     private void RegisterShishioQuicksand()
     {
+        ReleaseShishioQuicksand();
         _shishioSand = null;
         _shishioSandId = 0;
         _nextSandSprint = default;
@@ -32,9 +36,21 @@ public sealed partial class MountRokkon
         {
             _shishioSand = null;
             _shishioSandId = 0;
+            ReleaseShishioQuicksand();
             return;
         }
 
+        // October 3 02:41:09: Slither returned from the safe sand to the boss
+        // before Yoki-uzu resolved, causing Hysteria and a subsequent sand death.
+        // Keep native escape and rotation active; only prohibit gap closers until
+        // the existing impact fence ends. The short lease also expires on lost pulses.
+        if (NeedsQuicksandShelter())
+        {
+            CapabilityManager.Update(_sandGapCloser, CapabilityFlags.GapCloser, TimeSpan.FromSeconds(1), "Hold Yoki-uzu shelter gap closers");
+            _sandGapCloserHeld = true;
+        }
+        else
+            ReleaseShishioQuicksand();
         // Sprint is a normal general action, independent of job/loadout. Pace a
         // rejected request and preserve active casts until ordinary avoidance
         // cancels them; do not introduce a competing movement owner.
@@ -61,6 +77,14 @@ public sealed partial class MountRokkon
             Location = geometry.origin,
             Heading = geometry.heading
         };
+    }
+
+    private void ReleaseShishioQuicksand()
+    {
+        if (!_sandGapCloserHeld)
+            return;
+        CapabilityManager.Clear(_sandGapCloser, CapabilityFlags.GapCloser, "Yoki-uzu shelter ended");
+        _sandGapCloserHeld = false;
     }
 
     private static (Vector3 origin, float heading) ShishioSandGeometry(uint id)

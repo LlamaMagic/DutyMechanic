@@ -264,6 +264,7 @@ public sealed partial class MountRokkon : AbstractDungeon
         ReleaseSeasons();
         ReleaseRightPetals();
         ReleaseCloudLines();
+        ReleaseShishioQuicksand();
         _azure.Clear();
         _goraiShapes.Clear();
         _goraiOrbs.Clear();
@@ -355,7 +356,8 @@ public sealed partial class MountRokkon : AbstractDungeon
                 // These omens can disappear before their damage resolves. Retain
                 // the last arena-local origin through the existing impact window;
                 // 75 yalms matches the observer's actor discovery radius.
-                if (impact.Action is not (LevinblossomStrike or Icebloom or 34196 or Clearout) || origin.Distance2D(center) < 75)
+                // Vasoconstrictor (33775) also loses its omen before impact.
+                if (impact.Action is not (LevinblossomStrike or Icebloom or 34196 or Clearout or 33775) || origin.Distance2D(center) < 75)
                     impact.Location = origin;
                 impact.Heading = actor.Heading;
             }
@@ -393,6 +395,10 @@ public sealed partial class MountRokkon : AbstractDungeon
             // shelter owner must not restore dry-ground movement before that hit.
             var retentionMs = impact.Action is 33693 or 33694 ? 1700 : impact.Action is Clearout or BoundlessAzure or BoundlessScarlet or 33776 or 33777 ? 1500 : impact.Action == 33772 ? 1400 : impact.Action == 32856 ? 1350 : impact.Action is 33774 or 33766 ? 1300 : impact.Action is LevinblossomStrike or Icebloom or 34023 or 34024 or 34026 or 34027 or 34028 or 33696 or 33757 or 34725 or 34732 ? 1100 : 750;
             impact.End = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(retentionMs);
+            // Vasoconstrictor damage continued 1.433s after its native cast ended.
+            // Keep the placed circles for 1.6s, including sampling tolerance.
+            if (impact.Action == 33775)
+                impact.End = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(1600);
             // Captured Levinblossom and Iron Rain damage followed cast end by
             // up to 1.212s. Retain 1.4s to include the sampling margin.
             if (impact.Action is LevinblossomStrike or 34196)

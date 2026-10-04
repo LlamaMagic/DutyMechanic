@@ -151,6 +151,8 @@ public sealed partial class MountRokkon
             ResetRootChase();
             ReleaseRightPetals();
             ReleaseCloudLines();
+            // Release the shelter lease on loading, death and stopped pulses.
+            ReleaseShishioQuicksand();
             RegisterShishioClouds();
             _giri = _nextGiri = null;
         }

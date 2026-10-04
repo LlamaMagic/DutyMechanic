@@ -861,6 +861,22 @@ public sealed class MerchantsTale : AbstractDungeon
         // the old 2.7s handoff sent the player across the still-dangerous half. Hold 3.25s
         // (0.33s beyond that captured effect), retaining the observed 2.4s cadence.
         var now = DateTime.UtcNow;
+        // October 3 02:35 required 14.4y of travel after the opening beam, with less
+        // than 2s before the first sweep. Prepare while its marker is visible instead.
+        // A single expanded half-plane contains both the verified perpendicular beam
+        // and first sweep; separate registrations previously oscillated at their seam.
+        // Retain the combined region through the first sweep, so normal melee pursuit
+        // cannot undo staging between effects. Unknown geometry keeps the ordered fallback.
+        if (_nightCount != 0 && _nightLineReady && now < _nightFinish.AddSeconds(3.25) && _nightHeadings.TryGetValue(0, out var firstHeading))
+        {
+            var opening = CombinedNightOpening(firstHeading);
+            if (opening != null)
+            {
+                yield return opening;
+                yield break;
+            }
+        }
+
         // Every Nights cast first fires a 40x 4 forward line. At 23:10:44-54, publishing
         // the future half-room together with generic line geometry oscillated at arena
         // center and the initial line hit at 55.42 (reported finish 54.59). Own that line
@@ -906,6 +922,36 @@ public sealed class MerchantsTale : AbstractDungeon
         }
     }
 
+    private bool PariNightCastEscape(uint action, bool escaping, Vector3 position)
+    {
+        if (action != 7503 || !escaping)
+            return false;
+        return ActiveNightShape().Any(s => s.Kind == PariShapeKind.Half && (position.X - s.Position.X) * Math.Sin(s.Heading) + (position.Z - s.Position.Z) * Math.Cos(s.Heading) >= -s.RearPadding);
+    }
+
+    private PariShape CombinedNightOpening(float heading)
+    {
+        var along = Math.Cos(_nightInitialHeading - heading);
+        if (!float.IsFinite(heading) || !double.IsFinite(along) || Math.Abs(along) > .05 || _nightOrigin.Distance2D(PariCenter) > 1)
+        {
+            return null;
+        }
+
+        // Project all corners of the padded opening rectangle onto the first sweep's
+        // normal. Its minimum projection defines a conservative single straight edge;
+        // the additional 0.5y keeps rounding/escape tolerance outside both hazards.
+        var offset = (_nightOrigin.X - PariCenter.X) * Math.Sin(heading) + (_nightOrigin.Z - PariCenter.Z) * Math.Cos(heading);
+        var minimum = offset + Math.Min(-.5 * along, 40.5 * along) - 2.5 * Math.Abs(Math.Sin(_nightInitialHeading - heading));
+        return new PariShape
+        {
+            Kind = PariShapeKind.Half,
+            Position = PariCenter,
+            Heading = heading,
+            RearPadding = (float)Math.Max(.5, .5 - minimum),
+            End = _nightFinish.AddSeconds(3.25)
+        };
+    }
+
     private static PariShape FlightShape(Vector3 from, Vector3 to, DateTime end) => new()
     {
         Kind = PariShapeKind.Charge,
@@ -934,8 +980,8 @@ public sealed class MerchantsTale : AbstractDungeon
         {
             return new[]
             {
-                new Vector2(-60, -.5f),
-                new Vector2(60, -.5f),
+                new Vector2(-60, -shape.RearPadding),
+                new Vector2(60, -shape.RearPadding),
                 new Vector2(60, 60),
                 new Vector2(-60, 60)
             };
@@ -983,6 +1029,9 @@ public sealed class MerchantsTale : AbstractDungeon
         internal Vector3 Position;
         internal float Heading;
         internal float Length;
+        // Ordinary sweeps retain their existing margin; only the opening overlap
+        // expands this edge to contain the measured beam and first sweep together.
+        internal float RearPadding = .5f;
         internal DateTime End;
     }
 
@@ -3629,21 +3678,31 @@ public sealed class MerchantsTale : AbstractDungeon
         }
 
         var now = DateTime.UtcNow;
-        // Verfire (7510) and Verstone (7511) held the player still during the
-        // captured cannon, Watersong, pearl and Swordmaster escapes. Interrupt
-        // only those damage casts while native avoidance is already moving out;
-        // healing, instants and forecasts without an active escape keep casting.
-        if (Core.Me.IsAlive && Core.Me.InCombat && Core.Me.IsCasting &&
-            (Core.Me.CastingSpellId is 7510 or 7511) && AvoidanceManager.IsRunningOutOfAvoid &&
-            now >= _merchantCastCancelAfter)
+        // Jolt (7503) stalled a later Nights crossing in the October 3 capture.
+        // Interrupt only inside a currently published half-room during native
+        // escape; this exception does not apply to other encounters or healing.
+        if (Core.Me.IsAlive && Core.Me.InCombat && Core.Me.IsCasting && InPari() && now >= _merchantCastCancelAfter && PariNightCastEscape(Core.Me.CastingSpellId, AvoidanceManager.IsRunningOutOfAvoid, Core.Me.Location))
         {
+            _merchantCastCancelAfter = now.AddSeconds(1);
+            ActionManager.StopCasting();
+            ff14bot.Helpers.Logging.Write("[Merchant] Interrupted action=7503 for active Nights sweep escape.");
+        }
+
+        if (Core.Me.IsAlive && Core.Me.InCombat && Core.Me.IsCasting && (Core.Me.CastingSpellId is 7510 or 7511) && AvoidanceManager.IsRunningOutOfAvoid && now >= _merchantCastCancelAfter)
+        {
+            // Captured Verfire/Verstone stalls require interruption during these
+            // active escapes. Carpet Ride and Sparks showed Verstone only;
+            // Sandplume showed Verfire only. Preserve those narrower guards.
             var escape =
                 InGenie() && _casts.Values.Any(c => c.Action == 43349 && c.End > now) ? "cannon" :
+                InGenie() && _casts.Values.Any(c => c.Action == 44255 && c.End > now) ? "Fanning Flame" :
+                InPari() && Core.Me.CastingSpellId == 7511 &&
+                    ActivePariShapes().Any(s => s.Kind == PariShapeKind.Charge) ? "Carpet Ride" :
+                InPari() && Core.Me.CastingSpellId == 7511 &&
+                    ActiveNativeBossHazards().Any(h => h.Spec.Action == 45486 && Core.Me.Distance2D(h.Position) < h.Spec.Radius) ? "Impassioned Sparks" :
                 InDarya() && _daryaFamiliarLines.Values.Any(line => line.Start <= now && line.End > now) ? "Watersong" :
                 InGateRukhkh() && now < _rukhkhPearlEnd &&
                     _rukhkhPearls.Values.Any(pearl => Core.Me.Distance2D(pearl.Location) < pearl.Radius) ? "Sand Pearl" :
-                // Sandplume's captured stall involved Verfire only. Keep this
-                // exception limited to the currently published cone wave.
                 InGateRukhkh() && Core.Me.CastingSpellId == 7510 &&
                     ActiveRukhkhFans().Any(c => c.Action is 45752 or 46836) ? "Sandplume" :
                 InSwordmaster() ? SwordmasterCastEscape(now, Core.Me.CastingSpellId, AvoidanceManager.IsRunningOutOfAvoid) : null;

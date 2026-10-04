@@ -8,7 +8,7 @@ this does not certify movement through the simultaneous wind donut.
 #>
 $ErrorActionPreference='Stop'
 $source=Get-Content "$PSScriptRoot/../../../Dungeons/VariantDungeons/MountRokkon.cs" -Raw
-if($source -notmatch 'impact.Action is not \(LevinblossomStrike or Icebloom or 34196 or Clearout\) \|\| origin.Distance2D\(center\) < (\d+)') { throw 'Origin gate missing.' }
+if($source -notmatch 'impact.Action is not \(LevinblossomStrike or Icebloom or 34196 or Clearout or 33775\) \|\| origin.Distance2D\(center\) < (\d+)') { throw 'Origin gate missing.' }
 $scope=[double]$Matches[1]
 if($source -notmatch 'if \(impact.Action is LevinblossomStrike or 34196\)\s+impact.End = now \+ actor.SpellCastInfo.RemainingCastTime \+ TimeSpan.FromMilliseconds\((\d+)\)') { throw 'Impact fence missing.' }
 $retention=[double]$Matches[1]

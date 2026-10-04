@@ -183,7 +183,9 @@ public sealed partial class MountRokkon
         if (!_orbDestination.HasValue)
             ff14bot.Helpers.Logging.Write("[Rokkon] Gorai orb transfer to {0}; {1:F1}s before cast end margin.", goal.Value, seconds);
         _orbDestination = goal;
-        CapabilityManager.Update(_orbMovement, CapabilityFlags.Movement | CapabilityFlags.GapCloser, TimeSpan.FromSeconds(1), "Stay in Gorai's small-orb safe corner through impact");
+        // RB requires a single capability per call; combined flags are rejected.
+        CapabilityManager.Update(_orbMovement, CapabilityFlags.GapCloser, TimeSpan.FromSeconds(1), "Hold Gorai orb gap closers");
+        CapabilityManager.Update(_orbMovement, CapabilityFlags.Movement, TimeSpan.FromSeconds(1), "Stay in Gorai's small-orb safe corner through impact");
         // Removing only our orb regions takes effect on the next avoidance tick.
         // Unrelated escape always retains priority; never cancel its movement.
         if (AvoidanceManager.IsRunningOutOfAvoid)
@@ -251,7 +253,11 @@ public sealed partial class MountRokkon
             Navigator.PlayerMover.MoveStop();
         _orbMoving = false;
         if (_orbDestination.HasValue)
-            CapabilityManager.Clear(_orbMovement, CapabilityFlags.Movement | CapabilityFlags.GapCloser, "Gorai orb ownership ended");
+        {
+            CapabilityManager.Clear(_orbMovement, CapabilityFlags.Movement, "Gorai orb ownership ended");
+            CapabilityManager.Clear(_orbMovement, CapabilityFlags.GapCloser, "Gorai orb ownership ended");
+        }
+
         _orbDestination = null;
     }
 
