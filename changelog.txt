@@ -2,6 +2,10 @@ DutyMechanic Changelog
 
 Unreleased
 
+The Steps of Faith
+- Improve breath-lane avoidance, targeted fireballs, knockback landing safety and Earth Shaker positioning in the solo duty.
+- Stay outside the final Scorching Breath lane after its cast ends while continuing combat.
+
 Variant Dungeons
 - Add boss mechanics for supported solo routes in The Sil'dihn Subterrane, Mount Rokkon, Aloalo Island and The Merchant's Tale.
 - Keep detailed Variant encounter traces disabled during normal play while retaining them for developer diagnostics.
