@@ -2,6 +2,9 @@ DutyMechanic Changelog
 
 Unreleased
 
+Alliance Raids
+- Added Labyrinth of the Ancients and World of Darkness profile support with alliance-aware positioning, party-led engagement, ready checks and recovery inside the duty.
+
 The Steps of Faith
 - Improve breath-lane avoidance, targeted fireballs, knockback landing safety and Earth Shaker positioning in the solo duty.
 - Stay outside the final Scorching Breath lane after its cast ends while continuing combat.

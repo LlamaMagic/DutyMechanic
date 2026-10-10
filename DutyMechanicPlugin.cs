@@ -113,6 +113,17 @@ public class DutyMechanicPlugin : BotPlugin
             ff14bot.RemoteWindows.QTE.Pulse();
         }
 
+        // A yielding death coroutine can starve the tag/TreeStart diagnostics while plugin
+        // pulses remain available. Capture only; recovery actions stay with their owner.
+        if (EnableMechanicDiagnostics)
+            Dungeons.LabyrinthOfTheAncients.CaptureRecoveryEvidence();
+
+        // Completion can occur while the external death coroutine blocks profile advancement.
+        Dungeons.LabyrinthOfTheAncients.RecoverCompletedDuty();
+        // The World tag owns recovery decisions; this bot-thread pulse only lets
+        // its guarded Return run when Platypus's death wait blocks TreeStart.
+        ff14bot.NeoProfiles.Tags.WorldOfDarknessRun.PulseRecovery();
+
         bool isInInstance = LoadingHelpers.IsInInstance;
 
         if (isInInstance && !_wasInInstance)
