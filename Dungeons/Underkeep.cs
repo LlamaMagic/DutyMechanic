@@ -1,4 +1,4 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
@@ -37,9 +37,6 @@ public class Underkeep : AbstractDungeon
     private const float CoordinateBitStoppedSpeedYalmsPerSecond = 0.5f;
     private const float CoordinateBitTileArrivalTolerance = 0.35f;
     private const float CoordinateBitCollisionOrbTolerance = 0.5f;
-    private const string CoordinateMarchActorWatch = "Underkeep.CoordinateMarch";
-    private const string SectorBisectorActorWatch = "Underkeep.SectorBisector";
-    private static readonly TimeSpan CoordinateMarchCaptureInterval = TimeSpan.FromMilliseconds(250);
 
     // Polygons are counter-clockwise and face south before RB applies rotation. Dimensions include
     // their capture-backed safety margins; Sphere Shatter needs two yalms because smaller margins
@@ -84,7 +81,6 @@ public class Underkeep : AbstractDungeon
     private readonly CapabilityManagerHandle coordinateMarchCapabilityHandle = CapabilityManager.CreateNewHandle();
     private readonly Dictionary<uint, TimedHazard> enforcementRayForecasts = [];
     private readonly Dictionary<uint, CoordinateBitMotionState> coordinateBitMotionStates = [];
-    private DateTime nextCoordinateMarchCaptureUtc;
 
     // Retained only to clean up the arena being left on a sub-zone transition.
     private SubZoneId lastSubZoneId = SubZoneId.NONE;
@@ -492,8 +488,6 @@ public class Underkeep : AbstractDungeon
                 coordinateMarchTimer.Start();
             }
 
-            CaptureCoordinateMarchSignals();
-
             if (coordinateMarchTimer.ElapsedMilliseconds < CoordinateMarchDurationMilliseconds)
             {
                 await MovementHelpers.GetClosestMelee.FollowTimed(
@@ -507,10 +501,6 @@ public class Underkeep : AbstractDungeon
             {
                 ResetCoordinateMarchState("Coordinate March observation window completed");
             }
-        }
-        else
-        {
-            LoggingHelpers.ClearActorSignalWatch(CoordinateMarchActorWatch);
         }
 
         return false;
@@ -663,11 +653,6 @@ public class Underkeep : AbstractDungeon
             return;
         }
 
-        LoggingHelpers.LogActorSignalChanges(
-            SectorBisectorActorWatch,
-            actor => actor.BaseId == EnemyObjectId.SoldierS0Clone ||
-                     actor.CastingSpellId is EnemyAction.SectorBisectorLeft or EnemyAction.SectorBisectorRight);
-
         Dictionary<uint, SectorCloneSnapshot> currentSnapshots = actors
             .Where(actor => actor.BaseId == EnemyObjectId.SoldierS0Clone)
             .ToDictionary(actor => actor.ObjectId, CreateSectorCloneSnapshot);
@@ -770,7 +755,6 @@ public class Underkeep : AbstractDungeon
         sectorBisectorVisualCastActive = false;
         sectorBisectorDamageObserved = false;
         sectorBisectorMaximumTetherCount = 0;
-        LoggingHelpers.ClearActorSignalWatch(SectorBisectorActorWatch);
     }
 
     // Recompute party headings on every avoidance pulse so the cones follow Trust movement without
@@ -899,25 +883,6 @@ public class Underkeep : AbstractDungeon
         return arenaCenter - 13.5f + (tileIndex * 9.0f);
     }
 
-    // Four samples per second preserve Coordinate March route timing without flooding diagnostics
-    // with per-frame transforms.
-    private void CaptureCoordinateMarchSignals()
-    {
-        if (!LoggingHelpers.MechanicDiagnosticsEnabled || DateTime.UtcNow < nextCoordinateMarchCaptureUtc)
-        {
-            return;
-        }
-
-        nextCoordinateMarchCaptureUtc = DateTime.UtcNow + CoordinateMarchCaptureInterval;
-        LoggingHelpers.LogActorSignalChanges(
-            CoordinateMarchActorWatch,
-            actor => actor.BaseId is
-                EnemyObjectId.ExplodingOrb or
-                EnemyObjectId.TetherSource or
-                EnemyObjectId.CoordinateBit or
-                EnemyObjectId.CoordinateTurret);
-    }
-
     // Release the capability only when this handler owns an active timer; the base follow-dodge
     // handle has an independent lifecycle.
     private void ResetCoordinateMarchState(string reason)
@@ -927,9 +892,6 @@ public class Underkeep : AbstractDungeon
             coordinateMarchTimer.Reset();
             CapabilityManager.Clear(coordinateMarchCapabilityHandle, reason: reason);
         }
-
-        nextCoordinateMarchCaptureUtc = DateTime.MinValue;
-        LoggingHelpers.ClearActorSignalWatch(CoordinateMarchActorWatch);
     }
 
     private void ResetGargantState()

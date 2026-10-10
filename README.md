@@ -54,3 +54,18 @@ It will automatically install the files into the correct folders and keep them u
 The standalone Panda Crucible botbase owns its encounter mechanics and movement.
 DutyMechanic does not register Crucible territories or ship duplicate handlers.
 
+
+## Source maintenance
+
+RebornBuddy compiles installed C# files recursively and does not use this project's
+MSBuild exclusions. Keep test projects, capture tools and replay inputs outside this
+repository. They previously prevented Duty Mechanic from loading on fresh installs.
+The build rejects a Tests directory to catch that mistake before publication.
+
+Encounter controllers retain only state needed for mechanics and normal support
+messages. Shared actor watches, diagnostic history and periodic raid dumps have
+been removed to keep customer logs useful. The protected Yuweyawata implementation
+is unchanged and its legacy diagnostic guard remains permanently disabled.
+
+When updating an older ZIP installation, replace the Duty Mechanic folder rather
+than merging files; merging can leave the obsolete Tests directory behind.

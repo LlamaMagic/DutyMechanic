@@ -1,26 +1,21 @@
-# ARR alliance raid profile controllers
+# ARR alliance raid controllers
 
-LabyrinthRun and WorldOfDarknessRun are opt-in OrderBot tags used by their synced
-public-raid profiles. Native objectives and subzones own progress. The tag owns
-encounter positioning and travel; the selected routine still handles combat.
-They must not also be registered as ordinary DungeonManager encounter handlers,
-which would duplicate movement ownership. Missing state never authorizes leaving
-an uncleared public duty. The plugin pulse permits narrowly guarded in-duty death
-recovery when another coroutine blocks TreeStart; it does not queue a duty exit.
+LabyrinthRun and WorldOfDarknessRun are opt-in OrderBot tags for synced public raids.
+Native objectives and subzones determine progress. The tags own positioning and
+travel; the selected routine handles combat. Do not also register them with
+DungeonManager, which would give two controllers ownership of movement.
 
-The published sources were accepted on Global SCH and SMN under the user's rule:
-three completed runs with no more than two scored mechanic/travel failures each.
-This is not a zero-failure guarantee. World of Darkness retains known Jaws travel
-and occasional Cloud-beam defects. Tank/melee duties, belly/chains, every marker
-and tower, and other client regions were not comprehensively verified. Do not
-remove the MSQ consent warning or present these as routine unattended farming.
+A missing director never authorizes leaving an uncleared duty. Plugin pulses allow
+guarded in-duty death recovery when another coroutine blocks TreeStart. They do not
+queue a duty exit. Keep the MSQ consent warning: these controllers are not intended
+as routine unattended farming.
 
-LabyrinthPlanner, LabyrinthRoutes and LabyrinthRoutineLease keep captured geometry,
-alliance support rules and reversible routine ownership independently testable.
-Tests/Labyrinth replays detached invariants and optional capture input; passing it
-does not substitute for live navigation or role coverage. Source comments retain
-the evidence, coordinate identities, margins and recovery boundaries for each rule.
+Global SCH and SMN runs have been tested. Known limitations include Jaws travel and
+occasional Cloud beam failures in World of Darkness. Tank/melee roles, belly/chains,
+all marker and tower combinations, and other client regions are not fully verified.
 
-This release includes only the raid controllers and their pulse hooks on top of
-the existing published DutyMechanic branch. Global high-volume diagnostics remain
-disabled. The authoring checkout's unrelated dungeon changes are not included.
+The planners and route tables retain the geometry and recovery constraints required
+by the controllers. Development replay programs and periodic evidence dumps are not
+part of the installed plugin. Normal status, compatibility and recovery messages
+remain so customer failures can still be diagnosed. Controller formatting follows
+the repository's C# conventions without changing mechanic decisions.

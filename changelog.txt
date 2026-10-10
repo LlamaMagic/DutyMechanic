@@ -1,6 +1,6 @@
 DutyMechanic Changelog
 
-Unreleased
+7.5.4282015.2 10/10/2026
 
 Alliance Raids
 - Added Labyrinth of the Ancients and World of Darkness profile support with alliance-aware positioning, party-led engagement, ready checks and recovery inside the duty.
@@ -11,4 +11,7 @@ The Steps of Faith
 
 Variant Dungeons
 - Add boss mechanics for supported solo routes in The Sil'dihn Subterrane, Mount Rokkon, Aloalo Island and The Merchant's Tale.
-- Keep detailed Variant encounter traces disabled during normal play while retaining them for developer diagnostics.
+
+Startup and Logging
+- Fix Duty Mechanic failing to load after a fresh install.
+- Remove development traces and recurring encounter dumps while keeping normal status and recovery messages.

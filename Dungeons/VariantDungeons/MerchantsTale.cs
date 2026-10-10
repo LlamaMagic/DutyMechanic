@@ -610,10 +610,6 @@ public sealed class MerchantsTale : AbstractDungeon
                 {
                     var reverseOnEven = marker.Id is 625 or 644;
                     var heading = boss.Heading - ((index % 2 == 0) == reverseOnEven ? (float)Math.PI : 0);
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled && (!_nightHeadings.TryGetValue(index, out var previous) || Math.Abs(previous - heading) > .05))
-                    {
-                        ff14bot.Helpers.Logging.Write($"[Merchant.Pari] Night preview index={index} marker={marker.Id} heading={heading:F3} finish={_nightFinish:O}");
-                    }
 
                     _nightHeadings[index] = heading;
                 }
@@ -658,12 +654,6 @@ public sealed class MerchantsTale : AbstractDungeon
             {
                 _sunCenter = chain[2].To;
                 _sunExpires = _flightFinish.AddSeconds(11);
-                // Keep preview selection inspectable when the existing diagnostics switch
-                // is enabled; geometry validation must not rely on a successful clear alone.
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write($"[Merchant.Pari] Three-link flight end={_sunCenter} finish={_flightFinish:O}");
-                }
             }
         }
 
@@ -725,11 +715,6 @@ public sealed class MerchantsTale : AbstractDungeon
                     foreach (var match in matches)
                     {
                         _carpetBaubles[match.Carpet] = match.Bauble;
-                    }
-
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[Merchant.Pari] Memorized three occupied carpets for Thieves' Weave.");
                     }
                 }
             }
@@ -847,10 +832,6 @@ public sealed class MerchantsTale : AbstractDungeon
 
         _nightOrigin = new Vector3(omen.M30, boss.Location.Y, omen.M32);
         _nightInitialHeading = (float)Math.Atan2(omen.M20, omen.M22);
-        if (!_nightLineReady && LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write($"[Merchant.Pari] Night line action={boss.CastingSpellId} origin={_nightOrigin} heading={_nightInitialHeading:F3} finish={_nightFinish:O}");
-        }
 
         _nightLineReady = true;
     }
@@ -1103,8 +1084,6 @@ public sealed class MerchantsTale : AbstractDungeon
                     foreach (var gale in aligned)
                         gale.Cancelled = true;
                     _galeResolved = true;
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                        ff14bot.Helpers.Logging.Write("[Merchant.Pari] Friendly Gale Cannon: forecast three cancellations; avoid the two surviving spirits.");
                 }
             }
 
@@ -1160,8 +1139,6 @@ public sealed class MerchantsTale : AbstractDungeon
                 // captured spawn was finish+2s and movement began atapproximately+3.5s.
                 forecast.Expires = forecast.Finish.AddSeconds(15);
                 _winds.Add(forecast);
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    ff14bot.Helpers.Logging.Write("[Merchant.Pari] Strong Wind sweep acquired; lifetime follows its whirlwind.");
             }
 
             forecast.Origin = source.Location;
@@ -3177,9 +3154,6 @@ public sealed class MerchantsTale : AbstractDungeon
                     best = score;
                     _daryaWaveGoal = candidate;
                 }
-
-            if (_daryaWaveGoal.HasValue && LoggingHelpers.MechanicDiagnosticsEnabled)
-                ff14bot.Helpers.Logging.Write("[Merchant] Big Wave stage={0} landing={1}", _daryaWaveGoal.Value, _daryaWaveGoal.Value + _daryaWaveDirection * 35);
         }
 
         if (!_daryaWaveGoal.HasValue)

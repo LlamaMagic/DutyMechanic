@@ -1,4 +1,4 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using Buddy.Coroutines;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
@@ -33,8 +33,6 @@ public class Vanguard : AbstractDungeon
     private DateTime batteryCircuitFirstActivationAtUtc = DateTime.MinValue;
     private DateTime batteryCircuitEndsAtUtc = DateTime.MinValue;
     private DateTime enhancedMobilityEndsAtUtc = DateTime.MinValue;
-    private DateTime protectorFenceCaptureEndsAtUtc = DateTime.MinValue;
-    private DateTime protectorFenceCastFinishAtUtc = DateTime.MinValue;
     private DateTime searchAndDestroyPrepositionEndsAtUtc = DateTime.MinValue;
     private DateTime zanderArenaShrinkAtUtc = DateTime.MinValue;
     private Vector3 batteryCircuitDestination = ArenaCenter.Protector;
@@ -47,16 +45,8 @@ public class Vanguard : AbstractDungeon
     private byte lastProtectorFenceMapEffectFlags;
     private float batteryCircuitAnchorInitialHeading;
     private float batteryCircuitDestinationHeading;
-    private float lastBatteryCircuitDiagnosticHeading = float.NaN;
     private int batteryCircuitDestinationPulseIndex = -1;
-    private int protectorFenceCaptureCheckpoint;
-    private int lastBatteryCircuitDiagnosticPulseIndex = -1;
-    private string lastProtectorFenceActorFingerprint = string.Empty;
-    private string lastProtectorFenceDirectorFingerprint = string.Empty;
-    private string lastProtectorFenceMapEffectsFingerprint = string.Empty;
     private bool protectorFenceMapEffectWasObserved;
-    private bool protectorFenceFulminousWasCasting;
-    private bool protectorFenceParalysisWasPresent;
     private bool batteryCircuitDestinationActive;
     private bool batteryCircuitDestinationUnavailableLogged;
     private bool batteryCircuitMovementOwned;
@@ -749,18 +739,6 @@ public class Vanguard : AbstractDungeon
                 BattleCharacter anchorHelper = SelectBatteryCircuitAnchorHelper(firstConeCasters);
                 batteryCircuitAnchorHelperId = anchorHelper.ObjectId;
                 batteryCircuitAnchorInitialHeading = anchorHelper.Heading;
-
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    string helpers = string.Join(",", firstConeCasters.Select(caster =>
-                        $"0x{caster.ObjectId:X8}@{caster.Heading:F3}"));
-                    Logger.Information(
-                        $"[MechanicDiag] BATTERY_CIRCUIT_SEQUENCE helpers=[{helpers}] " +
-                        $"anchor=0x{batteryCircuitAnchorHelperId:X8} " +
-                        $"initialHeading={batteryCircuitAnchorInitialHeading:F3} " +
-                        $"firstActivationMs={longestRemainingCast.TotalMilliseconds:F0} " +
-                        $"pulses={BatteryCircuitPulseCount} intervalMs={BatteryCircuitPulseInterval.TotalMilliseconds:F0}.");
-                }
             }
         }
         else if (nowUtc >= batteryCircuitEndsAtUtc)
@@ -801,16 +779,6 @@ public class Vanguard : AbstractDungeon
         // and the trailing anchor is reacquired on the first safe tick.
         if (AvoidanceManager.IsRunningOutOfAvoid)
         {
-            bool cachedDestinationCurrent = batteryCircuitDestinationActive &&
-                pulseIndex == batteryCircuitDestinationPulseIndex &&
-                GetAngularDistance(batteryCircuitDestinationHeading, anchorHeading) <
-                DegreesToRadians(BatteryCircuitDestinationReselectionDegrees);
-            LogBatteryCircuitAnchorUpdate(
-                pulseIndex,
-                anchorHeading,
-                liveHeading,
-                cachedDestinationCurrent,
-                batteryCircuitDestination);
             batteryCircuitMoving = false;
             return true;
         }
@@ -840,13 +808,6 @@ public class Vanguard : AbstractDungeon
                 batteryCircuitDestinationPulseIndex = pulseIndex;
             }
         }
-
-        LogBatteryCircuitAnchorUpdate(
-            pulseIndex,
-            anchorHeading,
-            liveHeading,
-            batteryCircuitDestinationActive,
-            batteryCircuitDestination);
 
         if (!batteryCircuitDestinationActive)
         {
@@ -1061,45 +1022,6 @@ public class Vanguard : AbstractDungeon
     }
 
     /// <summary>
-    /// Emits one diagnostic record per pending pulse or observed heading change so the next live
-    /// run can distinguish sequence drift, blocked anchors, and movement latency without per-tick
-    /// log spam.
-    /// </summary>
-    private void LogBatteryCircuitAnchorUpdate(
-        int pulseIndex,
-        float heading,
-        bool liveHeading,
-        bool destinationAvailable,
-        Vector3 destination)
-    {
-        if (!LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            return;
-        }
-
-        bool headingChanged = float.IsNaN(lastBatteryCircuitDiagnosticHeading) ||
-            GetAngularDistance(lastBatteryCircuitDiagnosticHeading, heading) >=
-            DegreesToRadians(BatteryCircuitDiagnosticHeadingThresholdDegrees);
-        if (pulseIndex == lastBatteryCircuitDiagnosticPulseIndex && !headingChanged)
-        {
-            return;
-        }
-
-        lastBatteryCircuitDiagnosticPulseIndex = pulseIndex;
-        lastBatteryCircuitDiagnosticHeading = heading;
-        string target = destinationAvailable ? FormatProtectorCaptureLocation(destination) : "none";
-        string distance = destinationAvailable
-            ? Core.Player.Distance2D(destination).ToString("F3")
-            : "none";
-        Logger.Information(
-            $"[MechanicDiag] BATTERY_CIRCUIT_ANCHOR pulse={pulseIndex + 1}/{BatteryCircuitPulseCount} " +
-            $"helper=0x{batteryCircuitAnchorHelperId:X8} heading={heading:F3} " +
-            $"headingSource={(liveHeading ? "live" : "predicted")} target={target} distance={distance} " +
-            $"player={FormatProtectorCaptureLocation(Core.Player.Location)} " +
-            $"avoids={AvoidanceManager.Avoids.Count} escapingAvoid={AvoidanceManager.IsRunningOutOfAvoid}.");
-    }
-
-    /// <summary>
     /// Stops only movement issued by the Battery Circuit anchor after arrival or destination loss.
     /// </summary>
     private void StopBatteryCircuitOwnedMovement()
@@ -1197,8 +1119,6 @@ public class Vanguard : AbstractDungeon
         batteryCircuitDestinationActive = false;
         batteryCircuitFirstActivationAtUtc = DateTime.MinValue;
         batteryCircuitEndsAtUtc = DateTime.MinValue;
-        lastBatteryCircuitDiagnosticHeading = float.NaN;
-        lastBatteryCircuitDiagnosticPulseIndex = -1;
         batteryCircuitDestinationUnavailableLogged = false;
     }
 
@@ -1307,9 +1227,6 @@ public class Vanguard : AbstractDungeon
             ? instanceDirector.MapEffects
             : [];
 
-        UpdateProtectorFenceCapture(activeDirector, instanceDirector, mapEffects);
-        UpdateProtectorParalysisDiagnostic();
-
         if (instanceDirector == null || !instanceDirector.IsValid)
         {
             return;
@@ -1351,298 +1268,6 @@ public class Vanguard : AbstractDungeon
         {
             SetProtectorFenceLayout(ProtectorFenceLayout.None, null);
         }
-    }
-
-    /// <summary>
-    /// Records the player-facing contact result of crossing an active Fulminous Fence. Fence
-    /// contact applies dispellable Paralysis rather than Vulnerability Up, so this encounter-local
-    /// edge is the acceptance signal that wall-aware navigation must eliminate in the next live
-    /// run. It remains behind the shared developer diagnostic switch and stores no aura wrapper.
-    /// </summary>
-    private void UpdateProtectorParalysisDiagnostic()
-    {
-        if (!LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            protectorFenceParalysisWasPresent = false;
-            return;
-        }
-
-        Auras playerAuras = Core.Player.Auras;
-        if (playerAuras == null || !playerAuras.IsValid)
-        {
-            return;
-        }
-
-        Aura paralysis = playerAuras.AuraList.FirstOrDefault(aura =>
-            aura != null &&
-            !string.IsNullOrWhiteSpace(aura.Name) &&
-            aura.Name.Equals("Paralysis", StringComparison.OrdinalIgnoreCase));
-        bool paralysisIsPresent = paralysis != null;
-        if (paralysisIsPresent && !protectorFenceParalysisWasPresent)
-        {
-            Logger.Warning(
-                $"[MechanicDiag] PROTECTOR_FENCE_PARALYSIS_GAIN statusId={paralysis.Id} " +
-                $"rawValue={paralysis.Value} source=0x{paralysis.CasterId:X8} " +
-                $"layout={protectorFenceLayout} player={FormatProtectorCaptureLocation(Core.Player.Location)} " +
-                $"hp={Core.Player.CurrentHealth}/{Core.Player.MaxHealth} avoids={AvoidanceManager.Avoids.Count} " +
-                $"escapingAvoid={AvoidanceManager.IsRunningOutOfAvoid}.");
-        }
-
-        protectorFenceParalysisWasPresent = paralysisIsPresent;
-    }
-
-    /// <summary>
-    /// Captures the complete director, map-effect, and nearby-object state around Fulminous Fence.
-    /// The earlier packet-index-filtered path produced no record even though the unfiltered
-    /// 2026-08-21 snapshot later exposed the scene-record transition. Three timed snapshots plus
-    /// change-only records distinguish a transient map effect from an actor-described layout or a
-    /// broken director exposure without flooding the rest of the dungeon log.
-    /// </summary>
-    /// <param name="activeDirector">RB's current director, which may not be an instance director.</param>
-    /// <param name="instanceDirector">The current instance director when RB exposes one.</param>
-    /// <param name="mapEffects">One stable bot-frame copy of every exposed map-effect record.</param>
-    private void UpdateProtectorFenceCapture(
-        Director activeDirector,
-        InstanceContentDirector instanceDirector,
-        MapEffect[] mapEffects)
-    {
-        if (!LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ResetProtectorFenceCaptureState();
-            return;
-        }
-
-        DateTime nowUtc = DateTime.UtcNow;
-        BattleCharacter fulminousCaster = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
-            .FirstOrDefault(actor => actor != null && actor.IsValid && actor.IsCasting &&
-                actor.CastingSpellId == EnemyAction.FulminousFence);
-        bool fulminousIsCasting = fulminousCaster != null;
-
-        if (fulminousIsCasting && !protectorFenceFulminousWasCasting)
-        {
-            TimeSpan remainingCastTime = fulminousCaster.SpellCastInfo.RemainingCastTime;
-            protectorFenceCastFinishAtUtc = nowUtc +
-                (remainingCastTime > TimeSpan.Zero ? remainingCastTime : TimeSpan.Zero);
-            protectorFenceCaptureEndsAtUtc = protectorFenceCastFinishAtUtc +
-                ProtectorFencePostResolutionCaptureDelay + ProtectorFenceCaptureGrace;
-            protectorFenceCaptureCheckpoint = 1;
-            lastProtectorFenceActorFingerprint = string.Empty;
-            lastProtectorFenceDirectorFingerprint = string.Empty;
-            lastProtectorFenceMapEffectsFingerprint = string.Empty;
-            LogProtectorFenceCaptureSnapshot(
-                "cast-observed",
-                activeDirector,
-                instanceDirector,
-                mapEffects,
-                nowUtc);
-        }
-
-        protectorFenceFulminousWasCasting = fulminousIsCasting;
-        if (protectorFenceCaptureEndsAtUtc == DateTime.MinValue)
-        {
-            return;
-        }
-
-        bool checkpointLogged = false;
-        if (protectorFenceCaptureCheckpoint == 1 && nowUtc >= protectorFenceCastFinishAtUtc)
-        {
-            protectorFenceCaptureCheckpoint = 2;
-            checkpointLogged = true;
-            LogProtectorFenceCaptureSnapshot(
-                "cast-finish",
-                activeDirector,
-                instanceDirector,
-                mapEffects,
-                nowUtc);
-        }
-        else if (protectorFenceCaptureCheckpoint == 2 &&
-                 nowUtc >= protectorFenceCastFinishAtUtc + ProtectorFencePostResolutionCaptureDelay)
-        {
-            protectorFenceCaptureCheckpoint = 3;
-            checkpointLogged = true;
-            LogProtectorFenceCaptureSnapshot(
-                "post-fence",
-                activeDirector,
-                instanceDirector,
-                mapEffects,
-                nowUtc);
-        }
-
-        if (nowUtc <= protectorFenceCaptureEndsAtUtc && !checkpointLogged)
-        {
-            LogProtectorFenceCaptureChanges(activeDirector, instanceDirector, mapEffects, "state-change", false);
-        }
-        else if (nowUtc > protectorFenceCaptureEndsAtUtc)
-        {
-            protectorFenceCaptureEndsAtUtc = DateTime.MinValue;
-        }
-    }
-
-    /// <summary>
-    /// Records one forced checkpoint and an arena-bounded object inventory. The object inventory is
-    /// intentionally limited to the three mechanic checkpoints; moving party members would make it
-    /// unsuitable for change-based logging while their runtime types and IDs can reveal a fence
-    /// representation that the cast-only collector cannot observe.
-    /// </summary>
-    /// <param name="stage">Capture checkpoint name.</param>
-    /// <param name="activeDirector">RB's active director.</param>
-    /// <param name="instanceDirector">Active instance director, when available.</param>
-    /// <param name="mapEffects">All map effects exposed in the current bot frame.</param>
-    /// <param name="nowUtc">Current bot-thread observation time.</param>
-    private void LogProtectorFenceCaptureSnapshot(
-        string stage,
-        Director activeDirector,
-        InstanceContentDirector instanceDirector,
-        MapEffect[] mapEffects,
-        DateTime nowUtc)
-    {
-        double relativeMilliseconds = protectorFenceCastFinishAtUtc == DateTime.MinValue
-            ? 0d
-            : (nowUtc - protectorFenceCastFinishAtUtc).TotalMilliseconds;
-        Logger.Information(FormattableString.Invariant(
-            $"[MechanicDiag] PROTECTOR_FENCE_CAPTURE stage={stage} relativeToCastFinishMs={relativeMilliseconds:F0} player={FormatProtectorCaptureLocation(Core.Player.Location)}."));
-
-        LogProtectorFenceCaptureChanges(activeDirector, instanceDirector, mapEffects, stage, true);
-
-        List<GameObject> nearbyObjects = GetProtectorCaptureObjects();
-        string objects = nearbyObjects.Count == 0
-            ? "<empty>"
-            : string.Join("; ", nearbyObjects.Select(FormatProtectorCaptureObject));
-        Logger.Information(
-            $"[MechanicDiag] PROTECTOR_FENCE_OBJECTS stage={stage} count={nearbyObjects.Count} " +
-            $"objects=[{objects}].");
-    }
-
-    /// <summary>
-    /// Logs director, full map-effect, and fence-actor fingerprints only when they change between
-    /// forced checkpoints. Fence actor base ID 0x4255 is evidence-only in this capture; it must not
-    /// select a collision preset until a live run proves which positions and lifecycle are exposed.
-    /// </summary>
-    /// <param name="activeDirector">RB's active director.</param>
-    /// <param name="instanceDirector">Active instance director, when available.</param>
-    /// <param name="mapEffects">All map effects exposed in the current bot frame.</param>
-    /// <param name="stage">Checkpoint name or state-change label.</param>
-    /// <param name="force">Whether to log even when the fingerprint is unchanged.</param>
-    private void LogProtectorFenceCaptureChanges(
-        Director activeDirector,
-        InstanceContentDirector instanceDirector,
-        MapEffect[] mapEffects,
-        string stage,
-        bool force)
-    {
-        string directorFingerprint = FormatProtectorDirector(activeDirector, instanceDirector);
-        if (force || directorFingerprint != lastProtectorFenceDirectorFingerprint)
-        {
-            lastProtectorFenceDirectorFingerprint = directorFingerprint;
-            Logger.Information(
-                $"[MechanicDiag] PROTECTOR_FENCE_DIRECTOR stage={stage} {directorFingerprint}.");
-        }
-
-        string mapEffectsFingerprint = FormatProtectorMapEffects(mapEffects);
-        if (force || mapEffectsFingerprint != lastProtectorFenceMapEffectsFingerprint)
-        {
-            lastProtectorFenceMapEffectsFingerprint = mapEffectsFingerprint;
-            Logger.Information(
-                $"[MechanicDiag] PROTECTOR_FENCE_MAP_SNAPSHOT stage={stage} count={mapEffects.Length} " +
-                $"effects=[{mapEffectsFingerprint}].");
-        }
-
-        List<GameObject> fenceActors = GetProtectorCaptureObjects()
-            .Where(actor => actor.BaseId == EnemyNpc.FulminousFenceBaseId)
-            .ToList();
-        string actorFingerprint = fenceActors.Count == 0
-            ? "<empty>"
-            : string.Join("; ", fenceActors.Select(FormatProtectorCaptureObject));
-        if (force || actorFingerprint != lastProtectorFenceActorFingerprint)
-        {
-            lastProtectorFenceActorFingerprint = actorFingerprint;
-            Logger.Information(
-                $"[MechanicDiag] PROTECTOR_FENCE_ACTORS stage={stage} count={fenceActors.Count} " +
-                $"actors=[{actorFingerprint}].");
-        }
-    }
-
-    /// <summary>
-    /// Formats the active director without dereferencing instance-only fields on an invalid or
-    /// differently typed director. Pointer and map-array address distinguish an absent director
-    /// from a valid director whose public map-effect array is empty.
-    /// </summary>
-    private static string FormatProtectorDirector(
-        Director activeDirector,
-        InstanceContentDirector instanceDirector)
-    {
-        if (activeDirector == null)
-        {
-            return "type=<none> valid=False pointer=<none> dungeonId=<none> mapEffectsAddr=<none>";
-        }
-
-        string pointer = FormattableString.Invariant($"0x{activeDirector.Pointer.ToInt64():X}");
-        if (instanceDirector == null || !instanceDirector.IsValid)
-        {
-            return $"type={activeDirector.GetType().FullName} valid={activeDirector.IsValid} " +
-                $"pointer={pointer} dungeonId=<none> mapEffectsAddr=<none>";
-        }
-
-        string mapEffectsAddress = FormattableString.Invariant(
-            $"0x{instanceDirector.MapEffectsAddr.ToInt64():X}");
-        return $"type={activeDirector.GetType().FullName} valid=True pointer={pointer} " +
-            $"dungeonId={instanceDirector.DungeonId} mapEffectsAddr={mapEffectsAddress}";
-    }
-
-    /// <summary>
-    /// Formats every map-effect field in deterministic order so a transient non-0x0D record is
-    /// preserved and array reordering alone does not produce diagnostic noise.
-    /// </summary>
-    private static string FormatProtectorMapEffects(MapEffect[] mapEffects)
-    {
-        if (mapEffects.Length == 0)
-        {
-            return "<empty>";
-        }
-
-        return string.Join("; ", mapEffects
-            .OrderBy(effect => effect.ID)
-            .ThenBy(effect => effect.unk)
-            .ThenBy(effect => effect.State)
-            .ThenBy(effect => effect.Flags)
-            .Select(effect => FormattableString.Invariant(
-                $"id=0x{effect.ID:X2} state=0x{effect.State:X4} flags=0x{effect.Flags:X2} unk=0x{effect.unk:X8}")));
-    }
-
-    /// <summary>
-    /// Returns valid game objects within Protector's arena capture radius. Reading and formatting
-    /// occurs synchronously on the bot thread so no frame-scoped wrapper escapes the current tick.
-    /// </summary>
-    private static List<GameObject> GetProtectorCaptureObjects()
-    {
-        float radiusSquared = ProtectorFenceCaptureRadius * ProtectorFenceCaptureRadius;
-        return GameObjectManager.GameObjects
-            .Where(actor => actor != null && actor.IsValid &&
-                ((actor.Location.X - ArenaCenter.Protector.X) *
-                 (actor.Location.X - ArenaCenter.Protector.X)) +
-                ((actor.Location.Z - ArenaCenter.Protector.Z) *
-                 (actor.Location.Z - ArenaCenter.Protector.Z)) <= radiusSquared)
-            .OrderBy(actor => actor.ObjectId)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Converts one frame-scoped object into a stable scalar diagnostic record.
-    /// </summary>
-    private static string FormatProtectorCaptureObject(GameObject actor)
-    {
-        string name = (actor.Name ?? string.Empty).Replace('"', '\'');
-        return FormattableString.Invariant(
-            $"type={actor.GetType().Name} objectId=0x{actor.ObjectId:X8} baseId=0x{actor.BaseId:X} npcId={actor.NpcId} name=\"{name}\" location={FormatProtectorCaptureLocation(actor.Location)} heading={actor.Heading:F3} visible={actor.IsVisible} targetable={actor.IsTargetable}");
-    }
-
-    /// <summary>
-    /// Formats an X/Y/Z position with invariant precision suitable for comparing captured fence
-    /// nodes to the four-yalm layout grid.
-    /// </summary>
-    private static string FormatProtectorCaptureLocation(Vector3 location)
-    {
-        return FormattableString.Invariant($"({location.X:F3}, {location.Y:F3}, {location.Z:F3})");
     }
 
     /// <summary>
@@ -1760,23 +1385,6 @@ public class Vanguard : AbstractDungeon
         lastProtectorFenceMapEffectUnknown = 0;
         lastProtectorFenceMapEffectState = 0;
         lastProtectorFenceMapEffectFlags = 0;
-        protectorFenceParalysisWasPresent = false;
-        ResetProtectorFenceCaptureState();
-    }
-
-    /// <summary>
-    /// Clears only the evidence-capture window and immutable fingerprints. Collision layout state
-    /// is owned by <see cref="ResetProtectorFenceState"/> and is intentionally not changed here.
-    /// </summary>
-    private void ResetProtectorFenceCaptureState()
-    {
-        protectorFenceCaptureEndsAtUtc = DateTime.MinValue;
-        protectorFenceCastFinishAtUtc = DateTime.MinValue;
-        protectorFenceCaptureCheckpoint = 0;
-        lastProtectorFenceActorFingerprint = string.Empty;
-        lastProtectorFenceDirectorFingerprint = string.Empty;
-        lastProtectorFenceMapEffectsFingerprint = string.Empty;
-        protectorFenceFulminousWasCasting = false;
     }
 
     /// <summary>
@@ -2240,16 +1848,6 @@ public class Vanguard : AbstractDungeon
     private const float ProtectorFenceNavigationRadius = 1.0f;
     private const float ProtectorFenceLeashRadius = 40.0f;
 
-    // Capture through three seconds after cast resolution because the environmental walls finish
-    // materializing on that delay. A half-second grace ensures the final checkpoint survives normal
-    // RB tick jitter without extending diagnostics into unrelated mechanics.
-    private static readonly TimeSpan ProtectorFencePostResolutionCaptureDelay = TimeSpan.FromSeconds(3.0);
-    private static readonly TimeSpan ProtectorFenceCaptureGrace = TimeSpan.FromSeconds(0.5);
-
-    // Thirty yalms contains the complete 24-by-40-yalm arena plus edge actors while excluding trash
-    // elsewhere in the instance, keeping checkpoint object inventories bounded and relevant.
-    private const float ProtectorFenceCaptureRadius = 30.0f;
-
     /// <summary>
     /// Creates a fence-node world position at Protector's fixed arena elevation.
     /// </summary>
@@ -2399,11 +1997,6 @@ public class Vanguard : AbstractDungeon
     private const float BatteryCircuitAngularDeviationPenalty = 2.0f;
     private const float BatteryCircuitRadialDeviationPenalty = 0.25f;
     private const float BatteryCircuitUnavailableLanePenalty = 1_000.0f;
-
-    // Eleven-degree pulses should each produce one record; five degrees also catches a live helper
-    // resynchronization that diverges from the half-second timing fallback and forces a cached
-    // destination to be recalculated before the cone completes a full step.
-    private const float BatteryCircuitDiagnosticHeadingThresholdDegrees = 5.0f;
     private const float BatteryCircuitDestinationReselectionDegrees = 5.0f;
 
     // The corroborated encounter planner blocks both actions and movement one second before expiry;

@@ -1,4 +1,4 @@
-﻿using Buddy.Coroutines;
+using Buddy.Coroutines;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
 using DutyMechanic.Localization;
@@ -25,11 +25,6 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
 
-    // Developer-only high-volume diagnostics must default off in every committed build so customer
-    // logs do not collect encounter cast, status, director, movement-anchor, and arena-object
-    // traffic. Live investigations may toggle this locally, but the push invariant requires false.
-    private const bool EnableMechanicDiagnostics = false;
-
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
     // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
     // pulses continue during that interval; retaining this edge lets the next instance force
@@ -51,9 +46,8 @@ public class DutyMechanicPlugin : BotPlugin
     public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
 
     /// <inheritdoc/>
-    /// Using Major/Minor as Current Global Game version, Build = date. Revision advances this
-    /// net10-compatible release without changing the historical game-version/date identity.
-    public override Version Version => new(7, 5, 04282015, 1);
+    // Keep the historical game-version/date identity; revision 2 fixes source-install startup.
+    public override Version Version => new(7, 5, 04282015, 2);
 
     /// <inheritdoc/>
     public override bool WantButton => false;
@@ -92,7 +86,6 @@ public class DutyMechanicPlugin : BotPlugin
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
         RemoveHooks();
-        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     /// <inheritdoc/>
@@ -112,11 +105,6 @@ public class DutyMechanicPlugin : BotPlugin
         {
             ff14bot.RemoteWindows.QTE.Pulse();
         }
-
-        // A yielding death coroutine can starve the tag/TreeStart diagnostics while plugin
-        // pulses remain available. Capture only; recovery actions stay with their owner.
-        if (EnableMechanicDiagnostics)
-            Dungeons.LabyrinthOfTheAncients.CaptureRecoveryEvidence();
 
         // Completion can occur while the external death coroutine blocks profile advancement.
         Dungeons.LabyrinthOfTheAncients.RecoverCompletedDuty();
@@ -160,7 +148,6 @@ public class DutyMechanicPlugin : BotPlugin
     private void OnBotStop(BotBase bot)
     {
         RemoveHooks();
-        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     private void OnBotStart(BotBase bot)
@@ -185,19 +172,9 @@ public class DutyMechanicPlugin : BotPlugin
 
     private async Task<bool> RunTrust()
     {
-        /*
-        if (await TryRespawnPlayerAsync())
-        {
-            return true;
-        }
-        */
-
         DisableConflictingPlugins();
 
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
-
-        // RB object and aura wrappers are frame-scoped, so diagnostics run on TreeStart's bot thread.
-        LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         LoggingHelpers.LogZoneChanges();
 
         return await DungeonManager.RunAsync();
@@ -218,37 +195,5 @@ public class DutyMechanicPlugin : BotPlugin
                 enabledPlugin.Enabled = false;
             }
         }
-    }
-
-    private static async Task<bool> TryRespawnPlayerAsync()
-    {
-        if (Core.Player.IsAlive)
-        {
-            return false;
-        }
-
-        if (!PartyManager.AllMembers.Any(pm => pm is TrustPartyMember))
-        {
-            return false;
-        }
-
-        Logger.Information(Translations.PLAYER_DIED_RELOADING_PROFILE);
-
-        const int maxRespawnTime = 60_000;
-        bool respawnedInReasonableTime = await Coroutine.Wait(maxRespawnTime, () => Core.Player.IsAlive);
-
-        await LoadingHelpers.WaitForLoadingAsync();
-
-        if (respawnedInReasonableTime)
-        {
-            NeoProfileManager.Load(CharacterSettings.Instance.LastNeoProfile, true);
-            NeoProfileManager.UpdateCurrentProfileBehavior();
-        }
-        else
-        {
-            Logger.Error(Translations.PLAYER_FAILED_TO_RESPAWN, maxRespawnTime);
-        }
-
-        return true;
     }
 }

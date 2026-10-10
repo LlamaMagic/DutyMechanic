@@ -27,6 +27,10 @@ tab_width = 4
 end_of_line = crlf
 insert_final_newline = true
 
+# Expand encounter branches so movement and recovery decisions can be reviewed line by line.
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = false
+
 trim_trailing_whitespace = true
 
 #### .NET Coding Conventions ####

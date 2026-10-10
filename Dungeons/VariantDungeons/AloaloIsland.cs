@@ -137,7 +137,6 @@ public sealed class AloaloIsland : AbstractDungeon
     private readonly Dictionary<uint, Cleave> _statueGazes = new();
     private readonly CapabilityManagerHandle _statueFacingHandle = CapabilityManager.CreateNewHandle();
     private bool _statueFacingOwned, _statueGazeOverrides;
-    private DateTime _statueFacingDiagnosticAfter;
     private bool _lanceOverrides;
     private uint _lanceCancelledCast;
     private readonly Dictionary<uint, Crystal> _crystals = new();
@@ -617,10 +616,6 @@ public sealed class AloaloIsland : AbstractDungeon
             }
 
             _loquOverrides = true;
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[AloaloLoquloqui] Dedicated geometry active; native escape owns geometric overlaps.");
-            }
         }
 
         var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(b => b.IsValid && b.Distance2D(LoquloquiCenter) < 55).ToArray();
@@ -668,11 +663,6 @@ public sealed class AloaloIsland : AbstractDungeon
                                 End = impact.AddSeconds(
                                     .3)
                             });
-                    }
-
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[AloaloLoquloqui] Blossom sequence forecast; only imminent tiles reserve floor.");
                     }
                 }
 
@@ -768,14 +758,6 @@ public sealed class AloaloIsland : AbstractDungeon
                     var seconds = ordered.Length == 2 || wave == 1 ? 21.4 : 15.4;
                     _loquPetals.Add(new LoquHazard { Location = ordered[i].Point, Radius = 15.5f, Wave = wave, End = _loquPetalFinish.AddSeconds(seconds) });
                 }
-
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write(
-                        "[AloaloLoquloqui] Petals forecast count={0}; ordered waves={1}.",
-                        ordered.Length,
-                        ordered.Length == 4 ? 2 : 1);
-                }
             }
         }
 
@@ -843,15 +825,6 @@ public sealed class AloaloIsland : AbstractDungeon
                                         p)).Select(
                                             p => (Vector3?)p).FirstOrDefault(
                 );
-            if (_loquStand.HasValue)
-            {
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write(
-                        "[AloaloLoquloqui] Shockwave staging={0}; projected landing checked against current puddles.",
-                        _loquStand.Value);
-                }
-            }
         }
 
         if (!_loquStand.HasValue)
@@ -1150,10 +1123,6 @@ public sealed class AloaloIsland : AbstractDungeon
                     || angle > .05f))
                 {
                     box.Dangerous = true;
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[AloaloStatice] Coffer warning actor={0:X} timeline={1} cast={2}.", actor.ObjectId, timeline, casting);
-                    }
                 }
 
                 box.Location = actor.Location;
@@ -1250,10 +1219,6 @@ public sealed class AloaloIsland : AbstractDungeon
                         Long = action == 35125,
                         Step = (rotation.Id == 156 ? -1 : 1) * (float)Math.PI / 15
                     };
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[AloaloStatice] Fire actor={0:X} long={1} step={2:F3}.", actor.ObjectId, fire.Long, fire.Step);
-                    }
                 }
 
                 fire.FirstEnd = now + remaining + TimeSpan.FromSeconds(1.1);
@@ -1411,13 +1376,6 @@ public sealed class AloaloIsland : AbstractDungeon
         }
 
         CapabilityManager.Update(_staticePositionHandle, CapabilityFlags.Movement, 1000, "Aloalo Statice " + kind);
-        if (!_staticePositionOwned)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[AloaloStatice] {0} destination={1}.", kind, _staticeDestination.Value);
-            }
-        }
 
         _staticePositionOwned = true;
         if (Core.Me.Distance2D(_staticeDestination.Value) < .3f)
@@ -1573,37 +1531,13 @@ public sealed class AloaloIsland : AbstractDungeon
             {
                 ActionManager.StopCasting();
             }
-
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[AloaloGaze] Holding look-away for {0} captured statue sources.", active.Length);
-            }
         }
 
         _statueFacingOwned = true;
         // The08:59 retry retained its combat heading after StopCasting, despite
         // repeated facing requests. Match the validated Analysis hold by stopping
         // residual mover input before turning; never interrupt active avoid egress.
-        // Keep bounded requested/observed telemetry until combat execution is verified.
         Navigator.PlayerMover.MoveStop();
-        if (now >= _statueFacingDiagnosticAfter)
-        {
-            _statueFacingDiagnosticAfter = now.AddMilliseconds(500);
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write(
-                    "[AloaloGaze] Facing requested={0:F3} observed={1:F3} casting={2} player={3} sources={4}.",
-                    heading,
-                    Core.Me.Heading,
-                    Core.Me.CastingSpellId,
-                    Core.Me.Location,
-                    string.Join(
-                        ";",
-                        active.Select(
-                            g => g.Location.ToString(
-                    ))));
-            }
-        }
 
         Core.Me.SetFacing(heading);
         // Game actions can auto-face despite a routine lease. The bounded impact
@@ -1826,15 +1760,6 @@ public sealed class AloaloIsland : AbstractDungeon
                 location += new Vector3((float)Math.Sin(heading), 0, (float)Math.Cos(heading)) * 8;
             }
 
-            if (!_lalaTiles.ContainsKey(arrow.ObjectId))
-            {
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write(
-                        $"[AloaloLala] Pulse row origin={arrow.Location} heading={arrow.Heading:F3} first={first:O} tiles={tiles.Count}.");
-                }
-            }
-
             _lalaTiles[arrow.ObjectId] = tiles.ToArray();
             _lalaPlotSeeded = true;
         }
@@ -1907,11 +1832,6 @@ public sealed class AloaloIsland : AbstractDungeon
             if (Core.Me.IsCasting)
             {
                 ActionManager.StopCasting();
-            }
-
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write($"[AloaloLala] Analysis facing offset={_lalaUnseenOffset.Value:F3} until={_lalaGazeEnd:O}.");
             }
         }
 
@@ -2039,11 +1959,6 @@ public sealed class AloaloIsland : AbstractDungeon
                         FirstImpact = impact
                     };
                     _lances[actor.ObjectId] = lance;
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write(
-                            $"[Aloalo] Flowing Lance forecast actor={actor.ObjectId:X} action={action} heading={actor.Heading:F3} first={impact:O}");
-                    }
                 }
             }
             else if (_lances.TryGetValue(actor.ObjectId, out var lance))
@@ -2131,10 +2046,6 @@ public sealed class AloaloIsland : AbstractDungeon
 
         _lanceCancelledCast = cast;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[AloaloLance] Cancelled cast " + cast + " for native cross escape.");
-        }
     }
 
     private void ClearLances()
@@ -2242,10 +2153,6 @@ public sealed class AloaloIsland : AbstractDungeon
             }
 
             _hammerMoving = false;
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Aloalo] Hammer landing observed; completed={0}/3.", _hammerIndex);
-            }
         }
 
         if (_hammerIndex >= 3)
@@ -2308,14 +2215,6 @@ public sealed class AloaloIsland : AbstractDungeon
             }
 
             return false; // Holding position must not starve healing or damage rotation.
-        }
-
-        if (!_hammerMoving)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Aloalo] Hammer stage={0}/3 destination={1} projectedLanding={2}.", _hammerIndex + 1, destination, landing);
-            }
         }
 
         _hammerMoving = true;
@@ -2447,10 +2346,6 @@ public sealed class AloaloIsland : AbstractDungeon
                 LlamaLibrary.Helpers.SideStep.Override(35729);
                 LlamaLibrary.Helpers.SideStep.Override(35731);
                 _chargeOverrides = true;
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Aloalo] Rout forecast acquired; ordered width16 lanes own avoidance.");
-                }
             }
 
             if (_chargeStart != default && now > _chargeStart)
@@ -2460,10 +2355,6 @@ public sealed class AloaloIsland : AbstractDungeon
                 while (_chargeIndex + 1 < _chargeLanes.Count && boss.Distance2D(_chargeLanes[_chargeIndex + 1].Location) < 3)
                 {
                     ++_chargeIndex;
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[Aloalo] Rout landed; active lane={0}/{1}.", _chargeIndex + 1, _chargeLanes.Count);
-                    }
                 }
 
                 // The final lane has no following preview; wait for its far end or the
@@ -2492,10 +2383,6 @@ public sealed class AloaloIsland : AbstractDungeon
                 LlamaLibrary.Helpers.SideStep.Override(35740);
                 LlamaLibrary.Helpers.SideStep.Override(35741);
                 _stormOverrides = true;
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Aloalo] Cloud to Ground forecast acquired; six-yalm steps,2.1-second repeats.");
-                }
             }
 
             if (!_storm.TryGetValue(helper.ObjectId, out var wave))
@@ -2570,13 +2457,6 @@ public sealed class AloaloIsland : AbstractDungeon
             _routReplanAt = now.AddMilliseconds(500);
             if (path == null)
             {
-                if (_routOwned)
-                {
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[Aloalo] Rout plan unavailable; restoring native avoidance.");
-                    }
-                }
 
                 ReleaseRoutMovement();
                 return false;
@@ -2586,14 +2466,6 @@ public sealed class AloaloIsland : AbstractDungeon
             if (!retain)
             {
                 _routPathAt = now;
-            }
-
-            if (!_routOwned)
-            {
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Aloalo] Rout ordered plan acquired; four impacts share one movement owner.");
-                }
             }
 
             _routOwned = true;
@@ -2637,10 +2509,6 @@ public sealed class AloaloIsland : AbstractDungeon
         if (_routOwned)
         {
             CapabilityManager.Clear(_routHandle, CapabilityFlags.Movement, "Aloalo Rout plan ended");
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Aloalo] Rout ordered plan released.");
-            }
         }
 
         if (_routMoving && !AvoidanceManager.IsRunningOutOfAvoid)
@@ -2659,10 +2527,6 @@ public sealed class AloaloIsland : AbstractDungeon
         {
             LlamaLibrary.Helpers.SideStep.RemoveHandler(35729);
             LlamaLibrary.Helpers.SideStep.RemoveHandler(35731);
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Aloalo] Rout forecast released.");
-            }
         }
 
         _chargeOverrides = false;
@@ -2989,14 +2853,6 @@ public sealed class AloaloIsland : AbstractDungeon
         {
             _wavefoamMoving = false;
             return false;
-        }
-
-        if (_wavefoamTarget != bubble.ObjectId)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Aloalo] Wavefoam pickup={0}, projected landing={1}.", bubble.Location, bubble.Location + direction * 20);
-            }
         }
 
         _wavefoamTarget = bubble.ObjectId;
@@ -3364,13 +3220,6 @@ public sealed class AloaloIsland : AbstractDungeon
             _bubbleTideReplanAt = now.AddMilliseconds(500);
             if (path == null)
             {
-                if (_bubbleTideOwned)
-                {
-                    if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                    {
-                        ff14bot.Helpers.Logging.Write("[Aloalo] Bubble/tide plan unavailable; restoring native avoidance.");
-                    }
-                }
 
                 ReleaseBubbleTide();
                 return false;
@@ -3380,14 +3229,6 @@ public sealed class AloaloIsland : AbstractDungeon
             if (!retain)
             {
                 _bubbleTidePathAt = now;
-            }
-
-            if (!_bubbleTideOwned)
-            {
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Aloalo] Bubble/tide plan acquired; ordered tide impacts and moving-row clearance share one owner.");
-                }
             }
 
             _bubbleTideOwned = true;
@@ -3580,10 +3421,6 @@ public sealed class AloaloIsland : AbstractDungeon
 
         _weatherCancelledCast = cast; // Latch before the client's stop acknowledgement.
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[AloaloWeather] Cancelled cast " + cast + " for native wave escape.");
-        }
     }
 
     private void UpdateSpheres()

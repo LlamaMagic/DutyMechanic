@@ -28,7 +28,6 @@ namespace DutyMechanic.Dungeons;
 /// </remarks>
 public sealed class PoolOfTribute : AbstractDungeon
 {
-    private const string ActorWatchScope = "PoolOfTribute";
 
     // The Action table defines the damaging helper as a six-yalm target circle. The standard
     // half-yalm margin covers actor-center and navigation stopping tolerance without consuming
@@ -99,7 +98,6 @@ public sealed class PoolOfTribute : AbstractDungeon
     protected override Task<bool> ExitDungeonAsync()
     {
         StopSeasplitterMovement();
-        LoggingHelpers.ClearActorSignalWatch(ActorWatchScope);
         return Task.FromResult(false);
     }
 
@@ -112,14 +110,8 @@ public sealed class PoolOfTribute : AbstractDungeon
 
         if (!IsEncounterActive())
         {
-            LoggingHelpers.ClearActorSignalWatch(ActorWatchScope);
             return false;
         }
-
-        // This shared, compile-time-gated watch records targetability, targets, statuses, VFX,
-        // tethers, and transforms for the three actors already established by the OrderBot profile.
-        // It is observational only and supplies the missing evidence for marker-driven movement.
-        LoggingHelpers.LogActorSignalChanges(ActorWatchScope, IsEncounterActor);
 
         if (await HandleSeasplitterAsync())
         {

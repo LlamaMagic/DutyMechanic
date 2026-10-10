@@ -103,7 +103,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
     private DateTime _millFirst;
     private float _millInitialHeading;
     private float _millStep;
-    private int _lastMillStep = -1;
     private Vector3[] _largeWinds = Array.Empty<Vector3>();
     private Vector3[] _smallWinds = Array.Empty<Vector3>();
     private Vector3 _windCenter;
@@ -718,12 +717,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
             }
 
             LlamaLibrary.Helpers.SideStep.RemoveHandler(action);
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write(
-                    "[Sildihn] Silver{0} has an unrecognized omen; retaining generic initial avoidance, follow-ups unverified.",
-                    action);
-            }
 
             return;
         }
@@ -737,10 +730,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         var end = now + actor.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(9200);
         var heading = (float)Math.Atan2(matrix.M20, matrix.M22);
         _silverFlames[actor.ObjectId] = SilverForecasts(matrix.Center, heading, action, end);
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[Sildihn] Silver{0} sweep at{1}, heading={2}, until{3:O}", action, matrix.Center, heading, end);
-        }
     }
 
     private static Forecast[] SilverForecasts(Vector3 origin, float heading, uint action, DateTime end) => Enumerable.Range(
@@ -824,10 +813,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
 
         _ringCancelledCast = action;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[Sildihn] Cancelled cast {0} inside Ring of Might; native avoidance retains movement.", action);
-        }
     }
 
     // Match the published0.5-yalm clearance, excluding the inner phase's staging-only
@@ -876,10 +861,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
 
         _rushCancelledCast = action;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[Sildihn] Cancelled cast {0} inside Rush of Might; native avoidance retains movement.", action);
-        }
     }
 
     private static bool IsInnerRing(uint action) => action is >= 30271 and <= 30273;
@@ -1039,14 +1020,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
             return Array.Empty<Vector3>();
         }
 
-        if (_barrelTarget != blue.Id)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] Barrel safe center {0}: {1}; preposition={2}", blue.Id, KegPosition(blue), !blue.Casting);
-            }
-        }
-
         _barrelTarget = blue.Id;
         return new[]
         {
@@ -1110,10 +1083,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
 
         _slamCancelledCast = action;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[Sildihn] Cancelled cast {0} inside Colossal Slam; native avoidance retains movement.", action);
-        }
     }
 
     // Match the published padded sector, not OutsideSlam's larger two-yalm staging disk.
@@ -1217,14 +1186,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
             // Actor translation completed about 1.7s after RB's reported cast finish in
             // that capture. Keep the forecast until the observed two-second handoff.
             _chargePositionsUntil = DateTime.UtcNow + boss.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(2);
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write(
-                    "[Sildihn] Charge{0} forecasts {1} keg positions until{2:O}",
-                    action,
-                    _chargedKegPositions.Count,
-                    _chargePositionsUntil);
-            }
         }
 
         _chargeCast = action;
@@ -1239,11 +1200,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
             _millInitialHeading = boss.Heading;
             _millStep = action == 29898 ? -(float)Math.PI / 8 : (float)Math.PI / 8;
             _millFirst = DateTime.UtcNow + boss.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(300);
-            _lastMillStep = -1;
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] Gigantomill action={0} first={1:O} heading={2}", action, _millFirst, _millInitialHeading);
-            }
         }
 
         // 2026-09-28 right capture21:56:29: the first frame faced3.5207 while the boss
@@ -1255,23 +1211,8 @@ public sealed class SildihnSubterrane : AbstractDungeon
         {
             _millInitialHeading = boss.Heading;
         }
-        else if (_millCast is 29897 or 29898)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] Gigantomill settled initial heading={0}", _millInitialHeading);
-            }
-        }
 
         _millCast = initialCast ? action : 0;
-        if (MillActive() && _lastMillStep != MillIndex())
-        {
-            _lastMillStep = MillIndex();
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] Gigantomill step={0} heading={1} barrelsFirst={2}", _lastMillStep, MillHeading(), HasPendingKegs());
-            }
-        }
     }
 
     // Five successive impacts rotate22.5 degrees at 1.7s intervals. The next sector becomes the
@@ -1297,7 +1238,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         _flipCast = false;
         _millCast = 0;
         _millFirst = default;
-        _lastMillStep = -1;
         _gladiatorCasts.Clear();
         _silverFlames.Clear();
         _silkieCasts.Clear();
@@ -1394,7 +1334,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
     private uint _silkieKnockbackAction;
     private bool _silkieKnockbackOwned;
     private bool _silkieMoving;
-    private DateTime _silkiePlanLog;
     private static bool InSilkie() => WorldManager.ZoneId == 1069 && Core.Me.InCombat && Core.Me.Distance2D(SilkieCenter) < 50;
     private void RegisterSilkieGeometry()
     {
@@ -1756,15 +1695,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         if (!_silkieDestination.HasValue)
         {
             ReleaseSilkieKnockback();
-            if (DateTime.UtcNow >= _silkiePlanLog)
-            {
-                _silkiePlanLog = DateTime.UtcNow.AddSeconds(2);
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Sildihn] No corroborated Silkie knockback landing; yielding to native avoidance.");
-                }
-            }
-
             return false;
         }
 
@@ -1792,20 +1722,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
             }
 
             return false; // Rotation/healing remain schedulable while holding safety.
-        }
-
-        if (!_silkieMoving)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write(
-                    "[Sildihn] Knockback {0} stage={1} source={2} heading={3}",
-                    cast.Action,
-                    SilkieWorld(
-                        _silkieDestination.Value),
-                    cast.Location,
-                    cast.Heading);
-            }
         }
 
         _silkieMoving = true;
@@ -1899,20 +1815,8 @@ public sealed class SildihnSubterrane : AbstractDungeon
             }
 
             _runoffStage = world;
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] Runoff stage={0} source={1} landing={2}", world, actor.Location, landing);
-            }
 
             break;
-        }
-
-        if (fresh && !_runoffStage.HasValue)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[Sildihn] No corroborated Runoff landing; retaining native emergency avoidance.");
-            }
         }
     }
 
@@ -2433,13 +2337,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         }
 
         var next = new Vector3(stage[0], 33, stage[1]);
-        if (!_zelessBombStage.HasValue || _zelessBombStage.Value.Distance2D(next) > .1f)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[SildihnZeless] Native bomb safe-disk stage={0} bombs={1}", next, bombs.Length);
-            }
-        }
 
         _zelessBombStage = next;
     }
@@ -2571,10 +2468,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         // cancels while the same cast remains visible during the client's acknowledgement.
         _zelessCancelledCast = cast;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[SildihnZeless] Cancelled cast " + cast + " inside relocated hazard; native avoidance retains movement.");
-        }
     }
 
     // Match the exact published circle/centered-font geometry, including its0.5-yalm
@@ -2811,7 +2704,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
     private static readonly Vector3 ThorneCenter = new(289, 27, -230);
     private readonly Dictionary<uint, Forecast> _thorneCasts = new();
     private Forecast[] _thorneCarriages = Array.Empty<Forecast>();
-    private string _thorneCarriageIdentity = string.Empty;
     private const uint ThorneCarriageBase = 14666;
     private const uint ThorneCarriageNpc = 11421;
     private const uint ThorneCarriageAction = 28920;
@@ -2938,17 +2830,12 @@ public sealed class SildihnSubterrane : AbstractDungeon
 
         _thorneCancelledCast = cast;
         ActionManager.StopCasting();
-        if (LoggingHelpers.MechanicDiagnosticsEnabled)
-        {
-            ff14bot.Helpers.Logging.Write("[SildihnThorne] Cancelled cast for native hazard escape.");
-        }
     }
 
     private void ResetThorne()
     {
         _thorneCasts.Clear();
         _thorneCarriages = Array.Empty<Forecast>();
-        _thorneCarriageIdentity = string.Empty;
         _thorneCancelledCast = 0;
     }
 
@@ -2958,7 +2845,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         // mid-fight attachment. Return4, director loss, death and reset release them;
         // a cast-based timer would miss these no-cast volleys or expire before impact.
         var warnings = new List<Forecast>();
-        var identities = new List<string>();
         if (InThorne() && DirectorManager.ActiveDirector is ff14bot.Directors.InstanceContentDirector director && director.IsValid)
         {
             var maps = director.MapEffects.ToArray();
@@ -3004,29 +2890,17 @@ public sealed class SildihnSubterrane : AbstractDungeon
                                 actor.Location.Z),
                             Heading = actor.Heading
                         });
-                    identities.Add($"{group.Key}:{actor.ObjectId:X}");
                 }
             }
         }
 
         _thorneCarriages = warnings.ToArray();
-        var identity = string.Join(";", identities.OrderBy(s => s));
-        if (identity != _thorneCarriageIdentity)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write("[SildihnThorne] Carriage warnings: {0}", identity.Length == 0 ? "released" : identity);
-            }
-
-            _thorneCarriageIdentity = identity;
-        }
     }
 
     private readonly CapabilityManagerHandle _boulderShelterHandle = CapabilityManager.CreateNewHandle();
     private bool _boulderShelterOwned;
     private bool _boulderShelterMoving;
     private DateTime _boulderShelterUntil;
-    private DateTime _boulderEvidenceLog;
     private Vector3? _boulderShelterPoint;
     private Vector3 _boulderShelterSource;
     private Vector3 _boulderShelterRock;
@@ -3111,15 +2985,6 @@ public sealed class SildihnSubterrane : AbstractDungeon
         if (rocks.Length != 4 || intact.Length != 1 || rocks.Count(b => b.State == 1) != 3)
         {
             ReleaseBoulderShelter();
-            if (steel != null && rocks.Length != 0 && now >= _boulderEvidenceLog)
-            {
-                _boulderEvidenceLog = now.AddSeconds(2);
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Sildihn] Boulder shelter ambiguous: {0}", string.Join(";", rocks.Select(b => $"{b.ObjectId:X}:{b.State}")));
-                }
-            }
-
             return;
         }
 
@@ -3178,33 +3043,12 @@ public sealed class SildihnSubterrane : AbstractDungeon
             return false; // Keep healing, mitigation and rotation schedulable in shelter.
         }
 
-        if (!_boulderShelterMoving)
-        {
-            if (LoggingHelpers.MechanicDiagnosticsEnabled)
-            {
-                ff14bot.Helpers.Logging.Write(
-                    "[Sildihn] Intact boulder shelter rock={0} source={1} destination={2}",
-                    _boulderShelterRock,
-                    _boulderShelterSource,
-                    point);
-            }
-        }
-
         _boulderShelterMoving = true;
         // Navigator defaults to 5 yalms, wider than the shadow. Use the tested
         // sub-half-yalm arrival tolerance and never attempt mounting in combat.
         var result = Navigator.MoveTo(new MoveToParameters(point) { DistanceTolerance = .45f, UseMount = false });
         if (result is MoveResult.Failed or MoveResult.PathGenerationFailed)
         {
-            if (DateTime.UtcNow >= _boulderEvidenceLog)
-            {
-                _boulderEvidenceLog = DateTime.UtcNow.AddSeconds(2);
-                if (LoggingHelpers.MechanicDiagnosticsEnabled)
-                {
-                    ff14bot.Helpers.Logging.Write("[Sildihn] Intact-boulder shelter navigation failed: {0}", result);
-                }
-            }
-
             ReleaseBoulderShelter();
             return false; // A failed path must not starve mitigation/healing.
         }
