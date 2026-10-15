@@ -1,5 +1,10 @@
 DutyMechanic Changelog
 
+7.5.4282015.3 10/15/2026
+
+Alliance Raids
+- Labyrinth of the Ancients and World of Darkness now run through Panda Farmer 2.5.4.5. Update both plugins and restart RebornBuddy outside a duty.
+
 7.5.4282015.2 10/10/2026
 
 Alliance Raids

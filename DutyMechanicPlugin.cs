@@ -25,6 +25,9 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
 
+    // Keep the shared developer collector available without recurring customer log traffic.
+    private const bool EnableMechanicDiagnostics = false;
+
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
     // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
     // pulses continue during that interval; retaining this edge lets the next instance force
@@ -46,8 +49,8 @@ public class DutyMechanicPlugin : BotPlugin
     public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
 
     /// <inheritdoc/>
-    // Keep the historical game-version/date identity; revision 2 fixes source-install startup.
-    public override Version Version => new(7, 5, 04282015, 2);
+    // Keep the historical game-version/date identity; revision 3 transfers raid ownership to Panda Farmer 2.5.4.5.
+    public override Version Version => new(7, 5, 04282015, 3);
 
     /// <inheritdoc/>
     public override bool WantButton => false;
@@ -86,6 +89,7 @@ public class DutyMechanicPlugin : BotPlugin
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
         RemoveHooks();
+        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     /// <inheritdoc/>
@@ -106,11 +110,8 @@ public class DutyMechanicPlugin : BotPlugin
             ff14bot.RemoteWindows.QTE.Pulse();
         }
 
-        // Completion can occur while the external death coroutine blocks profile advancement.
-        Dungeons.LabyrinthOfTheAncients.RecoverCompletedDuty();
-        // The World tag owns recovery decisions; this bot-thread pulse only lets
-        // its guarded Return run when Platypus's death wait blocks TreeStart.
-        ff14bot.NeoProfiles.Tags.WorldOfDarknessRun.PulseRecovery();
+        // Panda Farmer owns the ARR alliance raid tags and their guarded death recovery.
+        // Do not pulse them here: two plugin owners can race the same Return confirmation.
 
         bool isInInstance = LoadingHelpers.IsInInstance;
 
@@ -148,6 +149,7 @@ public class DutyMechanicPlugin : BotPlugin
     private void OnBotStop(BotBase bot)
     {
         RemoveHooks();
+        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     private void OnBotStart(BotBase bot)
@@ -158,6 +160,7 @@ public class DutyMechanicPlugin : BotPlugin
     private void OnHooksCleared(object sender, EventArgs e)
     {
         RemoveHooks();
+        LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
 
     private static bool CanTrust()
@@ -175,6 +178,8 @@ public class DutyMechanicPlugin : BotPlugin
         DisableConflictingPlugins();
 
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
+        // Frame-scoped wrappers must be sampled on the bot thread, never from the UI.
+        LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         LoggingHelpers.LogZoneChanges();
 
         return await DungeonManager.RunAsync();
