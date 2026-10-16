@@ -1,5 +1,12 @@
 DutyMechanic Changelog
 
+Unreleased
+
+The Vault
+- Increase Brightsphere clearance to include its hitbox and a safety margin.
+- Exclude the player from their own Burning Chains avoidance and preserve the final arena's square corners for escape routes.
+- Validated in one Dragoon Duty Support clear on October 16 with no deaths; other roles, direct player-chain breaks and wipe recovery remain unverified.
+
 7.5.4282015.3 10/15/2026
 
 Alliance Raids

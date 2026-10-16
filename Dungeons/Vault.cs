@@ -55,11 +55,13 @@ public class Vault : AbstractDungeon
     {
         
 
-        // Boss 1: Brightsphere / White Balls
+        // Bright Flare reaches six yalms from the sphere center (five plus its one-yalm
+        // hitbox). Keep a 0.5-yalm margin; the October 16 capture confirms sphere avoidance
+        // is active, but does not prove that the earlier death was caused by this radius.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<GameObject>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheQuire,
             objectSelector: obj => obj.NpcId == BrightsphereNpc,
-            radiusProducer: obj => 5.5f,
+            radiusProducer: obj => 6.5f,
             priority: AvoidancePriority.Medium));
 
         // Boss 2
@@ -126,10 +128,11 @@ public class Vault : AbstractDungeon
             innerRadius: 12.5f,
             priority: AvoidancePriority.Medium);
 
-        // Boss 3: Holy Chain / Burning Chains
+        // Move away from the other chained actor, never an avoid centered on ourselves.
+        // Preserve the existing separation distance until chain-break timing is captured.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel && Core.Player.HasAura(BurningChainsAura),
-            objectSelector: bc => bc.HasAura(BurningChainsAura),
+            objectSelector: bc => bc.ObjectId != Core.Player.ObjectId && bc.HasAura(BurningChainsAura),
             radiusProducer: bc => 20f,
             priority: AvoidancePriority.Medium));
 
@@ -173,11 +176,15 @@ public class Vault : AbstractDungeon
             innerRadius: 19.0f,
             priority: AvoidancePriority.High);
 
-        AvoidanceHelpers.AddAvoidDonut(
+        // The Chancel is a forty-yalm square. A circular boundary removes valid corner
+        // space needed by chains and knight lanes; retain a 0.5-yalm inset at each wall.
+        AvoidanceHelpers.AddAvoidSquareDonut(
             () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel,
-            () => SerCharibertArenaCenter,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
+            innerWidth: 39.0f,
+            innerHeight: 39.0f,
+            outerWidth: 90.0f,
+            outerHeight: 90.0f,
+            collectionProducer: () => [SerCharibertArenaCenter],
             priority: AvoidancePriority.High);
 
         return false;
