@@ -2,6 +2,11 @@ DutyMechanic Changelog
 
 Unreleased
 
+The Grand Cosmos
+- Add boss stack, spread, moving-hazard and wind avoidance.
+- Transfer Mortal Flame to available furniture and handle Lugus's numbered charges while preserving normal combat.
+- Release encounter movement and hazards when stopped, disabled, loading or defeated.
+
 The Vault
 - Increase Brightsphere clearance to include its hitbox and a safety margin.
 - Exclude the player from their own Burning Chains avoidance and preserve the final arena's square corners for escape routes.

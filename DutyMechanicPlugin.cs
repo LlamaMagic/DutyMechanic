@@ -88,6 +88,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.TheRoyalMenagerie.ResetActive();
         // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
         Dungeons.Amaurot.ResetActive();
+        // Release Grand Cosmos positioning and hazards before another movement owner runs.
+        Dungeons.GrandCosmos.ResetActive();
         TreeRoot.OnStart -= OnBotStart;
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
@@ -104,6 +106,8 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // Loading/death can bypass TreeStart; clear encounter-owned state on the plugin pulse.
+        Dungeons.GrandCosmos.CheckLifecycle();
         // One Royal Menagerie owner must tick even while AutoParty retains a yielding coroutine.
         // It performs no awaits; normal TreeStart only observes its scheduling result.
         if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot)
@@ -161,6 +165,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.TheRoyalMenagerie.ResetActive();
         // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
         Dungeons.Amaurot.ResetActive();
+        // Release Grand Cosmos positioning and hazards before another movement owner runs.
+        Dungeons.GrandCosmos.ResetActive();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
@@ -175,6 +181,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.TheRoyalMenagerie.ResetActive();
         // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
         Dungeons.Amaurot.ResetActive();
+        // Release Grand Cosmos positioning and hazards before another movement owner runs.
+        Dungeons.GrandCosmos.ResetActive();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
