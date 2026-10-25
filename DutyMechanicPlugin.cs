@@ -85,6 +85,9 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnDisabled()
     {
+        Dungeons.TheRoyalMenagerie.ResetActive();
+        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
+        Dungeons.Amaurot.ResetActive();
         TreeRoot.OnStart -= OnBotStart;
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
@@ -101,6 +104,13 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // One Royal Menagerie owner must tick even while AutoParty retains a yielding coroutine.
+        // It performs no awaits; normal TreeStart only observes its scheduling result.
+        if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot)
+        {
+            if (WorldManager.ZoneId == 679) LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+            Dungeons.TheRoyalMenagerie.PulseActive();
+        }
         // Enabled plugins pulse on the bot thread even while OrderBot's cutscene/profile
         // coroutine owns TreeStart. RB's native QTE API supplies one input per frame without
         // keyboard simulation or a blocking coroutine. Keep this outside CanTrust so solo
@@ -148,6 +158,9 @@ public class DutyMechanicPlugin : BotPlugin
 
     private void OnBotStop(BotBase bot)
     {
+        Dungeons.TheRoyalMenagerie.ResetActive();
+        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
+        Dungeons.Amaurot.ResetActive();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
@@ -159,6 +172,9 @@ public class DutyMechanicPlugin : BotPlugin
 
     private void OnHooksCleared(object sender, EventArgs e)
     {
+        Dungeons.TheRoyalMenagerie.ResetActive();
+        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
+        Dungeons.Amaurot.ResetActive();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
@@ -202,3 +218,4 @@ public class DutyMechanicPlugin : BotPlugin
         }
     }
 }
+

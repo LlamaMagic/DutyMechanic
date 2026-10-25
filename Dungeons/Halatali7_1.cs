@@ -1,6 +1,12 @@
 using Clio.Utilities;
 using DutyMechanic.Data;
+using DutyMechanic.Helpers;
+using ff14bot;
+using ff14bot.Managers;
+using ff14bot.Objects;
+using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DutyMechanic.Dungeons;
@@ -14,15 +20,57 @@ public class Halatali7_1 : AbstractDungeon
     public override ZoneId ZoneId => Data.ZoneId.Halatali7_1;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Fireflow, EnemyAction.Fireflow2, EnemyAction.HydroelectricShock];
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Fireflow, EnemyAction.Fireflow2, EnemyAction.HydroelectricShockVisual, EnemyAction.HydroelectricShock];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.BurningBolt, EnemyAction.Levinfang, EnemyAction.StraightPunch];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+
+    /// <inheritdoc/>
+    protected override Task<bool> EnterDungeonAsync()
+    {
+        // Own all three casts from discovery so SideStep does not simultaneously
+        // forbid the current safe area with a later wave's generic donut.
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
+            condition: () => IsPlainPoundStageActive(EnemyAction.PlainPound),
+            objectSelector: caster => IsCasting(caster, EnemyAction.PlainPound),
+            radiusProducer: _ => 10.5f));
+        RegisterPlainPoundRing(EnemyAction.Tremblor, 9.5, 20.5);
+        RegisterPlainPoundRing(EnemyAction.Earthquake, 19.5, 30.5);
+        return Task.FromResult(false);
+    }
+
+    private void RegisterPlainPoundRing(uint actionId, double innerRadius, double outerRadius)
+    {
+        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
+            canRun: () => IsPlainPoundStageActive(actionId),
+            objectSelector: caster => IsCasting(caster, actionId),
+            innerRadius: innerRadius,
+            outerRadius: outerRadius);
+    }
+
+    private bool IsPlainPoundStageActive(uint actionId)
+    {
+        if (WorldManager.ZoneId != (ushort)ZoneId || Core.Me == null || !Core.Me.IsValid || !Core.Me.InCombat)
+            return false;
+
+        uint earliestStage = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(caster => caster.IsValid && caster.IsCasting
+                && caster.CastingSpellId >= EnemyAction.PlainPound
+                && caster.CastingSpellId <= EnemyAction.Earthquake)
+            .Select(caster => caster.CastingSpellId)
+            .DefaultIfEmpty(0u).Min();
+        return earliestStage == actionId;
+    }
+
+    private static bool IsCasting(BattleCharacter caster, uint actionId)
+        => caster.IsValid && caster.IsCasting && caster.CastingSpellId == actionId;
+
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
+        await TankBusterSpells();
         await FollowDodgeSpells();
 
         return false;
@@ -69,22 +117,46 @@ public class Halatali7_1 : AbstractDungeon
         /// <summary>
         /// Firemane
         /// Fireflow
-        /// Stack
+        /// First wave of cone AOEs; follow the Duty Support party to safety.
         /// </summary>
         public const uint Fireflow = 40588;
 
         /// <summary>
         /// Firemane
         /// Fireflow
-        /// Stack
+        /// Second wave of cone AOEs; follow the Duty Support party to safety.
         /// </summary>
         public const uint Fireflow2 = 40589;
 
         /// <summary>
         /// Thunderclap Guivre
         /// Hydroelectric Shock
-        /// Stack
+        /// Water electrifies; follow the Duty Support party onto dry ground.
         /// </summary>
-        public const uint HydroelectricShock = 40593;
+        public const uint HydroelectricShockVisual = 40593;
+
+        /// <summary>
+        /// Thunderclap Guivre's helper resolves one second after the visual cast;
+        /// keep following the party onto dry ground through the actual hit.
+        /// </summary>
+        public const uint HydroelectricShock = 41113;
+
+        /// <summary>Firemane's helper-cast tankbuster (not the boss's visual cast).</summary>
+        public const uint BurningBolt = 40591;
+
+        /// <summary>Thunderclap Guivre's tankbuster.</summary>
+        public const uint Levinfang = 40594;
+
+        /// <summary>Tangata's tankbuster.</summary>
+        public const uint StraightPunch = 40602;
+
+        /// <summary>Tangata's first concentric wave: a ten-yalm circle.</summary>
+        public const uint PlainPound = 40599;
+
+        /// <summary>Tangata's second concentric wave: a ten-to-twenty-yalm ring.</summary>
+        public const uint Tremblor = 40600;
+
+        /// <summary>Tangata's final concentric wave: a twenty-to-thirty-yalm ring.</summary>
+        public const uint Earthquake = 40601;
     }
 }

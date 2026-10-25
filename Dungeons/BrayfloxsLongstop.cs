@@ -26,12 +26,14 @@ public class BrayfloxsLongstop : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+    // Aiatar's five-second, single-target Salivous Snap.
+    protected override HashSet<uint> SpellsToTankBust { get; } = [28659];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
+        await TankBusterSpells();
         await FollowDodgeSpells();
 
         // Hellbender

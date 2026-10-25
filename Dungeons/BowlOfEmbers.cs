@@ -42,7 +42,8 @@ public class BowlOfEmbers : AbstractDungeon
             leashPointProducer: () => IfritArenaCenter,
             leashRadius: 40.0f,
             rotationDegrees: 0.0f,
-            radius: 15.0f,
+            // Incinerate reaches sixteen yalms including Ifrit's hitbox.
+            radius: 16.5f,
             arcDegrees: 160.0f);
 
         return false;

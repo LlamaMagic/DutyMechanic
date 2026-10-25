@@ -21,7 +21,7 @@ public class HaukkeManor : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToTankBust { get; } = [];
+    protected override HashSet<uint> SpellsToTankBust { get; } = [EnemyAction.VoidThunderIII];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
@@ -44,6 +44,7 @@ public class HaukkeManor : AbstractDungeon
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
+        await TankBusterSpells();
         await FollowDodgeSpells();
 
         return false;
@@ -92,6 +93,9 @@ public class HaukkeManor : AbstractDungeon
 
     private static class EnemyAction
     {
+        /// <summary>Lady Amandine's interruptible tankbuster; mitigate if it is not interrupted.</summary>
+        public const uint VoidThunderIII = 28645;
+
         /// <summary>
         /// <see cref="EnemyNpc.LadyAmandine"/>'s Petrifying Eye.
         ///
