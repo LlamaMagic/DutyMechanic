@@ -1,4 +1,4 @@
-﻿using Buddy.Coroutines;
+using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
@@ -8,6 +8,7 @@ using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
 using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,62 +21,25 @@ public class AlaMhigo : AbstractDungeon
 {
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.AlaMhigo;
-
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToFollowDodge { get; } = null;
-
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+    protected override HashSet<uint> SpellsToMitigate { get; } = [];
+
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
-
         // Blue puddles of fire that fall on the player between the first boss and the second
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate,
-            objectSelector: eo => eo.IsVisible && eo.NpcId == EnemyNpc.FirePuddle,
-            radiusProducer: eo => 5.0f,
-            priority: AvoidancePriority.High));
-
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate,
-            objectSelector: bc => bc.NpcId == EnemyNpc.LockOn && bc.IsVisible,
-            radiusProducer: bc => 7.0f,
-            priority: AvoidancePriority.High));
-
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<EventObject>(condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate, objectSelector: eo => eo.IsVisible && eo.NpcId == EnemyNpc.FirePuddle, radiusProducer: eo => 5.0f, priority: AvoidancePriority.High));
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate, objectSelector: bc => bc.NpcId == EnemyNpc.LockOn && bc.IsVisible, radiusProducer: bc => 7.0f, priority: AvoidancePriority.High));
         // Boss 2: Demimagicks
-        AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == ((uint)SubZoneId.TheChamberofKnowledge),
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.Demimagicks,
-            radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
-            locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
-
+        AvoidanceManager.AddAvoidObject<BattleCharacter>(canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == ((uint)SubZoneId.TheChamberofKnowledge), objectSelector: bc => bc.CastingSpellId == EnemyAction.Demimagicks, radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f, locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
         // Boss Arenas
-
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate,
-            () => ArenaCenter.MagitekScorpion,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChamberofKnowledge,
-            () => ArenaCenter.AulusmalAsina,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
-        AvoidanceHelpers.AddAvoidDonut(
-            () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheHalloftheGriffin,
-            () => ArenaCenter.Zenos,
-            outerRadius: 90.0f,
-            innerRadius: 19.0f,
-            priority: AvoidancePriority.High);
-
+        AvoidanceHelpers.AddAvoidDonut(() => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.RhalgrsGate, () => ArenaCenter.MagitekScorpion, outerRadius: 90.0f, innerRadius: 19.0f, priority: AvoidancePriority.High);
+        AvoidanceHelpers.AddAvoidDonut(() => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChamberofKnowledge, () => ArenaCenter.AulusmalAsina, outerRadius: 90.0f, innerRadius: 19.0f, priority: AvoidancePriority.High);
+        AvoidanceHelpers.AddAvoidDonut(() => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheHalloftheGriffin, () => ArenaCenter.Zenos, outerRadius: 90.0f, innerRadius: 19.0f, priority: AvoidancePriority.High);
         return false;
     }
 
@@ -83,10 +47,8 @@ public class AlaMhigo : AbstractDungeon
     public override async Task<bool> RunAsync()
     {
         await FollowDodgeSpells();
-
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
         bool result = false;
-
         switch (currentSubZoneId)
         {
             case SubZoneId.RhalgrsGate:
@@ -110,25 +72,49 @@ public class AlaMhigo : AbstractDungeon
 
     private static async Task<bool> HandleAulusAsync()
     {
-        // Handle Out of Body experience
-        if (WorldManager.SubZoneId == (uint)SubZoneId.TheChamberofKnowledge && Core.Player.InCombat)
+        // Empty Vessel despawns on a wipe. Never retain its native wrapper across a yield:
+        // the previous wait predicate dereferenced a freed actor after respawning at the entrance.
+        // The existing navigator owns travel; avoidance has priority, and this coroutine releases
+        // only its own input before normal death/loading/combat recovery can take over.
+        bool ownsMovement = false;
+        try
         {
-            while (Core.Me.HasAura(PlayerAura.OutOfBody) && !Core.Me.HasAura(PlayerAura.Stun))
+            while (!CommonBehaviors.IsLoading && WorldManager.ZoneId == (ushort)Data.ZoneId.AlaMhigo && WorldManager.SubZoneId == (uint)SubZoneId.TheChamberofKnowledge && Core.Me.IsAlive && Core.Me.InCombat && Core.Me.HasAura(PlayerAura.OutOfBody) && !Core.Me.HasAura(PlayerAura.Stun))
             {
-                var emptyVessle = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.EmptyVessel)
-                    .OrderBy(bc => bc.Distance2D()).FirstOrDefault(bc => bc.IsValid && bc.IsTargetable); // our lifeless body
-
-                if (emptyVessle != null)
+                if (AvoidanceManager.IsRunningOutOfAvoid)
                 {
-                    while (Core.Me.HasAura(PlayerAura.OutOfBody) && Core.Me.Location.Distance2D(emptyVessle.Location) > 0.5f)
-                    {
-                        ff14bot.Helpers.Logging.WriteDiagnostic($"Moving to our lifeless body. Distance: {Core.Me.Location.Distance2D(emptyVessle.Location)}");
-                        await LlamaLibrary.Helpers.Navigation.GroundMove(emptyVessle.Location, 0.5f);
-                    }
-
-                    await CommonTasks.StopMoving();
-                    await Coroutine.Wait(5000, () => Core.Me.Location.Distance2D(emptyVessle.Location) > 0.5 || !Core.Me.HasAura(PlayerAura.OutOfBody));
+                    // Avoidance has succeeded our request; cleanup must not stop its escape.
+                    ownsMovement = false;
+                    await Coroutine.Yield();
+                    continue;
                 }
+
+                // Copy only a value-type destination before yielding, and filter validity before
+                // reading distance. Missing bodies are transient during phase changes, not errors.
+                Vector3? destination = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.EmptyVessel).Where(bc => bc.IsValid && bc.IsTargetable).Select(bc => (Vector3? )bc.Location).OrderBy(point => Core.Me.Location.Distance2D(point.Value)).FirstOrDefault();
+                if (destination.HasValue && Core.Me.Location.Distance2D(destination.Value) > 0.5f)
+                {
+                    // Preserve the existing half-yalm body contact tolerance. A single navigation
+                    // tick lets every retry recheck encounter lifetime, instead of GroundMove's
+                    // uninterruptible inner loop walking back to a vanished body after a wipe.
+                    ff14bot.Navigation.Navigator.MoveTo(new ff14bot.Pathing.MoveToParameters(destination.Value) { DistanceTolerance = 0.5f });
+                    ownsMovement = true;
+                }
+                else if (ownsMovement)
+                {
+                    ff14bot.Navigation.Navigator.Stop();
+                    ownsMovement = false;
+                }
+
+                // Allow body reappearance/path regeneration without a busy retry or terminal stop.
+                await Coroutine.Sleep(100);
+            }
+        }
+        finally
+        {
+            if (ownsMovement && !AvoidanceManager.IsRunningOutOfAvoid && !CommonBehaviors.IsLoading)
+            {
+                ff14bot.Navigation.Navigator.Stop();
             }
         }
 
@@ -146,22 +132,18 @@ public class AlaMhigo : AbstractDungeon
         /// First Boss: Magitek Scorpion.
         /// </summary>
         public const uint MagitekScorpion = 6037;
-
         /// <summary>
         /// First Boss: Magitek Scorpion.
         /// </summary>
         public const uint LockOn = 108;
-
         /// <summary>
         /// First Boss: Fire puddle.
         /// </summary>
         public const uint FirePuddle = 2008685;
-
         /// <summary>
         /// Second Boss: Empty Vessel.
         /// </summary>
         public const uint EmptyVessel = 6666;
-
         /// <summary>
         /// Final Boss: Zenos yae Galvus.
         /// </summary>
@@ -174,12 +156,10 @@ public class AlaMhigo : AbstractDungeon
         /// First Boss: Magitek Scorpion.
         /// </summary>
         public static readonly Vector3 MagitekScorpion = new(-191f, 35f, 72f);
-
         /// <summary>
         /// Second Boss: The Governor.
         /// </summary>
         public static readonly Vector3 AulusmalAsina = new(250f, 106.5f, -70f);
-
         /// <summary>
         /// Third Boss: Lorelei.
         /// </summary>
@@ -194,24 +174,20 @@ public class AlaMhigo : AbstractDungeon
         /// Stack
         /// </summary>
         public const uint TailLaser1 = 8264;
-
         public const uint TailLaser2 = 8265;
         public const uint TailLaser3 = 8266;
-
         /// <summary>
         /// Magitek Scorpion
         /// Target Search
         /// Follow for 10 seconds after cast happens
         /// </summary>
         public static readonly HashSet<uint> TargetSearch = [8262];
-
         /// <summary>
         /// Aulus mal Asina
         /// Demimagicks
         /// Spread
         /// </summary>
         public const uint Demimagicks = 8286;
-
         public static readonly int DemimagicksDuration = 5_000;
     }
 
@@ -221,7 +197,6 @@ public class AlaMhigo : AbstractDungeon
         /// Out Of Body
         /// </summary>
         public const uint OutOfBody = 779;
-
         /// <summary>
         /// Stun
         /// </summary>

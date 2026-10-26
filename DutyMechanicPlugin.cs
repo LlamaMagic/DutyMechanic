@@ -17,41 +17,31 @@ using System.Threading.Tasks;
 using TreeSharp;
 
 namespace DutyMechanic;
-
 /// <summary>
 /// Main RebornBuddy plugin class for Duty Mechanic.
 /// </summary>
 public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
-
-    // Keep the shared developer collector available without recurring customer log traffic.
+    // Enable only when collecting encounter diagnostics during development.
     private const bool EnableMechanicDiagnostics = false;
-
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
     // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
     // pulses continue during that interval; retaining this edge lets the next instance force
     // a fresh dungeon object even when both duty runs use the same zone ID.
     private bool _wasInInstance;
-
     /// <inheritdoc/>
     public override string Author => "DW, Manta, Athlon";
-
     /// <inheritdoc/>
     public override string Name => Translations.PROJECT_NAME;
-
     /// <summary>
     /// List of plugins we disable to prevent conflicts.
     /// </summary>
     protected static List<string> ConflictingPluginsToDisable => ["RBTrust", "Trust"];
-
     /// <inheritdoc/>
-    public override string Description => "Plugin the causes the bot to execute advanced Duty/Boss Mechanics. Formerly known as RBTrust/Trust.";
-
+    public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    // Keep the historical game-version/date identity; revision 3 transfers raid ownership to Panda Farmer 2.5.4.5.
-    public override Version Version => new(7, 5, 04282015, 3);
-
+    public override Version Version => new(7, 5, 04282015, 4);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -73,23 +63,16 @@ public class DutyMechanicPlugin : BotPlugin
         TreeRoot.OnStart += OnBotStart;
         TreeRoot.OnStop += OnBotStop;
         TreeHooks.Instance.OnHooksCleared += OnHooksCleared;
-
         if (TreeRoot.IsRunning)
         {
             AddHooks();
         }
-
-
     }
 
     /// <inheritdoc/>
     public override void OnDisabled()
     {
-        Dungeons.TheRoyalMenagerie.ResetActive();
-        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
-        Dungeons.Amaurot.ResetActive();
-        // Release Grand Cosmos positioning and hazards before another movement owner runs.
-        Dungeons.GrandCosmos.ResetActive();
+        ResetEncounters();
         TreeRoot.OnStart -= OnBotStart;
         TreeRoot.OnStop -= OnBotStop;
         TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
@@ -106,15 +89,46 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
-        // Loading/death can bypass TreeStart; clear encounter-owned state on the plugin pulse.
         Dungeons.GrandCosmos.CheckLifecycle();
+        Dungeons.AnamnesisAnyder.CheckKyklopsLifecycle();
+        Dungeons.HeroesGauntlet.CheckBerserkerLifecycle();
+        Dungeons.AnamnesisAnyder.CheckRukshsLifecycle();
+        Dungeons.AnamnesisAnyder.CheckUnknownLifecycle();
+        Dungeons.Paglthan.CheckPositioningLifecycle();
+        // AutoParty retains TreeStart: publish Hades hazards on this existing bot-thread pulse.
+        if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot)
+        {
+            if (WorldManager.ZoneId == 847)
+            {
+                LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+            }
+
+            Dungeons.DyingGaspMechanics.Pulse();
+            if (WorldManager.ZoneId == 922)
+            {
+                LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+            }
+
+            Dungeons.SeatOfSacrifice.Pulse();
+        }
+        else
+        {
+            Dungeons.DyingGaspMechanics.Reset();
+            Dungeons.SeatOfSacrifice.Reset();
+        }
+
         // One Royal Menagerie owner must tick even while AutoParty retains a yielding coroutine.
         // It performs no awaits; normal TreeStart only observes its scheduling result.
         if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot)
         {
-            if (WorldManager.ZoneId == 679) LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+            if (WorldManager.ZoneId == 679)
+            {
+                LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+            }
+
             Dungeons.TheRoyalMenagerie.PulseActive();
         }
+
         // Enabled plugins pulse on the bot thread even while OrderBot's cutscene/profile
         // coroutine owns TreeStart. RB's native QTE API supplies one input per frame without
         // keyboard simulation or a blocking coroutine. Keep this outside CanTrust so solo
@@ -126,9 +140,7 @@ public class DutyMechanicPlugin : BotPlugin
 
         // Panda Farmer owns the ARR alliance raid tags and their guarded death recovery.
         // Do not pulse them here: two plugin owners can race the same Return confirmation.
-
         bool isInInstance = LoadingHelpers.IsInInstance;
-
         if (isInInstance && !_wasInInstance)
         {
             // Zone IDs identify duty maps, not individual duty sessions. Marking the manager
@@ -162,13 +174,25 @@ public class DutyMechanicPlugin : BotPlugin
 
     private void OnBotStop(BotBase bot)
     {
-        Dungeons.TheRoyalMenagerie.ResetActive();
-        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
-        Dungeons.Amaurot.ResetActive();
-        // Release Grand Cosmos positioning and hazards before another movement owner runs.
-        Dungeons.GrandCosmos.ResetActive();
+        ResetEncounters();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
+    }
+
+    // Stop and hook replacement must release encounter leases before a new mover runs.
+    private static void ResetEncounters()
+    {
+        Dungeons.Lahabrea.ResetActive();
+        Dungeons.TheRoyalMenagerie.ResetActive();
+        Dungeons.DyingGaspMechanics.Reset();
+        Dungeons.SeatOfSacrifice.Reset();
+        Dungeons.Amaurot.ResetActive();
+        Dungeons.GrandCosmos.ResetActive();
+        Dungeons.AnamnesisAnyder.ResetKyklopsActive();
+        Dungeons.HeroesGauntlet.ResetBerserkerActive();
+        Dungeons.AnamnesisAnyder.ResetRukshsActive();
+        Dungeons.AnamnesisAnyder.ResetUnknownActive();
+        Dungeons.Paglthan.ResetPositioning();
     }
 
     private void OnBotStart(BotBase bot)
@@ -178,11 +202,7 @@ public class DutyMechanicPlugin : BotPlugin
 
     private void OnHooksCleared(object sender, EventArgs e)
     {
-        Dungeons.TheRoyalMenagerie.ResetActive();
-        // Explicit stop/disable must release Amaurot's positive shelter before another owner runs.
-        Dungeons.Amaurot.ResetActive();
-        // Release Grand Cosmos positioning and hazards before another movement owner runs.
-        Dungeons.GrandCosmos.ResetActive();
+        ResetEncounters();
         RemoveHooks();
         LoggingHelpers.UpdateMechanicDiagnostics(false);
     }
@@ -199,31 +219,33 @@ public class DutyMechanicPlugin : BotPlugin
 
     private async Task<bool> RunTrust()
     {
-        DisableConflictingPlugins();
+        // Seat consumes TreeStart only for travel, fire or QTE; routine healing resumes at safety.
+        if (Dungeons.SeatOfSacrifice.HoldsTree)
+        {
+            return true;
+        }
 
+        DisableConflictingPlugins();
         await MovementHelpers.TryIncreaseMovementSpeedAsync();
         // Frame-scoped wrappers must be sampled on the bot thread, never from the UI.
         LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         LoggingHelpers.LogZoneChanges();
-
         return await DungeonManager.RunAsync();
     }
 
     /// <summary>
-    /// Disables conflicting plugins. See <seealso cref="ConflictingPluginsToDisable"/>.
+    /// Disables conflicting plugins. See <seealso cref = "ConflictingPluginsToDisable"/>.
     /// </summary>
     protected static void DisableConflictingPlugins()
     {
         foreach (var pluginName in ConflictingPluginsToDisable)
         {
             PluginContainer enabledPlugin = PluginManager.Plugins.FirstOrDefault(p => p.Plugin.Name == pluginName && p.Enabled);
-
             if (enabledPlugin != null)
             {
-                Logger.Warning($"Disabling {pluginName} plugin to prevent conflicts. Consider uninstalling the {pluginName} plugin.", "QolFreeCompanyActions");
+                Logger.Warning($"Disabling {pluginName} plugin to prevent conflicts. Consider uninstalling the {pluginName} plugin.");
                 enabledPlugin.Enabled = false;
             }
         }
     }
 }
-

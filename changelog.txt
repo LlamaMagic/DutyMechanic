@@ -1,6 +1,20 @@
 DutyMechanic Changelog
 
-Unreleased
+7.5.4282015.4 10/26/2026
+
+Encounter Updates
+- Add Anyder boss geometry, staged floor hazards, stack handling and Duty Support positioning.
+- Add Heroes' Gauntlet crater shelter, knockback staging and stack handling; correct Necrobomb radii.
+- Add Dying Gasp geometry and Seat of Sacrifice positioning, QTE, tank limit-break and full-heal handling.
+- Improve Amaurot meteor placement, cover and Therion alcove movement.
+- Preserve Castrum Abania tower and stack handling, Aulus wipe recovery and Lahabrea solo mechanics from local installations.
+- Keep Toto-Rak poison pools from clearing unrelated avoidance and make Paglthan rod/lift movement interruptible.
+
+Release Maintenance
+- Disable development diagnostics and remove encounter state dumps and temporary actor watches.
+- Consolidate encounter cleanup and format the updated controllers for maintenance.
+- Preserve Yuweyawata's validated mechanics and shared movement helpers.
+- Requires RebornBuddy's .NET 10 host; update older hosts before installing.
 
 The Grand Cosmos
 - Add boss stack, spread, moving-hazard and wind avoidance.

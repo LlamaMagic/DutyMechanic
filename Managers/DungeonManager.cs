@@ -53,6 +53,7 @@ internal static class DungeonManager
             { ZoneId.TheCopperbellMinesHard, typeof(CopperbellMinesHard) },
             { ZoneId.ThePraetorium, typeof(Praetorium) },
             { ZoneId.ThePortaDecumana, typeof(PortaDecumana) },
+            { (ZoneId)1052, typeof(Lahabrea) },
             { ZoneId.Snowcloak, typeof(Snowcloak) },
             { ZoneId.TheKeeperOfTheLake, typeof(KeeperOfTheLake) },
             { ZoneId.TheStepsOfFaith, typeof(StepsOfFaith) },

@@ -1,4 +1,4 @@
-﻿using Buddy.Coroutines;
+using Buddy.Coroutines;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
@@ -14,137 +14,105 @@ namespace DutyMechanic.Dungeons;
 /// <summary>
 /// Lv. 80.3: Anamnesis Anyder dungeon logic.
 /// </summary>
-public class AnamnesisAnyder : AbstractDungeon
+public partial class AnamnesisAnyder : AbstractDungeon
 {
-    // SpellName: Scrutiny SpellId: 20005 CurrentHealth:54.36572 Follow
-    // SpellName: Inscrutability SpellId: 19306 CurrentHealth:34.33089 room wide aoe
-    // SpellName: Clearout SpellId: 19307 CurrentHealth:18.67048 cone aoe
-    // SpellName: Luminous Ray SpellId: 20007 CurrentHealth:85.04648 straight lazer
-    // SpellName: Ectoplasmic Ray SpellId: 19322 CurrentHealth:48.1767 STACK
-    // SpellName: Eye of the Cyclone SpellId: 19287 CurrentHealth:88.68323 DONUT
-    // SpellName: 2000-mina swing SpellId: 19285 CurrentHealth:74.37302 Follow
-    // SpellName: 2000-mina swipe SpellId: 19284 CurrentHealth:64.34352 Cone
-    // SpellName: the Final Verse SpellId: 19288 CurrentHealth:98.03452 room wide aoe
-    // SpellName: Raging Glower SpellId: 19286,28266
-    // SpellName: Terrible Hammer SpellId: 19289 CurrentHealth:87.74754
-    // SpellName: Terrible Blade SpellId: 19290 CurrentHealth:85.54825
-    // SpellName: Wanderer's Pyre 19291, 19295 spread
-    // SpellName: Open Hearth 19292, 19296 stack
-    // SpellName: Depth Grip SpellId: 19332 CurrentHealth:90.52967 stack
-    // SpellName: Falling Water SpellId: 19325 CurrentHealth:88.45962 spread
-    // SpellName: Rising Tide SpellId: 19339 CurrentHealth:86.6134 stack
-    // SpellName: Flying Fount stack 19327, 19328
     private const uint UnknownA = 9260;
     private const uint UnknownB = 9261;
     private const uint Kyklops = 9263;
-
-    private static readonly HashSet<uint> LuminousRayA = [20007];
+    private static readonly HashSet<uint> LuminousRayA = [20006];
     private static readonly HashSet<uint> LuminousRayB = [20007];
     private static readonly int LuminousRayDuration = 6_000;
-
-    private static readonly HashSet<uint> RagingGlower = [19286, 28266];
-    private static readonly int RagingGlowerDuration = 6_000;
-
-    private static readonly HashSet<uint> WanderersPyre = [19291, 19295];
-    private static readonly int WanderersPyreDuration = 6_000;
-
     private static readonly HashSet<uint> FallingWater = [19325];
     private static readonly int FallingWaterDuration = 6_000;
-
-    private static readonly HashSet<uint> NonSidestepSpells =
-    [
-        19289,
-        19290,
-        19286,
-        19291,
-        19295,
-        19325,
-        19327,
-        19328,
-        19332,
-        19339,
-        19292,
-        19296,
-        19285,
-        19287,
-        19322,
-        20005,
-        20006,
-        20007,
-        28266,
-    ];
-
-    private static DateTime ragingGlowerTimestamp = DateTime.MinValue;
+    private static readonly HashSet<uint> NonSidestepSpells = [19325, 19327, 19328, 19332, 19339, 19322, 20006, 20007, ];
     private static DateTime luminousRayTimestamp = DateTime.MinValue;
-
+    private static DateTime luminousRayBTimestamp = DateTime.MinValue;
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.AnamnesisAnyder;
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate{ get; } = [];
+    protected override HashSet<uint> SpellsToMitigate { get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } =
-    [
-        19293,
-        19289,
-        19294,
-        19290,
-        19294,
-        19293,
-        19327,
-        19328,
-        19332,
-        19339,
-        19292,
-        19296,
-        19285,
-        19287,
-        19322,
-        20005,
-    ];
-
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [19327, 19328, 19332, 19339, 19322, ];
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
-        await FollowDodgeSpells();
+        // Release encounter state before death or loading recovery can issue new movement.
+        if (ff14bot.Core.Me == null || !ff14bot.Core.Me.IsValid || !ff14bot.Core.Me.IsAlive || ff14bot.Behavior.CommonBehaviors.IsLoading)
+        {
+            ResetRukshs();
+            ResetKyklops();
+            ResetUnknownGeometry();
+            return false;
+        }
 
+        // Rukshs uses target semantics and native cross geometry, preserving
+        // independent hazards instead of entering the legacy global-clear spread.
+        if (RukshsActive())
+        {
+            return RunRukshs();
+        }
+
+        ResetRukshs();
+        // Kyklops owns its cast geometry and the actual stack target. The legacy
+        // closest-ally follow can cross tiles and erase concurrent spread hazards.
+        if (KyklopsActive())
+        {
+            return RunKyklops();
+        }
+
+        ResetKyklops();
+        // Scrutiny's validated support response owns its overlap window. Do not
+        // let legacy Ectoplasmic follow request a second destination during it.
+        if (UnknownActive())
+        {
+            UpdateUnknownGeometry();
+            if (AvoidanceManager.IsRunningOutOfAvoid)
+            {
+                unknownSupportMoving = false;
+                return false;
+            }
+
+            if (unknownSupportPosition.HasValue)
+            {
+                return PositionUnknownSupport();
+            }
+        }
+        else
+        {
+            ResetUnknownGeometry();
+        }
+
+        await FollowDodgeSpells();
         if (LuminousRayA.IsCasting() && luminousRayTimestamp < DateTime.Now)
         {
-            BattleCharacter unknownNpcA = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(UnknownA)
-                .FirstOrDefault(bc => bc.IsTargetable);
+            BattleCharacter unknownNpcA = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(UnknownA).FirstOrDefault(bc => bc.IsValid && bc.IsAlive && bc.IsTargetable && bc.IsCasting && bc.CastingSpellId == 20006);
+            // The original and clone have separate actions and lifetimes. The
+            // original can already be dead when the clone casts (observed null crash).
+            if (unknownNpcA == null)
+            {
+                return false;
+            }
 
             SidestepPlugin.Enabled = true;
-            AvoidanceHelpers.AddAvoidRectangle(unknownNpcA, 12.0f, 40.0f);
+            AvoidanceHelpers.AddAvoidRectangle(unknownNpcA, 9.0f, 51.0f, yOffset: -0.5f);
             luminousRayTimestamp = DateTime.Now.AddMilliseconds(LuminousRayDuration);
         }
 
-        if (LuminousRayB.IsCasting() && luminousRayTimestamp < DateTime.Now)
+        if (LuminousRayB.IsCasting() && luminousRayBTimestamp < DateTime.Now)
         {
-            BattleCharacter unknownNpcB = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(UnknownB)
-                .FirstOrDefault(bc => bc.IsTargetable);
+            BattleCharacter unknownNpcB = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(UnknownB).FirstOrDefault(bc => bc.IsValid && bc.IsAlive && bc.IsTargetable && bc.IsCasting && bc.CastingSpellId == 20007);
+            if (unknownNpcB == null)
+            {
+                return false;
+            }
 
             SidestepPlugin.Enabled = true;
-            AvoidanceHelpers.AddAvoidRectangle(unknownNpcB, 12.0f, 40.0f);
-            luminousRayTimestamp = DateTime.Now.AddMilliseconds(LuminousRayDuration);
-        }
-
-        if (RagingGlower.IsCasting() && ragingGlowerTimestamp < DateTime.Now)
-        {
-            BattleCharacter kyklopsNpc = GameObjectManager.GetObjectsByNPCId<BattleCharacter>(Kyklops)
-                .FirstOrDefault(bc => bc.IsTargetable);
-
-            SidestepPlugin.Enabled = true;
-            AvoidanceHelpers.AddAvoidRectangle(kyklopsNpc, 12.0f, 40.0f);
-            ragingGlowerTimestamp = DateTime.Now.AddMilliseconds(RagingGlowerDuration);
-        }
-
-        if (WanderersPyre.IsCasting())
-        {
-            SidestepPlugin.Enabled = false;
-            AvoidanceManager.RemoveAllAvoids(i => i.CanRun);
-            await MovementHelpers.Spread(WanderersPyreDuration);
+            //50x8 installed/reference line, with0.5y margin on every edge.
+            AvoidanceHelpers.AddAvoidRectangle(unknownNpcB, 9.0f, 51.0f, yOffset: -0.5f);
+            luminousRayBTimestamp = DateTime.Now.AddMilliseconds(LuminousRayDuration);
         }
 
         if (FallingWater.IsCasting())
@@ -155,9 +123,7 @@ public class AnamnesisAnyder : AbstractDungeon
         }
 
         SidestepPlugin.Enabled = !NonSidestepSpells.IsCasting();
-
         await Coroutine.Yield();
-
         return false;
     }
 }

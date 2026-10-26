@@ -24,6 +24,7 @@ There are still a few profiles left over from the original development located i
 
 ### Prerequisites
 
+-   RebornBuddy's .NET 10 host and a current LlamaLibrary installation. Older .NET 8 hosts must be updated before installing this version.
 -   [RebornBuddy][rebornbuddy] with active license (paid)
 -   [Platypus](https://rbplatypus.com/) Handles revives on death as well as Self-repair, food, and much more.
 -   (Optional) Better combat routine, such as [Magitek][magitek-discord] (free)
@@ -62,10 +63,14 @@ MSBuild exclusions. Keep test projects, capture tools and replay inputs outside 
 repository. They previously prevented Duty Mechanic from loading on fresh installs.
 The build rejects a Tests directory to catch that mistake before publication.
 
-Encounter controllers retain only state needed for mechanics and normal support
-messages. Shared actor watches, diagnostic history and periodic raid dumps have
-been removed to keep customer logs useful. The protected Yuweyawata implementation
-is unchanged and its legacy diagnostic guard remains permanently disabled.
+Encounter controllers retain mechanic state and useful recovery messages. Development
+diagnostics are disabled in release builds; encounter state dumps and temporary
+actor watches have been removed from the latest controllers. Yuweyawata and its
+supporting movement helpers are preserved.
+
+Before publishing, build the Release configuration and run
+`tools/Verify-MechanicDiagnostics.ps1 -RepositoryPath .`. The installable source
+package must exclude build output, test fixtures, captures and local settings.
 
 When updating an older ZIP installation, replace the Duty Mechanic folder rather
 than merging files; merging can leave the obsolete Tests directory behind.
