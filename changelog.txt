@@ -1,5 +1,13 @@
 DutyMechanic Changelog
 
+Unreleased
+
+Matoya's Relict
+- Add boss hazard avoidance and positioning for Mudman, Nixie and Mother Porxie.
+- Maintain forward and lateral movement during Barbeque/To a Crisp instead of retreating into lethal suction.
+- Preserve pending Huff and Puff handling through the observed flight apex.
+- Release encounter movement, hazards and temporary SideStep suspension on death, loading, stop or exit.
+
 7.5.4282015.4 10/26/2026
 
 Encounter Updates

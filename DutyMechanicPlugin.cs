@@ -89,6 +89,8 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // Matoya leases must end even when death/loading bypasses the encounter hook.
+        Dungeons.MatoyasRelict.CheckLifecycle();
         Dungeons.GrandCosmos.CheckLifecycle();
         Dungeons.AnamnesisAnyder.CheckKyklopsLifecycle();
         Dungeons.HeroesGauntlet.CheckBerserkerLifecycle();
@@ -187,6 +189,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.DyingGaspMechanics.Reset();
         Dungeons.SeatOfSacrifice.Reset();
         Dungeons.Amaurot.ResetActive();
+        Dungeons.MatoyasRelict.ResetActive();
         Dungeons.GrandCosmos.ResetActive();
         Dungeons.AnamnesisAnyder.ResetKyklopsActive();
         Dungeons.HeroesGauntlet.ResetBerserkerActive();
