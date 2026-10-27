@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 4);
+    public override Version Version => new(7, 5, 04282015, 13);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -97,6 +97,14 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.AnamnesisAnyder.CheckRukshsLifecycle();
         Dungeons.AnamnesisAnyder.CheckUnknownLifecycle();
         Dungeons.Paglthan.CheckPositioningLifecycle();
+        // Ktisis positioning must release when death/loading bypasses its TreeStart tick.
+        Dungeons.KtisisHyperboreia.CheckLifecycle();
+        // Observe impacts even while another coroutine retains TreeStart; otherwise
+        // the reported vulnerability time can lag behind the actual sphere hit.
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 974)
+        {
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+        }
         // AutoParty retains TreeStart: publish Hades hazards on this existing bot-thread pulse.
         if (TreeRoot.IsRunning && BotManager.Current is ff14bot.BotBases.OrderBot)
         {
@@ -196,6 +204,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.AnamnesisAnyder.ResetRukshsActive();
         Dungeons.AnamnesisAnyder.ResetUnknownActive();
         Dungeons.Paglthan.ResetPositioning();
+        Dungeons.KtisisHyperboreia.ResetActive();
     }
 
     private void OnBotStart(BotBase bot)
