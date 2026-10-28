@@ -89,6 +89,13 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // Stone Vigil must release boss-owned input even when loading or death skips its hook.
+        Dungeons.StoneVigil.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 1042)
+        {
+            // A yielding door or combat tag must not hide boss impacts from developer capture.
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+        }
         // Matoya leases must end even when death/loading bypasses the encounter hook.
         Dungeons.MatoyasRelict.CheckLifecycle();
         Dungeons.GrandCosmos.CheckLifecycle();
@@ -192,6 +199,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Restore Stone Vigil's borrowed mover and SideStep state before a successor starts.
+        Dungeons.StoneVigil.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();
