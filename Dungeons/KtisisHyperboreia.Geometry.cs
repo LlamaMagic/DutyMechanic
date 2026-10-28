@@ -22,6 +22,7 @@ public partial class KtisisHyperboreia
     private readonly HashSet<uint> chargedHeads = new();
     private HashSet<uint> previousHeadStatuses = new();
     private DateTime headClearAfter;
+
     private void RegisterHazards()
     {
         AvoidanceManager.AddAvoidPolygon<Hazard>(
@@ -40,10 +41,9 @@ public partial class KtisisHyperboreia
         // Reserve only the earliest four lanes, then advance after their effects;
         // simultaneous spread/repeat shapes remain in the same native solver.
         var lanes = live.Where(h => h.Action == ActionId.QuadrupleLane).OrderBy(h => h.Finish).Take(4).ToHashSet();
-        // Native escape can cross another avoid to leave its current danger.
-        // Activating a later breath too early sends that escape through a live
-        // sphere cross. Defer the breath until the sphere tail ends; the observed
-        // overlap still leaves more than four seconds for breath egress.
+        // An early breath avoid can send native escape through a live sphere cross.
+        // Wait for the sphere's effect tail; the captured overlap still leaves
+        // more than four seconds to escape the breath.
         var lastSphere = live.Where(h => h.Action == ActionId.PyricSphere).Select(h => h.Expires).DefaultIfEmpty(DateTime.MinValue).Max();
         return live.Where(h => (h.Action != ActionId.QuadrupleLane || lanes.Contains(h)) &&
             !(lastSphere > DateTime.UtcNow && h.Action is >= ActionId.BreathFront and <= ActionId.BreathRightRepeat &&
@@ -131,11 +131,9 @@ public partial class KtisisHyperboreia
                 case ActionId.BreathLeft:
                 case ActionId.BreathRight:
                     points = Cone(40, 120);
-                    // Status identity plus the casting head determines the other
-                    // head without assuming aura enumeration order. Keep that
-                    // second sector through its no-cast exhalation 2.1s later.
-                    // Front/left/right status rows 2812/2813/2814 match the same
-                    // ordering as the three contiguous first-breath action rows.
+                    // Front/left/right statuses 2812/2813/2814 follow the action-row
+                    // order. Identify the other charged head by ID, not aura order,
+                    // and retain its sector through the second exhalation 2.1s later.
                     uint firstHead = 2812 + action - ActionId.BreathFront;
                     // RB exposes body Heading, not the casting head's direction.
                     // Apply the selected head's relative angle to both sectors.
@@ -202,9 +200,12 @@ public partial class KtisisHyperboreia
 
     private static Vector3 GroundOrigin(BattleCharacter caster) => caster.SpellCastInfo.CastLocation != Vector3.Zero
         ? caster.SpellCastInfo.CastLocation : caster.Location;
+
     private static float HeadAngle(uint status) => status == 2813 ? 2 * (float)Math.PI / 3 : status == 2814 ? -2 * (float)Math.PI / 3 : 0;
+
     private static Vector2[] Rectangle(float width, float length) =>
         [new(-width / 2, -.5f), new(width / 2, -.5f), new(width / 2, length), new(-width / 2, length)];
+
     private static Vector2[] Cross(float width, float length)
     {
         float w = width / 2;
@@ -215,6 +216,7 @@ public partial class KtisisHyperboreia
 
     private static Vector2[] Circle(float radius) => Enumerable.Range(0, 48)
         .Select(i => new Vector2(radius * (float)Math.Sin(i * Math.PI / 24), radius * (float)Math.Cos(i * Math.PI / 24))).ToArray();
+
     private static Vector2[] Cone(float radius, float degrees)
     {
         // Offset each edge of the convex sector by 0.5y, including its apex.

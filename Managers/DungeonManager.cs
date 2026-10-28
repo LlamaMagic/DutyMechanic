@@ -53,6 +53,8 @@ internal static class DungeonManager
             { ZoneId.TheCopperbellMinesHard, typeof(CopperbellMinesHard) },
             { ZoneId.ThePraetorium, typeof(Praetorium) },
             { ZoneId.ThePortaDecumana, typeof(PortaDecumana) },
+            // Hard mode retains its ship rails; Extreme uses different arena mechanics.
+            { (ZoneId)281, typeof(WhorleaterHard) },
             { (ZoneId)1052, typeof(Lahabrea) },
             { ZoneId.Snowcloak, typeof(Snowcloak) },
             { ZoneId.TheKeeperOfTheLake, typeof(KeeperOfTheLake) },

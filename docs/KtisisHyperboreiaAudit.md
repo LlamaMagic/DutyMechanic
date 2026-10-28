@@ -12,6 +12,13 @@ needs a live self-target capture. Paladin interruption was verified separately.
 The final source cleanup changes comments, formatting and braces only; it does
 not represent another deployed build or another gameplay run.
 
+The October 28 publication includes Ktisis and Whorleater in version
+**7.5.4282015.14**. Ktisis received a further readability pass: separate state
+declarations, shorter comments and consistent spacing. Its mechanics, memory
+signature, extraction checks and movement ownership are unchanged. The release
+retains the shared diagnostic collector with its default-off switch; local
+developer installations can continue collecting evidence independently.
+
 ## Ownership and movement
 
 DutyMechanic saves SideStep's enabled state and suspends it while a Ktisis boss

@@ -24,12 +24,18 @@ namespace DutyMechanic.Dungeons;
 public partial class KtisisHyperboreia : AbstractDungeon
 {
     private static KtisisHyperboreia active;
-    private bool moving, leased, gapCloserLeased;
+    private bool moving;
+    private bool leased;
+    private bool gapCloserLeased;
     private string movementReason;
-    private DateTime frostUntil, hermeticaUntil, meteorUntil, stackUntil;
+    private DateTime frostUntil;
+    private DateTime hermeticaUntil;
+    private DateTime meteorUntil;
+    private DateTime stackUntil;
     private uint stackTarget;
     private Vector3? stackDestination;
-    private uint previousBossCast, previousSubZone;
+    private uint previousBossCast;
+    private uint previousSubZone;
     private bool? savedSideStepEnabled;
     private uint interruptCaster;
     private bool interruptSubmitted;
@@ -72,8 +78,8 @@ public partial class KtisisHyperboreia : AbstractDungeon
     protected override Task<bool> EnterDungeonAsync()
     {
         Reset();
-        // Use one inset boundary per room. Ladon's square retains the corners
-        // needed for cone/cross overlaps; the old circle incorrectly removed them.
+        // Ladon's room needs a square boundary: its corners provide safe space
+        // during cone/cross overlaps. Lyssa and Hermes use circular rooms.
         AvoidanceHelpers.AddAvoidDonut(() => Live() && WorldManager.SubZoneId == 3766, () => LyssaCenter, 90, 19, AvoidancePriority.High);
         AvoidanceHelpers.AddAvoidSquareDonut(() => Live() && WorldManager.SubZoneId == 3767,
             38, 38, 180, 180, () => new[] { LadonCenter }, AvoidancePriority.High);
@@ -170,8 +176,8 @@ public partial class KtisisHyperboreia : AbstractDungeon
             }
 
             stackTarget = stack.SpellCastInfo.TargetId;
-            // The Viper capture delivered Pyric Blast about 1.1s after the
-            // reported finish. Keep the shared position through effect delivery.
+            // Pyric Blast damage arrived about 1.1s after cast-bar finish in the
+            // live capture. Hold the stack for 1.5s to cover effect delivery.
             stackUntil = now + stack.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(1.5);
         }
 
@@ -353,9 +359,8 @@ public partial class KtisisHyperboreia : AbstractDungeon
 
     private bool StackWithParty(BattleCharacter[] actors)
     {
-        // A self-targeted stack is only satisfied when allies share its radius.
-        // Bring the marker to the group instead of holding the carrier in place.
-        // Party positions are used here only to resolve the confirmed stack.
+        // A self-targeted stack needs nearby participants. Move into the group
+        // rather than treating the carrier's current position as the destination.
         var participants = actors.Where(a => a.ObjectId != Core.Me.ObjectId && a.IsVisible &&
             (PartyManager.VisibleMembers.Any(p => p.ObjectId == a.ObjectId) ||
              PartyMembers.AllPartyMemberIds.Contains((PartyMemberId)a.NpcId)))
@@ -554,8 +559,7 @@ public partial class KtisisHyperboreia : AbstractDungeon
         }
     }
 
-    // Choreography and damaging helpers are separate identities. Grouping the
-    // verified Ktisis action rows here prevents similar names from sharing semantics.
+    // Choreography and damage helpers can share names but require different responses.
     private static class ActionId
     {
         internal const uint Frostbite = 25175;
