@@ -97,7 +97,9 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.CheckLifecycle();
         Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
-        if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042)
+        // Keeper sequences and input cleanup must survive yielding boss/add profile hooks.
+        Dungeons.KeeperOfTheLake.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042 or 1063)
         {
             // Door/combat coroutines can retain TreeStart; observe boss impacts
             // here too so a delayed hook cannot misattribute vulnerability gains.
@@ -214,6 +216,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.ResetActive();
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
+        Dungeons.KeeperOfTheLake.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();
