@@ -55,6 +55,8 @@ internal static class DungeonManager
             { ZoneId.ThePortaDecumana, typeof(PortaDecumana) },
             // The reworked Hard trial has its own guard and king choreography.
             { (ZoneId)1067, typeof(ThornmarchHard) },
+            // Hard-mode Shiva uses spread markers and a stationary Thin Ice response.
+            { (ZoneId)377, typeof(AkhAfahHard) },
             // Hard mode retains its ship rails; Extreme uses different arena mechanics.
             { (ZoneId)281, typeof(WhorleaterHard) },
             // Keep Ramuh's status/marker evidence separate from the Extreme territory.
