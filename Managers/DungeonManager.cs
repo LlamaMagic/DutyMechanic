@@ -53,6 +53,8 @@ internal static class DungeonManager
             { ZoneId.TheCopperbellMinesHard, typeof(CopperbellMinesHard) },
             { ZoneId.ThePraetorium, typeof(Praetorium) },
             { ZoneId.ThePortaDecumana, typeof(PortaDecumana) },
+            // The reworked Hard trial has its own guard and king choreography.
+            { (ZoneId)1067, typeof(ThornmarchHard) },
             // Hard mode retains its ship rails; Extreme uses different arena mechanics.
             { (ZoneId)281, typeof(WhorleaterHard) },
             // Keep Ramuh's status/marker evidence separate from the Extreme territory.
