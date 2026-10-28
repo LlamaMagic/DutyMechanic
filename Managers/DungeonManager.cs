@@ -55,6 +55,8 @@ internal static class DungeonManager
             { ZoneId.ThePortaDecumana, typeof(PortaDecumana) },
             // Hard mode retains its ship rails; Extreme uses different arena mechanics.
             { (ZoneId)281, typeof(WhorleaterHard) },
+            // Keep Ramuh's status/marker evidence separate from the Extreme territory.
+            { (ZoneId)374, typeof(StrikingTreeHard) },
             { (ZoneId)1052, typeof(Lahabrea) },
             { ZoneId.Snowcloak, typeof(Snowcloak) },
             { ZoneId.TheKeeperOfTheLake, typeof(KeeperOfTheLake) },

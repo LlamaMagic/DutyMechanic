@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 14);
+    public override Version Version => new(7, 5, 04282015, 15);
     /// <inheritdoc/>
     public override bool WantButton => false;
 

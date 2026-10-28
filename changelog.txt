@@ -1,5 +1,20 @@
 DutyMechanic Changelog
 
+7.5.4282015.15 10/28/2026
+
+The Striking Tree (Hard)
+- Move targeted Thunderstorm onto uncovered Terror victims and collect lightning orbs to clear Rolling Thunder.
+- Preserve native avoidance priority and settle movement before resuming rescues or pickups.
+- Keep healing available once a rescue position is reached, and restore navigation on stop or exit.
+- Use the updated trial profile for matched parties, Arbiter priority and entry staging around retained barrier collision.
+- Healer gameplay accepted; earlier Viper coverage and remaining verification limits are recorded in docs/StrikingTreeHard.md.
+
+Earlier October 28 source updates (included)
+- Whorleater Hard: role-aware targeting, separate tank assignments, avoidance and center staging during transitions.
+- Ktisis Hyperboreia: refined boss mechanics, positioning and movement cleanup.
+- ARR Duty Leveling: Sastasha, Tam-Tara, Copperbell, Toto-Rak, Haukke, Brayflox and Stone Vigil encounter updates.
+- Detailed acceptance boundaries remain in the individual encounter and Duty Leveling notes.
+
 Unreleased
 
 Matoya's Relict
