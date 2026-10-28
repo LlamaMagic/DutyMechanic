@@ -89,11 +89,18 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
-        // Stone Vigil must release boss-owned input even when loading or death skips its hook.
+        // ARR boss ownership must release even when death/loading skips its hook.
+        Dungeons.Sastasha.CheckLifecycle();
+        Dungeons.TamTaraDeepcroft.CheckLifecycle();
+        Dungeons.CopperbellMines.CheckLifecycle();
+        Dungeons.ThousandMawsOfTotoRak.CheckLifecycle();
+        Dungeons.HaukkeManor.CheckLifecycle();
+        Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
-        if (TreeRoot.IsRunning && WorldManager.ZoneId == 1042)
+        if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042)
         {
-            // A yielding door or combat tag must not hide boss impacts from developer capture.
+            // Door/combat coroutines can retain TreeStart; observe boss impacts
+            // here too so a delayed hook cannot misattribute vulnerability gains.
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         }
         // Matoya leases must end even when death/loading bypasses the encounter hook.
@@ -199,7 +206,13 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
-        // Restore Stone Vigil's borrowed mover and SideStep state before a successor starts.
+        // Boss ownership is encounter-local and must not survive a stopped run.
+        Dungeons.Sastasha.ResetActive();
+        Dungeons.TamTaraDeepcroft.ResetActive();
+        Dungeons.CopperbellMines.ResetActive();
+        Dungeons.ThousandMawsOfTotoRak.ResetActive();
+        Dungeons.HaukkeManor.ResetActive();
+        Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
