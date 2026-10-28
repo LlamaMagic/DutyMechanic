@@ -25,6 +25,7 @@ public partial class KtisisHyperboreia
     private bool animationReaderAttempted;
     private int meteorAnimationOffset;
     private (int Pid, long Start, long Image) animationProcess;
+
     private void UpdateEncounterSignals(BattleCharacter[] actors, BattleCharacter[] casts, DateTime now)
     {
         if (savedSideStepEnabled == null)
@@ -156,10 +157,9 @@ public partial class KtisisHyperboreia
 
         var rock = intactMeteor.Value;
         var ordered = volleys.Values.OrderBy(v => v.Finish).ToArray();
-        // Four parallel gates form each wave; the next four begin three seconds
-        // later. Keep the first shelter through its half-second effect tail, then
-        // cross around the same rock. Preserve the last shelter until choreography
-        // ends rather than releasing combat movement at a disappearing cast bar.
+        // Each wave has four parallel gates, with the next wave three seconds later.
+        // Hold through the 0.5s effect tail before moving around the same rock.
+        // Keep the final shelter until the choreography ends, including cast-bar gaps.
         var wave = ordered.FirstOrDefault(v => now <= v.Finish.AddSeconds(.5)) ?? ordered.LastOrDefault();
         if (wave == null)
         {
