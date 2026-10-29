@@ -285,3 +285,7 @@ $RECYCLE.BIN/
 /Captures/
 *.cs.test
 *.jsonl
+
+# Keep local research, verification evidence and handoff notes out of repository sync.
+# Existing docs are untracked separately; this rule preserves them on disk.
+/docs/
