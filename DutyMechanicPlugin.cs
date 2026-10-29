@@ -101,7 +101,9 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.KeeperOfTheLake.CheckLifecycle();
         // Sohm's helper/wing phases must retain the same input owner through yielding grinds.
         Dungeons.SohmAl.CheckLifecycle();
-        if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042 or 1063 or 1064)
+        // Aery flight/add phases retain the same owned avoidance/input channel.
+        Dungeons.Aery.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042 or 1063 or 1064 or 1065)
         {
             // Door/combat coroutines can retain TreeStart; observe boss impacts
             // here too so a delayed hook cannot misattribute vulnerability gains.
@@ -229,6 +231,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.StoneVigil.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
         Dungeons.SohmAl.ResetActive();
+        Dungeons.Aery.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();
