@@ -1,5 +1,12 @@
 DutyMechanic Changelog
 
+7.5.4282015.18 10/28/2026
+
+The Chrysalis
+- Alternate orb pickups, wait out Blight before entering the rift, and take uncovered meteors as a tank.
+- Keep healers near the meteor-room center and resume normal combat after the tear falls.
+- Recover avoidance after room transitions and support synchronized matched-party runs with the updated profile.
+
 7.5.4282015.15 10/28/2026
 
 The Striking Tree (Hard)

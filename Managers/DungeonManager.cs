@@ -61,6 +61,8 @@ internal static class DungeonManager
             { (ZoneId)281, typeof(WhorleaterHard) },
             // Keep Ramuh's status/marker evidence separate from the Extreme territory.
             { (ZoneId)374, typeof(StrikingTreeHard) },
+            // Nabriales uses two rooms and status-dependent orb/portal positioning.
+            { (ZoneId)426, typeof(Chrysalis) },
             { (ZoneId)1052, typeof(Lahabrea) },
             { ZoneId.Snowcloak, typeof(Snowcloak) },
             { ZoneId.TheKeeperOfTheLake, typeof(KeeperOfTheLake) },

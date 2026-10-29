@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 17);
+    public override Version Version => new(7, 5, 04282015, 18);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -208,6 +208,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // The Chrysalis borrows navigation input and must release it on plugin shutdown.
+        Dungeons.Chrysalis.ResetActive();
         Dungeons.AkhAfahHard.ResetActive();
         // Boss ownership is encounter-local and must not survive a stopped run.
         Dungeons.Sastasha.ResetActive();
