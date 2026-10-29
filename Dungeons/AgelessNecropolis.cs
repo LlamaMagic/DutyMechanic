@@ -23,9 +23,9 @@ namespace DutyMechanic.Dungeons;
 /// Geometry and identifiers are based on the normal T05 Necron encounter rather than the Extreme
 /// variant. DutyMechanic exclusively owns avoidance in this duty because SideStep also publishes the
 /// Grand Cross helper casts, producing duplicate and sometimes contradictory forbidden geometry.
-/// Mass Macabre tower assignments remain a diagnostic capture target because their decisive state is
-/// delivered by map effects that the current dungeon abstraction does not expose safely. The prison
-/// route instead uses the captured fixed platform layout and advances only after all local hands die.
+/// Mass Macabre counts support NPCs outside the four-member party list. The prison route advances
+/// through its fixed platforms only after all local hands die. Geometry and timing were verified
+/// in Global Duty Support captures on 2026-10-29.
 /// </remarks>
 public class AgelessNecropolis : AbstractDungeon
 {
@@ -138,12 +138,32 @@ public class AgelessNecropolis : AbstractDungeon
     private bool grandCrossCompletedSinceLastTransition;
     private bool grandCrossTransitionWasCasting;
     private bool neutronRingWasCasting;
+    private DateTime grandCrossRestoreAtUtc;
     private readonly List<GrandCrossLaserPrediction> grandCrossLaserPredictions = [];
     private readonly HashSet<(uint SourceObjectId, ushort TetherId, uint TargetObjectId)> activeGrandCrossTethers = [];
     private readonly HashSet<uint> activeGrandCrossLineCasterObjectIds = [];
     private AetherblightShape pendingAetherblightShape;
     private ulong lastVisibleAetherblightMarkerId;
     private bool aetherblightResolutionWasCasting;
+    // Store by ring actor, since Crop Rotation moves the actors while preserving their shapes.
+    // The bottom ring at Seasons of Blight is first; tether IDs 347..350 establish clockwise order.
+    private readonly uint[] storedBlightActors = new uint[4];
+    private readonly AetherblightShape[] storedBlights = new AetherblightShape[4];
+    private bool relentlessWasCasting;
+    private bool seasonsWasCasting;
+    private int seasonsIndex = -1;
+    private int seasonsRemaining;
+    private DateTime blightAdvanceAtUtc;
+    private uint occupiedTower;
+    private int coldGripSafeSide;
+    private bool coldGripWasCasting;
+    private DateTime coldGripFollowupUntilUtc;
+    private bool blueShockwaveWasCasting;
+    private DateTime blueShockwaveUntilUtc;
+    private Vector3 blueShockwaveTankAnchor;
+    private Vector3 blueShockwaveOrigin;
+    private Vector3 blueShockwaveAim;
+    private uint blueShockwaveTargetId;
 
     // This lease is independent from mechanic-specific avoidance ownership. It suppresses only the
     // combat routine's unsafe target chase and must never stop AvoidanceManager's emergency movement.
@@ -156,6 +176,8 @@ public class AgelessNecropolis : AbstractDungeon
     private bool movingThroughPrisonPortal;
     private Vector3? prisonHandDodgeDestination;
     private readonly HashSet<uint> prisonHandObjectIdsSeen = [];
+    private readonly Dictionary<uint, PrisonLane> prisonLanes = [];
+    private AgelessNecropolisMovement movement;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.AgelessNecropolis;
@@ -164,7 +186,10 @@ public class AgelessNecropolis : AbstractDungeon
     protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToMitigate { get; } =
+    protected override HashSet<uint> SpellsToMitigate
+    {
+        get;
+    } =
     [
         EnemyAction.FearOfDeath,
         EnemyAction.GrandCross,
@@ -181,6 +206,9 @@ public class AgelessNecropolis : AbstractDungeon
     protected override Task<bool> EnterDungeonAsync()
     {
         ResetEncounterState();
+        ff14bot.NeoProfile.BotEvents.OnPulse += OnEncounterPulse;
+        TreeRoot.OnStop += OnEncounterStop;
+        ff14bot.Behavior.TreeHooks.Instance.OnHooksCleared += OnEncounterHooksCleared;
 
         // This encounter is fully modeled below. SideStep recognizes several of the same helper casts
         // and would add a second owner for Grand Cross and Aetherblight movement.
@@ -208,17 +236,20 @@ public class AgelessNecropolis : AbstractDungeon
         AddPrisonPlatformBoundary(segmentIndex: 2, PrisonTransferPlatformSafeRadius);
         AddPrisonPlatformBoundary(segmentIndex: 3, PrisonGoalPlatformSafeRadius);
 
-        // Existential Dread exposes only a 700ms helper cast in RB. The long Cold Grip visual tells
-        // which two-thirds follow next, so publish that future rectangle during its last two seconds
-        // and hand off seamlessly to the actual 44526 cast instead of attempting a cross-arena dodge.
-        // Width 27 adds 1.5 yalms per side after the live run was clipped at X=106.44 against the
-        // nominal X=105 edge, accounting for the player hitbox and movement latency.
-        AddColdGripFollowupPrediction(
-            EnemyAction.ColdGripVisualLeftSafe,
-            new Vector3(107.0f, 0.0f, 85.0f));
-        AddColdGripFollowupPrediction(
-            EnemyAction.ColdGripVisualRightSafe,
-            new Vector3(93.0f, 0.0f, 85.0f));
+        // Stay in the central lane until the side slams resolve, then move to the safe side.
+        // Publishing the full follow-up width too early leaves no shared safe floor. The
+        // forecast gives native avoidance time to react before the 700ms damage helper.
+        AvoidanceManager.AddAvoidPolygon(
+            condition: () => IsEncounterActive() && coldGripSafeSide != 0,
+            leashPointProducer: () => ArenaCenter.Necron,
+            leashRadius: 60.0f,
+            rotationProducer: _ => 0.0f,
+            scaleProducer: _ => 1.0f,
+            heightProducer: _ => 15.0f,
+            pointsProducer: _ => ColdGripForecastPolygon(),
+            locationProducer: location => location,
+            collectionProducer: () => new[] { ArenaCenter.Necron },
+            priority: AvoidancePriority.High);
 
         // Unlike the visible Memento Mori cast, its center-lane bleed remains lethal into the hand
         // sequence. This state-backed polygon preserves that mechanic after the cast object clears.
@@ -234,16 +265,19 @@ public class AgelessNecropolis : AbstractDungeon
             collectionProducer: () => new[] { MementoMoriLaneOrigin },
             priority: AvoidancePriority.High);
 
-        // Blue Shockwave is a wide tank-targeted cone. Non-tanks stay out of the boss-facing cone;
-        // the long visual cast is available directly, so this remains deterministic without SideStep.
-        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => IsEncounterActive() && !Core.Me.IsTank(),
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.BlueShockwaveVisual,
+        // Necron's model keeps facing south while the buster aims at his target.
+        // Model heading would incorrectly leave the tank's corner safe. Retain the
+        // target-directed cone through both hits, including the gap after the visual cast.
+        AvoidanceManager.AddAvoidPolygon(
+            condition: () => IsEncounterActive() && !Core.Me.IsTank() && DateTime.UtcNow < blueShockwaveUntilUtc,
             leashPointProducer: () => ArenaCenter.Necron,
             leashRadius: 60.0f,
-            rotationDegrees: 0.0f,
-            radius: 100.0f,
-            arcDegrees: 100.0f,
+            rotationProducer: _ => 0.0f,
+            scaleProducer: _ => 1.0f,
+            heightProducer: _ => 15.0f,
+            pointsProducer: _ => BlueShockwavePolygon(),
+            locationProducer: location => location,
+            collectionProducer: () => new[] { blueShockwaveOrigin },
             priority: AvoidancePriority.High);
 
         // Relentless Reaping stores an in/out shape and later resolves it through these helper casts.
@@ -273,7 +307,7 @@ public class AgelessNecropolis : AbstractDungeon
         AvoidanceHelpers.AddAvoidDonut(
             () => IsEncounterActive() &&
                   pendingAetherblightShape == AetherblightShape.Circle &&
-                  EnemyAction.AetherblightVisualHash.IsCasting(),
+                  IsBlightForecastActive(),
             GetAetherblightOrigin,
             outerRadius: AetherblightCircleAvoidRadius,
             innerRadius: 0.0f,
@@ -281,7 +315,7 @@ public class AgelessNecropolis : AbstractDungeon
         AvoidanceHelpers.AddAvoidDonut(
             () => IsEncounterActive() &&
                   pendingAetherblightShape == AetherblightShape.Donut &&
-                  EnemyAction.AetherblightVisualHash.IsCasting(),
+                  IsBlightForecastActive(),
             GetAetherblightOrigin,
             outerRadius: 60.0f,
             innerRadius: AetherblightDonutSafeRadius,
@@ -317,7 +351,9 @@ public class AgelessNecropolis : AbstractDungeon
             priority: AvoidancePriority.High);
 
         AddCenteredGrandCrossRectangle(EnemyAction.GrandCrossLine, width: 4.0f);
-        AddCenteredGrandCrossRectangle(EnemyAction.GrandCrossProximity, width: 10.0f);
+        // The falloff response needs 4.5y from each line. A wider strip plus the native
+        // navigator's clearance consumes the small arena's intercardinal safe cells.
+        AddCenteredGrandCrossRectangle(EnemyAction.GrandCrossProximity, width: 9.0f);
 
         // Looming Specter leaves one lane open; both the visible invitation and its damage cast are
         // included because client timing can expose either one to RB for longer.
@@ -348,7 +384,7 @@ public class AgelessNecropolis : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> ExitDungeonAsync()
     {
-        ResetEncounterState();
+        ReleaseEncounterLifecycle();
         SidestepPlugin.Enabled = true;
         return Task.FromResult(false);
     }
@@ -375,20 +411,74 @@ public class AgelessNecropolis : AbstractDungeon
             return false;
         }
 
-        UpdateMementoMoriState();
-        UpdateGrandCrossState();
-        UpdateAetherblightState();
-
         _ = await TankBusterSpells();
         _ = await DamageMitigationSpells();
+        if (HandleMassMacabre())
+            return false;
         return await HandleNecronNavigationAsync();
     }
 
     private static bool IsEncounterActive()
     {
-        return Core.Player.InCombat &&
+        return TreeRoot.IsRunning && Core.Player != null && Core.Player.IsAlive && DutyManager.InInstance &&
+               !ff14bot.Behavior.CommonBehaviors.IsLoading && !QuestLogManager.InCutscene &&
                WorldManager.ZoneId == (uint)Data.ZoneId.AgelessNecropolis &&
-               Core.Player.Location.Distance2D(ArenaCenter.Necron) <= EncounterDetectionRadius;
+               Core.Player.Location.Y > -100 &&
+               Core.Player.Location.Distance2D(ArenaCenter.Necron) <= EncounterDetectionRadius &&
+               GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).Any(actor =>
+                   actor.IsValid && actor.IsAlive && actor.BaseId == EnemyObjectId.Necron &&
+                   (Core.Player.InCombat || actor.CurrentHealthPercent < 100 || actor.IsCasting));
+    }
+
+    private void OnEncounterPulse(object sender, EventArgs args)
+    {
+        // Forecasts must advance even when native avoidance or a yielding profile owns
+        // TreeStart. These scalar updates and input cleanup stay on the bot thread.
+        // Disabling the plugin need not stop OrderBot. Release this old controller before
+        // a re-enabled plugin can install its next encounter instance.
+        if (!PluginManager.Plugins.Any(p => p.Plugin is DutyMechanicPlugin && p.Enabled))
+        {
+            ReleaseEncounterLifecycle();
+            return;
+        }
+        if (!TreeRoot.IsRunning || Core.Player == null || !Core.Player.IsAlive ||
+            WorldManager.ZoneId != (uint)Data.ZoneId.AgelessNecropolis ||
+            ff14bot.Behavior.CommonBehaviors.IsLoading || QuestLogManager.InCutscene)
+        {
+            movement?.Detach();
+            movement = null;
+            return;
+        }
+        if (movement == null && Navigator.PlayerMover?.GetType() == typeof(SlideMover))
+        {
+            movement = new AgelessNecropolisMovement(Navigator.PlayerMover);
+            Navigator.PlayerMover = movement;
+        }
+        movement?.CompleteEscape();
+        UpdatePrisonLanes();
+        if (!IsEncounterActive())
+            return;
+        UpdateMementoMoriState();
+        UpdateColdGripState();
+        UpdateBlueShockwaveState();
+        UpdateGrandCrossState();
+        UpdateAetherblightState();
+    }
+
+    private void OnEncounterStop(ff14bot.AClasses.BotBase bot)
+        => ReleaseEncounterLifecycle();
+
+    private void OnEncounterHooksCleared(object sender, EventArgs args)
+        => ReleaseEncounterLifecycle();
+
+    private void ReleaseEncounterLifecycle()
+    {
+        ff14bot.NeoProfile.BotEvents.OnPulse -= OnEncounterPulse;
+        TreeRoot.OnStop -= OnEncounterStop;
+        ff14bot.Behavior.TreeHooks.Instance.OnHooksCleared -= OnEncounterHooksCleared;
+        ResetEncounterState();
+        movement?.Detach();
+        movement = null;
     }
 
     private static bool IsPrisonIntermissionActive()
@@ -429,18 +519,34 @@ public class AgelessNecropolis : AbstractDungeon
             priority: AvoidancePriority.High);
     }
 
-    private static void AddColdGripFollowupPrediction(uint visualActionId, Vector3 origin)
+    private void UpdateColdGripState()
     {
-        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: IsEncounterActive,
-            objectSelector: bc =>
-                bc.CastingSpellId == visualActionId &&
-                bc.SpellCastInfo.RemainingCastTime.TotalMilliseconds <= 2_000.0,
-            width: 27.0f,
-            length: 30.0f,
-            rotationProducer: _ => 0.0f,
-            locationProducer: _ => origin,
-            priority: AvoidancePriority.High);
+        BattleCharacter visual = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .FirstOrDefault(actor => actor.IsValid && actor.CastingSpellId is
+                EnemyAction.ColdGripVisualLeftSafe or EnemyAction.ColdGripVisualRightSafe);
+        if (visual != null)
+        {
+            coldGripSafeSide = visual.CastingSpellId == EnemyAction.ColdGripVisualLeftSafe ? -1 : 1;
+            coldGripWasCasting = true;
+            coldGripFollowupUntilUtc = DateTime.UtcNow + visual.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(2.5);
+        }
+        else
+        {
+            coldGripWasCasting = false;
+            if (DateTime.UtcNow >= coldGripFollowupUntilUtc)
+                coldGripSafeSide = 0;
+        }
+    }
+
+    private Vector2[] ColdGripForecastPolygon()
+    {
+        // Side slams end at X94/106. The initial two-yalm staging lane remains inside
+        // those edges; the follow-up inset is 0.5y beyond its X94/106 damage boundary.
+        // Keep the forecast through the observed effect delay, not just cast disappearance.
+        float edge = coldGripWasCasting ? 4.0f : 6.5f;
+        float left = coldGripSafeSide < 0 ? -edge : -20.0f;
+        float right = coldGripSafeSide > 0 ? edge : 20.0f;
+        return [new(left, -15.5f), new(right, -15.5f), new(right, 15.5f), new(left, 15.5f)];
     }
 
     private GrandCrossLaserPrediction[] GetActiveGrandCrossLaserPredictions()
@@ -479,7 +585,7 @@ public class AgelessNecropolis : AbstractDungeon
             // The normal prison always contains three hands. Waiting until all three distinct actors
             // have been observed prevents a brief spawn gap from starting portal movement early.
             ReleasePrisonNavigation();
-            return await HandlePrisonHandAvoidanceAsync(localHands);
+            return await HandlePrisonHandAvoidanceAsync();
         }
 
         ReleasePrisonHandDodge("All local Icy Hands are dead");
@@ -496,9 +602,7 @@ public class AgelessNecropolis : AbstractDungeon
         int segmentIndex = GetCurrentPrisonSegmentIndex();
         Vector3 destination = GetCurrentPrisonCenter() + PrisonPortalOffsets[segmentIndex];
 
-        Navigator.Stop();
-        MovementManager.MoveStop();
-        Navigator.PlayerMover.MoveTowards(destination);
+        movement?.Move(AgelessNecropolisMovement.Request.Portal, destination);
         movingThroughPrisonPortal = true;
 
         // Keep consuming the profile movement tick and holding forward movement until the client
@@ -513,16 +617,13 @@ public class AgelessNecropolis : AbstractDungeon
     /// Dodges Choking Grasp directly on the isolated prison floor, whose disconnected collision mesh
     /// is not represented by RB's avoidance navigator.
     /// </summary>
-    /// <param name="localHands">The Icy Hands actors on the player's current prison platform.</param>
     /// <returns>
     /// <see langword="true"/> while direct movement is required; otherwise <see langword="false"/> so
     /// combat actions continue while the movement capability lease holds the chosen safe position.
     /// </returns>
-    private async Task<bool> HandlePrisonHandAvoidanceAsync(BattleCharacter[] localHands)
+    private async Task<bool> HandlePrisonHandAvoidanceAsync()
     {
-        BattleCharacter[] castingHands = localHands
-            .Where(hand => hand.IsValid && hand.CastingSpellId == EnemyAction.ChokingGrasp)
-            .ToArray();
+        PrisonLane[] castingHands = prisonLanes.Values.ToArray();
 
         if (castingHands.Length == 0)
         {
@@ -542,7 +643,8 @@ public class AgelessNecropolis : AbstractDungeon
 
         Vector3 platformCenter = GetCurrentPrisonSegmentCenter(0);
         if (!prisonHandDodgeDestination.HasValue ||
-            !IsPrisonHandDodgePointSafe(prisonHandDodgeDestination.Value, platformCenter, castingHands))
+            !IsPrisonHandDodgePointSafe(prisonHandDodgeDestination.Value, platformCenter, castingHands) ||
+            !IsPrisonDodgeSegmentSafe(Core.Me.Location, prisonHandDodgeDestination.Value, castingHands))
         {
             prisonHandDodgeDestination = FindPrisonHandDodgeDestination(
                 Core.Player.Location,
@@ -550,25 +652,23 @@ public class AgelessNecropolis : AbstractDungeon
                 castingHands);
         }
 
-        Navigator.Stop();
-        MovementManager.MoveStop();
         if (!prisonHandDodgeDestination.HasValue)
         {
             // Overlapping lanes should still leave a valid point on the radius-9.5 platform. If an
             // unexpected layout does not, stopping is safer than guessing a direction across its edge.
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.PrisonDodge);
             movingFromPrisonHandAttack = false;
             return false;
         }
 
         if (Core.Player.Distance2D(prisonHandDodgeDestination.Value) <= PrisonHandDodgeArrivalRadius)
         {
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.PrisonDodge);
             movingFromPrisonHandAttack = false;
             return false;
         }
 
-        Navigator.PlayerMover.MoveTowards(prisonHandDodgeDestination.Value);
+        movement?.Move(AgelessNecropolisMovement.Request.PrisonDodge, prisonHandDodgeDestination.Value);
         movingFromPrisonHandAttack = true;
         await Coroutine.Yield();
         return true;
@@ -585,7 +685,7 @@ public class AgelessNecropolis : AbstractDungeon
     private static Vector3? FindPrisonHandDodgeDestination(
         Vector3 playerLocation,
         Vector3 platformCenter,
-        BattleCharacter[] castingHands)
+        PrisonLane[] castingHands)
     {
         if (IsPrisonHandDodgePointSafe(playerLocation, platformCenter, castingHands))
         {
@@ -607,7 +707,8 @@ public class AgelessNecropolis : AbstractDungeon
                     platformCenter.Y,
                     platformCenter.Z + (float)Math.Cos(angle) * radius);
 
-                if (!IsPrisonHandDodgePointSafe(candidate, platformCenter, castingHands))
+                if (!IsPrisonHandDodgePointSafe(candidate, platformCenter, castingHands) ||
+                    !IsPrisonDodgeSegmentSafe(playerLocation, candidate, castingHands))
                 {
                     continue;
                 }
@@ -627,13 +728,57 @@ public class AgelessNecropolis : AbstractDungeon
     private static bool IsPrisonHandDodgePointSafe(
         Vector3 location,
         Vector3 platformCenter,
-        IEnumerable<BattleCharacter> castingHands)
+        IEnumerable<PrisonLane> castingHands)
     {
         return location.Distance2D(platformCenter) <= PrisonHandDodgeMaximumRadius &&
                castingHands.All(hand => !IsInsideChokingGraspLane(location, hand));
     }
 
-    private static bool IsInsideChokingGraspLane(Vector3 location, BattleCharacter hand)
+    // A safe endpoint can still require crossing an earlier hand's lane. Allow leaving a lane
+    // the player starts in, but never entering or re-entering one. Quarter-yalm samples cover
+    // the narrowest gaps; the convex platform keeps the whole segment on the floor.
+    private static bool IsPrisonDodgeSegmentSafe(Vector3 start, Vector3 end, IEnumerable<PrisonLane> lanes)
+    {
+        int steps = Math.Max(1, (int)Math.Ceiling(start.Distance2D(end) / 0.25f));
+        foreach (var lane in lanes)
+        {
+            bool outside = !IsInsideChokingGraspLane(start, lane);
+            for (int step = 1; step <= steps; step++)
+            {
+                var point = start + (end - start) * ((float)step / steps);
+                bool inside = IsInsideChokingGraspLane(point, lane);
+                if (outside && inside)
+                    return false;
+                outside |= !inside;
+            }
+        }
+        return true;
+    }
+
+    private void UpdatePrisonLanes()
+    {
+        if (!IsPrisonIntermissionActive())
+        {
+            prisonLanes.Clear();
+            return;
+        }
+        DateTime now = DateTime.UtcNow;
+        foreach (var id in prisonLanes.Where(p => p.Value.Until <= now).Select(p => p.Key).ToArray())
+            prisonLanes.Remove(id);
+        foreach (var hand in GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).Where(a =>
+                     a.IsValid && a.IsAlive && a.CastingSpellId == EnemyAction.ChokingGrasp &&
+                     a.Location.Distance2D(Core.Me.Location) < 30 && Math.Abs(a.Location.Y - Core.Me.Location.Y) < 3))
+        {
+            // Hands keep turning early in the cast. Refresh their headings while casting,
+            // then retain the final lane for 500ms to cover the observed 300ms damage delay.
+            prisonLanes[hand.ObjectId] = new PrisonLane(hand.Location, hand.Heading,
+                now + hand.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(500));
+        }
+    }
+
+    private sealed record PrisonLane(Vector3 Location, float Heading, DateTime Until);
+
+    private static bool IsInsideChokingGraspLane(Vector3 location, PrisonLane hand)
     {
         float deltaX = location.X - hand.Location.X;
         float deltaZ = location.Z - hand.Location.Z;
@@ -653,7 +798,7 @@ public class AgelessNecropolis : AbstractDungeon
     {
         if (movingFromPrisonHandAttack)
         {
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.PrisonDodge);
         }
 
         movingFromPrisonHandAttack = false;
@@ -732,7 +877,7 @@ public class AgelessNecropolis : AbstractDungeon
     {
         if (movingThroughPrisonPortal && !AvoidanceManager.IsRunningOutOfAvoid)
         {
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.Portal);
         }
 
         movingThroughPrisonPortal = false;
@@ -778,15 +923,18 @@ public class AgelessNecropolis : AbstractDungeon
         Vector3 playerLocation = Core.Player.Location;
         Vector3? destination = null;
 
-        if (grandCrossActive)
+        // During Grand Cross, preserve the native dodge destination between forecasts.
+        // Returning to the center would walk back into the laser intersection; the arena
+        // boundary handles any required ingress.
+        if (!grandCrossActive && Core.Player.IsTank() && DateTime.UtcNow < blueShockwaveUntilUtc)
         {
-            destination = ArenaCenter.Necron;
+            destination = blueShockwaveTankAnchor;
         }
-        else if (Core.Player.IsMelee())
+        else if (!grandCrossActive && Core.Player.IsMelee())
         {
             destination = NecronMeleeAnchor;
         }
-        else if (!IsInsideNavigationSafeArea(playerLocation))
+        else if (!grandCrossActive && !IsInsideNavigationSafeArea(playerLocation))
         {
             // Clamp ranged jobs back inside a stronger inset than the general arena outline. This is
             // recovery-only; ranged jobs already inside the inset are held where mechanics left them.
@@ -796,20 +944,23 @@ public class AgelessNecropolis : AbstractDungeon
                 Math.Clamp(playerLocation.Z, NavigationSafeMinimumZ, NavigationSafeMaximumZ));
         }
 
+        // A combat anchor must not undo the native dodge on its first completed tick.
+        // In particular, the center is unsafe during Grand Cross proximity lines and
+        // the north anchor can lie inside stored blights or the Cold Grip forecast.
+        if (destination.HasValue && AvoidanceManager.Avoids.Any(avoid =>
+                !avoid.ShouldIgnore && avoid.IsPointInAvoid(destination.Value)))
+            destination = null;
+
         if (!destination.HasValue || Core.Player.Distance2D(destination.Value) <= 1.0f)
         {
             // Cancel any service-navigation path that was already active before this tick. The
             // capability lease prevents Magitek from immediately recreating the off-platform path.
-            Navigator.Stop();
-            Navigator.PlayerMover.MoveStop();
-            MovementManager.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.Anchor);
             movingToNecronSafeAnchor = false;
             return false;
         }
 
-        Navigator.Stop();
-        MovementManager.MoveStop();
-        Navigator.PlayerMover.MoveTowards(destination.Value);
+        movement?.Move(AgelessNecropolisMovement.Request.Anchor, destination.Value);
         movingToNecronSafeAnchor = true;
         await Coroutine.Yield();
         return true;
@@ -822,11 +973,70 @@ public class AgelessNecropolis : AbstractDungeon
                location.Z <= NavigationSafeMaximumZ;
     }
 
+    private void UpdateBlueShockwaveState()
+    {
+        var actors = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).ToArray();
+        var boss = actors
+            .FirstOrDefault(a => a.IsValid && a.BaseId == EnemyObjectId.Necron &&
+                                 a.CastingSpellId == EnemyAction.BlueShockwaveVisual);
+        bool casting = boss != null;
+        if (casting && !blueShockwaveWasCasting)
+        {
+            blueShockwaveOrigin = boss.Location;
+            blueShockwaveTargetId = 0;
+            // Use model facing only until the live tank target becomes available.
+            blueShockwaveAim = boss.Location + new Vector3((float)Math.Sin(boss.Heading), 0,
+                (float)Math.Cos(boss.Heading));
+            // A central bait clips the support group with the 100-degree cone during
+            // Invitation. Bait from the opposite north corner instead.
+            // Include allies outside PartyManager's four slots; snapshot the side so
+            // their scripted movement cannot make us sweep the cone across the group.
+            var allies = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+                .Where(a => a.IsValid && a.IsAlive && a.IsTargetable && !a.CanAttack &&
+                            a.ObjectId != Core.Me.ObjectId && !a.IsTank() &&
+                            a.Location.Distance2D(ArenaCenter.Necron) < 40)
+                .Select(a => a.Location.X).ToArray();
+            float groupX = allies.Length == 0 ? ArenaCenter.Necron.X : allies.Average();
+            blueShockwaveTankAnchor = new Vector3(groupX <= ArenaCenter.Necron.X ? 115 : 85, 0, 87);
+            // Two hits are separated by 4.1s. Keep the corner through both, allowing
+            // packet/visual delay; native Invitation avoidance retains priority.
+            blueShockwaveUntilUtc = DateTime.UtcNow.AddMilliseconds(boss.SpellCastInfo.RemainingCastTime.TotalMilliseconds)
+                .AddSeconds(5.5);
+        }
+        if (casting)
+        {
+            var target = actors.FirstOrDefault(a => a.IsValid && a.IsAlive &&
+                a.ObjectId == boss.CurrentTargetId && !a.CanAttack);
+            if (target != null)
+                blueShockwaveTargetId = target.ObjectId;
+        }
+        if (DateTime.UtcNow < blueShockwaveUntilUtc)
+        {
+            var target = actors.FirstOrDefault(a => a.IsValid && a.IsAlive &&
+                a.ObjectId == blueShockwaveTargetId);
+            if (target != null)
+                blueShockwaveAim = target.Location;
+        }
+        blueShockwaveWasCasting = casting;
+    }
+
+    private Vector2[] BlueShockwavePolygon()
+    {
+        double angle = Math.Atan2(blueShockwaveAim.X - blueShockwaveOrigin.X,
+            blueShockwaveAim.Z - blueShockwaveOrigin.Z);
+        float x = (float)Math.Sin(angle), z = (float)Math.Cos(angle);
+        // A 100-yalm triangle contains the arena portion of the range-100 cone.
+        // Its 52-degree half-angle adds two degrees of clearance to the actual 50.
+        float halfWidth = 100 * (float)Math.Tan(52 * Math.PI / 180);
+        return [new(0, 0), new(100 * x + halfWidth * z, 100 * z - halfWidth * x),
+            new(100 * x - halfWidth * z, 100 * z + halfWidth * x)];
+    }
+
     private void ReleaseNecronNavigation(string reason)
     {
         if (movingToNecronSafeAnchor && !AvoidanceManager.IsRunningOutOfAvoid)
         {
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(AgelessNecropolisMovement.Request.Anchor);
         }
 
         movingToNecronSafeAnchor = false;
@@ -867,6 +1077,15 @@ public class AgelessNecropolis : AbstractDungeon
 
     private void UpdateAetherblightState()
     {
+        bool relentless = EnemyAction.RelentlessReapingHash.IsCasting();
+        if (relentless && !relentlessWasCasting)
+        {
+            Array.Clear(storedBlightActors);
+            Array.Clear(storedBlights);
+            seasonsIndex = -1;
+            seasonsRemaining = 0;
+        }
+        relentlessWasCasting = relentless;
         BattleCharacter necron = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
             .FirstOrDefault(bc => bc.IsValid && bc.BaseId == EnemyObjectId.Necron);
 
@@ -888,13 +1107,113 @@ public class AgelessNecropolis : AbstractDungeon
 
         lastVisibleAetherblightMarkerId = markerId;
 
+        var rings = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(a => a.IsValid && a.IsVisible && a.BaseId == EnemyObjectId.BlightRing).ToArray();
+        foreach (var ring in rings)
+        {
+            if (!ring.VfxContainer.IsValid || pendingAetherblightShape == AetherblightShape.None)
+                continue;
+            foreach (var tether in ring.VfxContainer.Tethers.Where(t => t.Id is >= 347 and <= 350 &&
+                         necron != null && t.TargetId == necron.ObjectId))
+            {
+                int slot = tether.Id - 347;
+                if (storedBlightActors[slot] != 0)
+                    continue;
+                storedBlightActors[slot] = ring.ObjectId;
+                storedBlights[slot] = pendingAetherblightShape;
+            }
+        }
+
+        bool seasons = EnemyAction.SeasonsOfBlightHash.IsCasting();
+        if (seasons && !seasonsWasCasting)
+        {
+            // The native API exposes no boss model state. The captured ring positions provide
+            // the same rotation without memory offsets: the bottom is five yalms below its peers.
+            // Require all four stored shapes and a settled ring; otherwise use actual helper casts.
+            var ordered = rings.OrderBy(a => a.Location.Y).ToArray();
+            seasonsIndex = ordered.Length == 4 && ordered[1].Location.Y - ordered[0].Location.Y > 2 &&
+                storedBlightActors.All(id => id != 0) && storedBlights.All(s => s != AetherblightShape.None)
+                ? Array.IndexOf(storedBlightActors, ordered[0].ObjectId) : -1;
+            seasonsRemaining = seasonsIndex >= 0 ? 4 : 0;
+            pendingAetherblightShape = seasonsIndex >= 0 ? storedBlights[seasonsIndex] : AetherblightShape.None;
+        }
+        seasonsWasCasting = seasons;
+
         bool resolutionCasting = EnemyAction.AetherblightResolutionHash.IsCasting();
         if (aetherblightResolutionWasCasting && !resolutionCasting)
         {
-            pendingAetherblightShape = AetherblightShape.None;
+            // RB ends these 700ms helper casts before damage is applied. Keep the current safe
+            // side for one packet allowance, then give the next stored shape the remaining gap.
+            blightAdvanceAtUtc = DateTime.UtcNow.AddMilliseconds(400);
         }
-
         aetherblightResolutionWasCasting = resolutionCasting;
+        if (blightAdvanceAtUtc != default && DateTime.UtcNow >= blightAdvanceAtUtc)
+        {
+            blightAdvanceAtUtc = default;
+            if (seasonsRemaining > 1)
+            {
+                seasonsRemaining--;
+                seasonsIndex = (seasonsIndex + 1) % 4;
+                pendingAetherblightShape = storedBlights[seasonsIndex];
+            }
+            else
+            {
+                seasonsRemaining = 0;
+                pendingAetherblightShape = AetherblightShape.None;
+            }
+        }
+    }
+
+    private bool IsBlightForecastActive() => seasonsRemaining > 0 ||
+        EnemyAction.AetherblightVisualHash.IsCasting() || aetherblightResolutionWasCasting ||
+        blightAdvanceAtUtc != default;
+
+    // Placed-instance IDs from the Global Duty Support capture, in NW/NE/SW/SE order.
+    // State 4 is absent/sealed; 1/10/40/100 represent active participation stages. A four-person
+    // group seals one portal before moving to the next. The other three support NPCs need us.
+    private static readonly (uint Id, Vector3 Center)[] MacabreTowers =
+    [
+        (0xB51B3C, new(94, 0, 90)), (0xB51B3D, new(106, 0, 90)),
+        (0xB51B3E, new(94, 0, 100)), (0xB51B3F, new(106, 0, 100)),
+    ];
+
+    private bool HandleMassMacabre()
+    {
+        var director = DirectorManager.ActiveDirector as ff14bot.Directors.InstanceContentDirector;
+        var active = director?.MapEffects.Where(e => e.State is 1 or 0x10 or 0x40 or 0x100)
+            .Select(e => e.ID).ToHashSet();
+        var friendlies = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(a => a.IsValid && a.IsAlive && a.IsVisible && a.IsTargetable && !a.CanAttack &&
+                a.ObjectId != Core.Me.ObjectId && Math.Abs(a.Location.Y) < 3).ToArray();
+        var candidates = MacabreTowers.Where(t => active?.Contains(t.Id) == true)
+            .Select(t => new { t.Id, t.Center, Count = friendlies.Count(a => a.Location.Distance2D(t.Center) < 3) })
+            .Where(t => t.Count < 4).ToArray();
+        // NPCs begin near the south portals, then split into their scripted groups.
+        // Do not lock onto that transient cluster: join a ready three-person group
+        // when one forms, then hold its portal until it seals instead of oscillating.
+        var ready = candidates.Where(t => t.Count == 3).ToArray();
+        var tower = ready.FirstOrDefault(t => t.Id == occupiedTower) ?? ready
+            .OrderBy(t => Core.Me.Distance2D(t.Center)).FirstOrDefault() ??
+            candidates.FirstOrDefault(t => t.Id == occupiedTower) ?? candidates
+            .OrderByDescending(t => t.Count).ThenBy(t => Core.Me.Distance2D(t.Center)).FirstOrDefault();
+        if (tower == null)
+        {
+            occupiedTower = 0;
+            movement?.Release(AgelessNecropolisMovement.Request.Tower);
+            return false;
+        }
+        occupiedTower = tower.Id;
+        CapabilityManager.Update(necronNavigationMovementHandle, CapabilityFlags.Movement,
+            NecronMovementLeaseMilliseconds, "Holding Mass Macabre participation without chasing Necron");
+        necronNavigationMovementOwned = true;
+        if (AvoidanceManager.IsRunningOutOfAvoid)
+            return true;
+        if (Core.Me.Distance2D(tower.Center) <= 0.6f || AvoidanceManager.Avoids.Any(a =>
+                !a.ShouldIgnore && a.IsPointInAvoid(tower.Center)))
+            movement?.Release(AgelessNecropolisMovement.Request.Tower);
+        else
+            movement?.Move(AgelessNecropolisMovement.Request.Tower, tower.Center);
+        return true;
     }
 
     private void UpdateGrandCrossState()
@@ -904,6 +1223,7 @@ public class AgelessNecropolis : AbstractDungeon
         {
             grandCrossActive = true;
             grandCrossCompletedSinceLastTransition = false;
+            grandCrossRestoreAtUtc = default;
             ClearGrandCrossLaserState();
         }
 
@@ -938,7 +1258,10 @@ public class AgelessNecropolis : AbstractDungeon
                     continue;
                 }
 
-                foreach (var tether in azureAether.VfxContainer.Tethers.Where(tether => tether.TargetId != 0))
+                // Empty slots use E0000000, not zero, on the captured client. Treating those
+                // slots as forecasts consumed unrelated predictions and fired movement early.
+                foreach (var tether in azureAether.VfxContainer.Tethers.Where(tether =>
+                             tether.Id is 343 or 344 && tether.TargetId != 0 && tether.TargetId != 0xE0000000))
                 {
                     var key = (azureAether.ObjectId, tether.Id, tether.TargetId);
                     observedTethers.Add(key);
@@ -947,10 +1270,10 @@ public class AgelessNecropolis : AbstractDungeon
                         continue;
                     }
 
-                    float offset = azureAether.BaseId == EnemyObjectId.AzureAetherOne
+                    float offset = tether.Id == 343
                         ? AzureAetherOneRotationOffset
                         : AzureAetherTwoRotationOffset;
-                    TimeSpan delay = azureAether.BaseId == EnemyObjectId.AzureAetherOne
+                    TimeSpan delay = tether.Id == 343
                         ? GrandCrossAzureAetherOneDelay
                         : GrandCrossAzureAetherTwoDelay;
                     grandCrossLaserPredictions.Add(new GrandCrossLaserPrediction(
@@ -987,8 +1310,16 @@ public class AgelessNecropolis : AbstractDungeon
         bool neutronRingCasting = EnemyAction.NeutronRingVisualHash.IsCasting();
         if (neutronRingWasCasting && !neutronRingCasting)
         {
+            // The floor is still missing when Neutron Ring's visual cast ends. Keep the
+            // circle for four seconds: damage follows by 2.6s, with extra time for RB's
+            // early cast-clear packet and the floor transition before melee can return north.
+            grandCrossRestoreAtUtc = DateTime.UtcNow.AddSeconds(4);
+        }
+        if (grandCrossRestoreAtUtc != default && DateTime.UtcNow >= grandCrossRestoreAtUtc)
+        {
             grandCrossActive = false;
             grandCrossCompletedSinceLastTransition = true;
+            grandCrossRestoreAtUtc = default;
             ClearGrandCrossLaserState();
         }
 
@@ -1008,15 +1339,31 @@ public class AgelessNecropolis : AbstractDungeon
         ReleasePrisonNavigation();
         ReleasePrisonHandDodge("Ageless Necropolis encounter state reset");
         prisonHandObjectIdsSeen.Clear();
+        prisonLanes.Clear();
         ClearMementoMoriState();
         grandCrossActive = false;
         grandCrossCompletedSinceLastTransition = false;
         grandCrossTransitionWasCasting = false;
         neutronRingWasCasting = false;
+        grandCrossRestoreAtUtc = default;
         ClearGrandCrossLaserState();
         pendingAetherblightShape = AetherblightShape.None;
         lastVisibleAetherblightMarkerId = 0;
         aetherblightResolutionWasCasting = false;
+        Array.Clear(storedBlightActors);
+        Array.Clear(storedBlights);
+        relentlessWasCasting = seasonsWasCasting = false;
+        seasonsIndex = -1;
+        seasonsRemaining = 0;
+        blightAdvanceAtUtc = default;
+        occupiedTower = 0;
+        movement?.Release(AgelessNecropolisMovement.Request.Tower);
+        coldGripSafeSide = 0;
+        coldGripWasCasting = false;
+        coldGripFollowupUntilUtc = default;
+        blueShockwaveWasCasting = false;
+        blueShockwaveUntilUtc = default;
+        blueShockwaveTargetId = 0;
     }
 
     private void ClearMementoMoriState()
@@ -1031,6 +1378,7 @@ public class AgelessNecropolis : AbstractDungeon
     {
         // These are BNpcBase/Object IDs, not the similarly named BNpcName IDs used by GetObjectsByNPCId.
         public const uint Necron = 0x4870;
+        public const uint BlightRing = 0x4945;
         public const uint IcyHandsOne = 0x4903;
         public const uint IcyHandsTwo = 0x4908;
         public const uint IcyHandsThree = 0x4904;
@@ -1060,14 +1408,20 @@ public class AgelessNecropolis : AbstractDungeon
             ActivationUtc = activationUtc;
         }
 
-        public float Rotation { get; }
+        public float Rotation
+        {
+            get;
+        }
 
-        public DateTime ActivationUtc { get; }
+        public DateTime ActivationUtc
+        {
+            get;
+        }
     }
 
     private static class PlayerVfx
     {
-        // Normal-mode target icons captured by the current BossMod T05 module. They appear on
+        // Normal-mode target icons confirmed in the encounter capture. They appear on
         // Necron early enough to preposition for helper casts 45181/45182.
         private const ulong AetherblightCircleOne = 604;
         private const ulong AetherblightCircleTwo = 621;
@@ -1098,6 +1452,8 @@ public class AgelessNecropolis : AbstractDungeon
         public const uint ColdGripVisualRightSafe = 44525;
         public const uint ExistentialDread = 44526;
         public const uint Aetherblight = 44528;
+        public const uint RelentlessReaping = 44531;
+        public const uint SeasonsOfBlight = 45166;
         public const uint MementoMori = 44532;
         public const uint GrandCross = 44533;
         public const uint GrandCrossLine = 44534;
@@ -1118,6 +1474,8 @@ public class AgelessNecropolis : AbstractDungeon
         // Hash sets reuse the repository's cast lookup extension and keep phase-state tests allocation-free.
         public static readonly HashSet<uint> MementoMoriHash = [MementoMori];
         public static readonly HashSet<uint> AetherblightVisualHash = [Aetherblight];
+        public static readonly HashSet<uint> RelentlessReapingHash = [RelentlessReaping];
+        public static readonly HashSet<uint> SeasonsOfBlightHash = [SeasonsOfBlight];
         public static readonly HashSet<uint> AetherblightResolutionHash = [AetherblightCircle, AetherblightDonut];
         public static readonly HashSet<uint> GrandCrossTransition = [GrandCross, GrandCrossArenaTransition];
         public static readonly HashSet<uint> GrandCrossPhaseActions =

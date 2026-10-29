@@ -24,7 +24,7 @@ public class DutyMechanicPlugin : BotPlugin
 {
     private Composite _root;
     // Enable only when collecting encounter diagnostics during development.
-    private const bool EnableMechanicDiagnostics = true;
+    private const bool EnableMechanicDiagnostics = false;
     // The in-duty TreeStart decorator does not tick while the instance director is absent,
     // so DungeonManager cannot observe the open-world zone between back-to-back runs. Plugin
     // pulses continue during that interval; retaining this edge lets the next instance force
