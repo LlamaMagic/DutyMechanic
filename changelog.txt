@@ -1,5 +1,11 @@
 DutyMechanic Changelog
 
+7.5.4282015.19 10/28/2026
+
+The Bowl of Embers (Hard)
+- Support synchronized matched parties with nail priority and normal duty completion.
+- Avoid frontal attacks when not holding aggro, dodge Crimson Cyclone, and stop cleanly after escapes.
+
 7.5.4282015.18 10/28/2026
 
 The Chrysalis

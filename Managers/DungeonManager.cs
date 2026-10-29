@@ -34,6 +34,8 @@ internal static class DungeonManager
             { ZoneId.TheTamTaraDeepcroft, typeof(TamTaraDeepcroft) },
             { ZoneId.CopperbellMines, typeof(CopperbellMines) },
             { ZoneId.TheBowlOfEmbers, typeof(BowlOfEmbers) },
+            // Hard-mode clones/helpers share Ifrit's name row but use their own territory.
+            { (ZoneId)292, typeof(IfritHard) },
             { ZoneId.Halatali, typeof(Halatali) },
             { ZoneId.Halatali7_1, typeof(Halatali7_1) },
             { ZoneId.SunkenTempleofQarn, typeof(SunkenTemplofQarn) },

@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 18);
+    public override Version Version => new(7, 5, 04282015, 19);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -210,6 +210,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Native escape input must not outlive the owning Ifrit run.
+        Dungeons.IfritHard.ResetActive();
         // The Chrysalis borrows navigation input and must release it on plugin shutdown.
         Dungeons.Chrysalis.ResetActive();
         Dungeons.AkhAfahHard.ResetActive();
