@@ -47,6 +47,10 @@ internal static class DungeonManager
             { ZoneId.HullbreakerIsle, typeof(HullbreakerIsle) },
             { ZoneId.TheStoneVigil, typeof(StoneVigil) },
             { ZoneId.TheHowlingEye, typeof(HowlingEye) },
+            // Hard-mode shelter and wind phases are separate from the normal trial.
+            { (ZoneId)294, typeof(GarudaHard) },
+            // Hard-mode floor collapse and bomb ordering do not use the normal NPC-follow handler.
+            { (ZoneId)293, typeof(TitanHard) },
             { ZoneId.TheAurumVale, typeof(AurumVale) },
             { ZoneId.TheAurumVale7_4, typeof(AurumVale7_4) },
             { ZoneId.CastrumMeridianum, typeof(CastrumMeridianum) },

@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 19);
+    public override Version Version => new(7, 5, 04282015, 20);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -210,6 +210,10 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Pillar holds must release their borrowed navigation and targeting on stop.
+        Dungeons.GarudaHard.ResetActive();
+        // Titan's native escape input and floor callbacks must not survive an exit.
+        Dungeons.TitanHard.ResetActive();
         // Native escape input must not outlive the owning Ifrit run.
         Dungeons.IfritHard.ResetActive();
         // The Chrysalis borrows navigation input and must release it on plugin shutdown.
