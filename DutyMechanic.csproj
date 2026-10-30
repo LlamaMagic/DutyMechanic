@@ -43,7 +43,9 @@
     <Message Importance="High" Text="Copying solution items to build output..." />
     <Copy SourceFiles="@(SolutionItems)" DestinationFiles="@(SolutionItems->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
-  <Target Name="DeployToRebornBuddy" AfterTargets="CopySolutionItems" Condition="'$(RebornDir)' != '' And !$(IsInRebornDir)">
+  <!-- Capture builds retain output for hash-pinned staging without copying to a
+       live host. SkipDeployment also suppresses installed-tree output cleanup. -->
+  <Target Name="DeployToRebornBuddy" AfterTargets="CopySolutionItems" Condition="'$(SkipDeployment)' != 'true' And '$(RebornDir)' != '' And !$(IsInRebornDir)">
     <Error Condition="!Exists('$(RebornDir)')" Text="RebornbuddyDir set but directory doesn't exist! RebornbuddyDir='$(RebornDir)'" />
     <CreateItem Include="$(TargetDir)\**\*" Exclude="$(TargetDir)\**\*.tmp">
       <Output TaskParameter="Include" ItemName="BuildOutput" />
@@ -51,7 +53,7 @@
     <Message Importance="High" Text="Copying build output to '$(RebornDir)\$(AddonType)\$(AddonName)'" />
     <Copy SourceFiles="@(BuildOutput)" DestinationFiles="@(BuildOutput->'$(RebornDir)\$(AddonType)\$(AddonName)\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
-  <Target Name="CleanIfInRebornBuddy" AfterTargets="CopySolutionItems" Condition="'$(RebornDir)' == '' Or $(IsInRebornDir)">
+  <Target Name="CleanIfInRebornBuddy" AfterTargets="CopySolutionItems" Condition="'$(SkipDeployment)' != 'true' And ('$(RebornDir)' == '' Or $(IsInRebornDir))">
     <Message Importance="High" Text="Solution within RebornBuddy directory; cleaning build artifacts to avoid RB compile errors..." />
     <CallTarget Targets="Clean" />
   </Target>

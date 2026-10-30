@@ -78,6 +78,8 @@ internal static class DungeonManager
             { ZoneId.SyrcusTower, typeof(SyrcusTower) },
 
             // 3.0 - Heavensward
+            // Ravana's story trial has different helpers and rail mechanics from Extreme.
+            { (ZoneId)432, typeof(ThokAstThokHard) },
             { ZoneId.DuskVigil, typeof(DuskVigil) },
             { ZoneId.SohmAl, typeof(SohmAl) },
             { ZoneId.TheAery, typeof(Aery) },

@@ -1,5 +1,14 @@
 DutyMechanic Changelog
 
+7.5.4282015.21 10/30/2026
+
+Thok ast Thok (Hard)
+- Handle Prelude and Slaughter geometry and stage Pillars of Heaven toward surviving rails.
+- Keep the combat routine available during targetless phases and reuse the shared movement owner.
+- Support the matched-party profile's gana priorities and guarded completed-duty exit.
+- One synchronized Monk clear reached two vulnerability stacks with zero deaths; other roles and skipped patterns remain unverified.
+- Remove temporary actor snapshots and keep developer diagnostics disabled by default.
+
 7.5.4282015.19 10/28/2026
 
 The Bowl of Embers (Hard)

@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 20);
+    public override Version Version => new(7, 5, 04282015, 21);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -103,6 +103,11 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.SohmAl.CheckLifecycle();
         // Aery flight/add phases retain the same owned avoidance/input channel.
         Dungeons.Aery.CheckLifecycle();
+        Dungeons.ThokAstThokHard.CheckLifecycle();
+        // Trial combat/cutscene coroutines can retain TreeStart. Keep the shared
+        // diagnostic collector on the bot-thread pulse for future Ravana captures.
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 432)
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         if (TreeRoot.IsRunning && WorldManager.ZoneId is 1036 or 1037 or 1038 or 1039 or 1040 or 1041 or 1042 or 1063 or 1064 or 1065)
         {
             // Door/combat coroutines can retain TreeStart; observe boss impacts
@@ -212,6 +217,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Ravana's native escape and rail staging share a scoped input owner.
+        Dungeons.ThokAstThokHard.ResetActive();
         // Pillar holds must release their borrowed navigation and targeting on stop.
         Dungeons.GarudaHard.ResetActive();
         // Titan's native escape input and floor callbacks must not survive an exit.
