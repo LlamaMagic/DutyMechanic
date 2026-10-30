@@ -22,12 +22,10 @@ namespace DutyMechanic.Dungeons;
 /// The encounter changes between five rectangular train cars and a circular add arena. This
 /// handler owns the height-sensitive signals, turrets, floor-wide attacks, tower soak, and car-four
 /// escape so generic cast geometry cannot mistake a safe elevation for an unsafe floor. The
-/// rotating Ghost Train tankbuster remains deliberately unmodeled: predicting its final cone
-/// requires target-icon and status-extra evidence that has not yet been captured through
-/// RebornBuddy. The initial 2026-08-25 implementation is therefore reference-derived and requires
-/// a live normal-mode run before release confidence can be raised beyond strong.
+/// stopped Ghost Train exposes its tank target for the intermission cone; non-targets avoid it
+/// while the routine retains tank mitigation.
 /// </remarks>
-public class HellOnRails : AbstractDungeon
+public partial class HellOnRails : AbstractDungeon
 {
     // Each positive-position mechanic owns an independent lease. Their casts are normally
     // sequential, but separate handles prevent a stale elevation or tower lifecycle from releasing
@@ -46,6 +44,16 @@ public class HellOnRails : AbstractDungeon
     private bool movingForTower;
     private bool movingForDerail;
     private bool lightningExpressMissingSignalsLogged;
+    private bool lightningCastObserved;
+    private bool lightningKnockbackResolved;
+    private DateTime lightningHoldUntil;
+    private DateTime lightningSignalImpactUntil;
+    private DateTime windpipeHoldUntil;
+    private HellOnRailsMovement movement;
+    private bool movementReplaced;
+    private int lastCar = -1;
+    private readonly CapabilityManagerHandle windpipeMovementHandle = CapabilityManager.CreateNewHandle();
+    private bool windpipeActive;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.HellOnRails;
@@ -74,6 +82,11 @@ public class HellOnRails : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> EnterDungeonAsync()
     {
+        // Observe the same bot-thread movement channel even while a routine coroutine
+        // owns scheduling. Stops and hook resets release this instance's input only.
+        ff14bot.NeoProfile.BotEvents.OnPulse += OnPulse;
+        TreeRoot.OnStop += OnStop;
+        ff14bot.Behavior.TreeHooks.Instance.OnHooksCleared += OnHooksCleared;
         // Levin Signals appear about seven seconds before their one-second plasma casts. The
         // Lightning Express planner below consumes their lane and elevation as one semantic
         // mechanic, including the knockback landing. Publishing standalone rectangles would cover
@@ -81,36 +94,42 @@ public class HellOnRails : AbstractDungeon
 
         // Electray is authored as a five-yalm-wide line. Upper turrets only cover the platform
         // section in front of them, while the four lower variants retain their observed lengths.
-        AddElectrayAvoid(EnemyAction.ElectrayShort, 10.0f);
-        AddElectrayAvoid(EnemyAction.ElectrayMedium, 15.0f);
-        AddElectrayAvoid(EnemyAction.ElectrayLong, 25.0f);
-        AddElectrayAvoid(EnemyAction.ElectrayLonger, 20.0f);
-        AddElectrayAvoid(EnemyAction.ElectrayUpper, 10.0f);
+        RegisterTurretAvoid();
 
-        // Blastpipe covers the front ten yalms across the full twenty-yalm car width after Windpipe
-        // draws players forward. A half-yalm border covers cast and navigation latency.
+        // The captured helper stands ten yalms ahead of the car. Blastpipe starts at
+        // the car's front edge, not at that actor; the old origin missed the pulled
+        // player at Z94.5 on car one and Z291.2 on car five. Keep a half-yalm border.
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: IsInHellOnRailsCombat,
+            canRun: () => IsInHellOnRailsCombat() && !OwnsPullRecovery,
             objectSelector: caster => caster.CastingSpellId == EnemyAction.Blastpipe,
             width: 21.0f,
             length: 11.0f,
             yOffset: -0.5f,
+            locationProducer: caster => new Vector3(100.0f, caster.Y, caster.Z + 10.0f),
             priority: AvoidancePriority.High);
 
-        // Lightning Burst targets both tanks with five-yalm circles. The helper cast is only half a
-        // second long, so this is a last-line geometric safeguard for non-targets; targeted tanks
-        // remain in place and use the five-second visual mitigation window configured above.
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: IsInHellOnRailsCombat,
-            objectSelector: caster => caster.CastingSpellId == EnemyAction.LightningBurst
-                && caster.SpellCastInfo.TargetId != Core.Player.ObjectId,
-            radiusProducer: caster => 5.5f,
-            locationProducer: caster => GameObjectManager.GetObjectByObjectId(caster.SpellCastInfo.TargetId)?.Location
-                ?? caster.SpellCastInfo.CastLocation,
-            priority: AvoidancePriority.High));
+        // After the knockback, turret escape must also respect the still-pending
+        // signal beams; a turret-only escape can cross an unresolved ground signal.
+        // Before the knockback, the semantic planner
+        // retains ownership so ground-wide beams cannot block ascent panels.
+        AvoidanceManager.AddAvoidPolygon<BattleCharacter>(
+            condition: () => IsInHellOnRailsCombat() && lightningKnockbackResolved && DateTime.UtcNow >= lightningHoldUntil,
+            leashPointProducer: null,
+            leashRadius: 50.0f,
+            rotationProducer: signal => -signal.Heading,
+            scaleProducer: signal => 1.0f,
+            heightProducer: signal => 2.0f,
+            pointsProducer: GetSignalRectangle,
+            locationProducer: signal => signal.Location,
+            collectionProducer: () => TryGetCurrentCar(out int car)
+                ? GetLevinSignals(car).Where(signal => IsSameElevation(signal, Core.Player))
+                : Enumerable.Empty<BattleCharacter>(),
+            priority: AvoidancePriority.High);
+
+        RegisterLightningBurstAvoid();
 
         // Four center helpers cast Aether Surge during the add phase. Expanding the 45-degree,
-        // fifteen-yalm cone by two degrees per edge gives approximately a 0.5-yalm lateral margin
+        // thirty-yalm cone by two degrees per edge gives approximately a 0.5-yalm lateral margin
         // at the arena wall without consuming the adjacent safe wedges.
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
             canRun: IsInHellOnRailsCombat,
@@ -118,33 +137,26 @@ public class HellOnRails : AbstractDungeon
             leashPointProducer: () => ArenaCenter.Intermission,
             leashRadius: IntermissionLeashRadius,
             rotationDegrees: 0.0f,
-            radius: 15.5f,
+            radius: 30.5f,
             arcDegrees: 49.0f);
 
-        // The moving red indicator forecasts each sixteen-yalm Hail of Thunder explosion several
-        // seconds before the helper exposes its short cast. The cast-location avoid remains as a
-        // fallback if the indicator actor is briefly absent during a transition.
+        // The moving preview is not an explosion center. Stage centrally, then route from the
+        // real cast location; retain the native circle only when no collision-safe route exists.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: IsInHellOnRailsCombat,
-            objectSelector: actor => actor.NpcId == EnemyNpc.ArcaneRevelation,
-            radiusProducer: actor => ArcaneRevelationAvoidRadius,
-            // The indicator floats above the floor; flattening only its height preserves the live
-            // X/Z forecast while keeping RebornBuddy's avoid on the player's navigable surface.
-            locationProducer: actor => new Vector3(actor.X, Core.Player.Y, actor.Z),
-            priority: AvoidancePriority.High));
-
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: IsInHellOnRailsCombat,
+            condition: () => IsInHellOnRailsCombat() && !IsUpperDeck(Core.Player)
+                && !(OwnsGroundRoute && groundRouteForHail),
             objectSelector: caster => caster.CastingSpellId == EnemyAction.HailOfThunder,
             radiusProducer: caster => ArcaneRevelationAvoidRadius,
-            locationProducer: caster => caster.SpellCastInfo.CastLocation,
+            locationProducer: caster => WithPlayerHeight(caster.SpellCastInfo.CastLocation),
             priority: AvoidancePriority.High));
 
         // Every train car is twenty by thirty yalms. The half-yalm inset prevents fall-edge path
         // candidates while preserving the corner pockets needed for Arcane Revelation. The center
         // follows the player's current car and is absent in the separate intermission arena.
         AvoidanceHelpers.AddAvoidSquareDonut(
-            canRun: () => IsInHellOnRailsCombat() && TryGetCurrentCar(out _),
+            // Forced car transfers leave the floor temporarily; an airborne
+            // boundary escape has no valid starting span and must not compete.
+            canRun: () => IsInHellOnRailsCombat() && !MovementManager.GenerallyOutOfControl && TryGetCurrentCar(out _),
             innerWidth: TrainCarSafeWidth,
             innerHeight: TrainCarSafeLength,
             outerWidth: 100.0f,
@@ -152,25 +164,133 @@ public class HellOnRails : AbstractDungeon
             collectionProducer: GetCurrentCarCenterCollection,
             priority: AvoidancePriority.High);
 
+        RegisterGhostTrainAvoid();
         return Task.FromResult(false);
     }
 
     /// <inheritdoc/>
     protected override Task<bool> ExitDungeonAsync()
     {
-        ReleaseAllMovement("Leaving Hell on Rails");
+        ReleaseLifecycle();
         return Task.FromResult(false);
+    }
+
+    private void OnStop(ff14bot.AClasses.BotBase bot) => ReleaseLifecycle();
+    private void OnHooksCleared(object sender, EventArgs args) => ReleaseLifecycle();
+
+    private void ReleaseLifecycle()
+    {
+        ff14bot.NeoProfile.BotEvents.OnPulse -= OnPulse;
+        TreeRoot.OnStop -= OnStop;
+        ff14bot.Behavior.TreeHooks.Instance.OnHooksCleared -= OnHooksCleared;
+        ReleaseAllMovement("Hell on Rails lifecycle ended");
+        movement?.Detach();
+        movement = null;
+    }
+
+    private void OnPulse(object sender, EventArgs args)
+    {
+        if (!PluginManager.Plugins.Any(p => p.Plugin is DutyMechanicPlugin && p.Enabled))
+        {
+            ReleaseLifecycle();
+            return;
+        }
+        if (!IsInHellOnRailsCombat())
+        {
+            ReleaseAllMovement("Hell on Rails inactive");
+            movement?.Detach();
+            movement = null;
+            lastCar = -1;
+            return;
+        }
+        if (movement != null && !movement.IsCurrent)
+        {
+            movement.Detach();
+            movement = null;
+            movementReplaced = true;
+        }
+        if (!movementReplaced && movement == null && Navigator.PlayerMover?.GetType() == typeof(SlideMover))
+        {
+            movement = new HellOnRailsMovement(Navigator.PlayerMover, ConstrainGroundMove);
+            Navigator.PlayerMover = movement;
+        }
+        movement?.CompleteEscape();
+        movement?.ReleaseExpiredExternalInput(DateTime.UtcNow);
+        UpdateLightningBurst();
+        UpdateOverlapState();
+        int car = TryGetCurrentCar(out int currentCar) ? currentCar : 0;
+        var express = FindCaster(EnemyAction.LightningExpress);
+        var pull = FindCaster(EnemyAction.Windpipe);
+        // On October 29 the car-two turret cast started before the knockback/pull
+        // effect. Native escape abandoned the correct lane/crate before displacement.
+        // Keep that shelter through the effect, then expose the later turret wave.
+        // Plasma hit 2.9s after Express's bar ended; the pull arrived 0.5s after its
+        // helper bar. These small tails include observed effect latency, not just casts.
+        if (express != null)
+            lightningHoldUntil = DateTime.UtcNow + express.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(3.2);
+        if (pull != null)
+            windpipeHoldUntil = DateTime.UtcNow + pull.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(1.0);
+        if (express != null)
+        {
+            lightningCastObserved = true;
+            lightningKnockbackResolved = false;
+            lightningSignalImpactUntil = DateTime.MinValue;
+        }
+        else if (car != 0 && GetLevinSignals(car).Length != 0)
+        {
+            lightningKnockbackResolved = lightningCastObserved;
+        }
+        else
+        {
+            lightningCastObserved = false;
+            lightningKnockbackResolved = false;
+        }
+        if (car == 5 && lightningKnockbackResolved)
+        {
+            // The final car's rear landing needs about two seconds to clear the later turret.
+            // A fixed hold after Express delayed that route until damage. Once the actual
+            // signal bar is seen, its end plus the observed effect tail is the better handoff;
+            // retain the longer original hold when the short signal cast was not observed.
+            // These four action IDs are the ground/upper Plasma signal variants. Use the
+            // latest simultaneous bar so enumeration order cannot reopen a live lane.
+            var signalEnds = GetLevinSignals(car)
+                .Where(signal => signal.IsCasting && signal.CastingSpellId is >= 45619 and <= 45622)
+                .Select(signal => DateTime.UtcNow + signal.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(0.7));
+            foreach (var end in signalEnds)
+                if (end > lightningSignalImpactUntil) lightningSignalImpactUntil = end;
+            if (lightningSignalImpactUntil != DateTime.MinValue && lightningSignalImpactUntil < lightningHoldUntil)
+                lightningHoldUntil = lightningSignalImpactUntil;
+        }
+        // Decide ground ownership only after updating displacement holds on this pulse.
+        UpdateGroundRoute();
+        InterruptGroundRouteCast();
+        if (car != lastCar && !MovementManager.GenerallyOutOfControl)
+        {
+            // A landing loads a different physical floor, including crates/platforms.
+            // Rebuild the local collision heightfield once, never on each cast or tick.
+            movement?.ClearNavigationRecovery(true);
+            externalGroundRoute = null;
+            AvoidanceManager.ResetNavigation();
+            lastCar = car;
+        }
+        movement?.ClearNavigationRecovery(false);
+        // Execute an already planned ground escape even while the routine awaits an action.
+        // Displacement/floor holds were resolved above; destroyed-car escape still wins.
+        if (OwnsGroundRoute &&
+            FindCaster(EnemyAction.Derail, EnemyAction.DerailVisual) == null)
+            AdvanceGroundRoute();
     }
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
+        OnPulse(null, EventArgs.Empty);
         // Whole-floor lower/upper casts and full-car knockbacks are valid combat actions but not
         // ordinary unsafe rectangles. SideStep cannot express elevation and would otherwise cover
         // every navigable point or duplicate the encounter-owned signal and turret lines.
         SidestepPlugin.Enabled = false;
 
-        if (!IsInHellOnRailsCombat())
+        if (!IsInHellOnRailsCombat() || movement == null || !movement.IsCurrent)
         {
             ReleaseAllMovement("Hell on Rails combat ended");
             return false;
@@ -178,6 +298,7 @@ public class HellOnRails : AbstractDungeon
 
         await TankBusterSpells();
         await DamageMitigationSpells();
+        AcquireSelectedDoomtrain();
 
         // Resolution priority follows effect timing: escape a destroyed car first, stage the
         // signal-plus-knockback combination second, change elevation for a floor-wide hit third,
@@ -193,17 +314,71 @@ public class HellOnRails : AbstractDungeon
             return true;
         }
 
+        if (await HandleWindpipeAsync())
+        {
+            return true;
+        }
+
         if (await HandleHeadOnEmissionAsync())
         {
             return true;
         }
 
+        if (await HandleGroundRouteAsync())
+            return true;
+
+        if (await HandleDeckEscapeAsync())
+            return true;
+
         return await HandleDerailmentSiegeAsync();
+    }
+
+    // The pull resolves before the front-row explosion. Start at the rear on the
+    // bare first car, behind car two's northern crate, or at car five's rear. The captured
+    // pull-to-turret overlap then follows a collision-checked route through the same owner.
+    private async Task<bool> HandleWindpipeAsync()
+    {
+        var caster = FindCaster(EnemyAction.WindpipeVisual, EnemyAction.Windpipe);
+        if (!TryGetCurrentCar(out int car) || car is not (1 or 2 or 5) ||
+            (caster == null && DateTime.UtcNow >= windpipeHoldUntil && !OwnsPullRecovery))
+        {
+            if (windpipeActive)
+                CapabilityManager.Clear(windpipeMovementHandle, CapabilityFlags.Movement, "Windpipe pull resolved");
+            windpipeActive = false;
+            movement?.Release(HellOnRailsMovement.Request.Windpipe);
+            return false;
+        }
+        windpipeActive = true;
+        CapabilityManager.Update(windpipeMovementHandle, CapabilityFlags.Movement,
+            TimeSpan.FromSeconds(1) + (caster?.SpellCastInfo.RemainingCastTime ?? TimeSpan.Zero), "Staging behind Windpipe");
+        if (AvoidanceManager.IsRunningOutOfAvoid || MovementManager.GenerallyOutOfControl)
+            return false;
+        if (OwnsPullRecovery && pullMotion != null && (pullMotion.Displaced || pullMotion.Settled))
+        {
+            if (pullMotion.Settled) return await FollowPullRecoveryAsync(car);
+            // The game is still drawing us toward the engine. Release our old staging input
+            // and wait for the observed motion to settle before caching recovery waypoints.
+            movement.Release(HellOnRailsMovement.Request.Windpipe);
+            await Coroutine.Yield();
+            return true;
+        }
+        var destination = car == 1
+            ? new Vector3(Math.Clamp(Core.Me.X, 91, 109), Core.Me.Y, 113.8f)
+            : car == 2 ? new Vector3(102.5f, Core.Me.Y, 151.5f)
+            : IsUpperDeck(Core.Player) ? GetPlatformDescent() : new Vector3(100, Core.Me.Y, 313.8f);
+        if (Core.Me.Distance2D(destination) <= 0.5f)
+        {
+            movement.Release(HellOnRailsMovement.Request.Windpipe);
+            return false;
+        }
+        movement.Move(HellOnRailsMovement.Request.Windpipe, destination);
+        await Coroutine.Yield();
+        return true;
     }
 
     /// <summary>
     /// Chooses a signal-safe lane and stages far enough forward for Lightning Express's
-    /// sixteen-yalm knockback; cars with platforms use their transport-panel endpoints explicitly.
+    /// wall-stopped knockback; cars with platforms use their transport-panel endpoints explicitly.
     /// </summary>
     /// <returns><see langword="true"/> while actively traveling to the planned lane or platform.</returns>
     private async Task<bool> HandleLightningExpressAsync()
@@ -217,6 +392,13 @@ public class HellOnRails : AbstractDungeon
         }
 
         BattleCharacter[] signals = GetLevinSignals(car);
+        if (lightningKnockbackResolved && DateTime.UtcNow >= lightningHoldUntil)
+        {
+            // The staging point is only valid before the push. Returning toward it
+            // afterward crossed car two's beam while the turret wave was resolving.
+            ReleaseLightningExpressMovement("Lightning Express handed off to beam and turret avoidance");
+            return false;
+        }
         if (caster == null && signals.Length == 0)
         {
             lightningExpressMissingSignalsLogged = false;
@@ -228,15 +410,15 @@ public class HellOnRails : AbstractDungeon
         CapabilityManager.Update(
             lightningExpressMovementHandle,
             CapabilityFlags.Movement,
-            caster?.SpellCastInfo.RemainingCastTime ?? TimeSpan.FromSeconds(8.0),
+            TimeSpan.FromSeconds(1) + (caster?.SpellCastInfo.RemainingCastTime ?? TimeSpan.Zero),
             "Holding a signal-safe Lightning Express knockback lane");
 
         if (!TryBuildLightningExpressPlan(car, signals, out LightningExpressPlan plan))
         {
-            StopOwnedMovement(ref movingForLightningExpress);
+            StopOwnedMovement(ref movingForLightningExpress, HellOnRailsMovement.Request.Lightning);
             if (caster != null && !lightningExpressMissingSignalsLogged)
             {
-                Logger.Warning("Hell on Rails: Lightning Express is casting on car {0}, but no corroborated Levin Signal safe lane is available; capture signal actor positions and elevations.", car);
+                Logger.Warning("Hell on Rails: no safe Levin Signal lane found on car {0}; waiting for a complete signal layout.", car);
                 lightningExpressMissingSignalsLogged = true;
             }
 
@@ -259,26 +441,37 @@ public class HellOnRails : AbstractDungeon
         }
         else if (!plan.UpperDeck && playerIsUpperDeck)
         {
-            destination = GetNearestUpperPanel(car);
+            destination = GetPlatformDescent();
         }
         else if (plan.UpperDeck && IsOnOppositePlatform(plan.Staging))
         {
             // Platforms are disconnected. Return to ground through the current endpoint before
             // approaching the chosen platform's entrance on the next bot tick.
-            destination = GetNearestUpperPanel(car);
+            destination = GetPlatformDescent();
         }
         else
         {
-            destination = WithPlayerHeight(plan.Staging);
+            // After the push, preserve the safe column at the landing depth until
+            // Plasma Beam resolves. Returning to the pre-push depth crosses crates.
+            destination = lightningKnockbackResolved
+                ? new Vector3(plan.Staging.X, Core.Player.Y, Core.Player.Z)
+                : WithPlayerHeight(plan.Staging);
             if (Core.Player.Distance2D(destination) <= LightningExpressArrivalTolerance)
             {
-                StopOwnedMovement(ref movingForLightningExpress);
+                StopOwnedMovement(ref movingForLightningExpress, HellOnRailsMovement.Request.Lightning);
                 return false;
             }
         }
 
+        if (car == 2 && !lightningKnockbackResolved)
+        {
+            var waypoint = CrateStagingWaypoint(destination);
+            if (!waypoint.HasValue) return false;
+            destination = WithPlayerHeight(waypoint.Value);
+        }
+
         movingForLightningExpress = true;
-        Navigator.PlayerMover.MoveTowards(destination);
+        movement.Move(HellOnRailsMovement.Request.Lightning, destination);
         await Coroutine.Yield();
         return true;
     }
@@ -310,7 +503,7 @@ public class HellOnRails : AbstractDungeon
 
         Vector3 destination = WithPlayerHeight(ArenaCenter.CarFourEscapePanel);
         movingForDerail = true;
-        Navigator.PlayerMover.MoveTowards(destination);
+        movement.Move(HellOnRailsMovement.Request.Derail, destination);
         await Coroutine.Yield();
         return true;
     }
@@ -325,13 +518,13 @@ public class HellOnRails : AbstractDungeon
         BattleCharacter upperDeckCaster = FindCaster(EnemyAction.HeadlightUpperDeck);
         BattleCharacter caster = lowerDeckCaster ?? upperDeckCaster;
 
-        if (caster == null || !TryGetCurrentCar(out int car) || car is not (3 or 5))
+        if ((caster == null && DateTime.UtcNow >= floorHoldUntil) || !TryGetCurrentCar(out int car) || car is not (3 or 5))
         {
             ReleaseElevationMovement("Head-on Emission cast or supported car lifecycle ended");
             return false;
         }
 
-        bool lowerDeckIsUnsafe = lowerDeckCaster != null;
+        bool lowerDeckIsUnsafe = lowerDeckCaster != null || (caster == null && floorHoldUpper);
         bool playerIsUpperDeck = IsUpperDeck(Core.Player);
         bool playerIsAlreadySafe = lowerDeckIsUnsafe ? playerIsUpperDeck : !playerIsUpperDeck;
 
@@ -339,14 +532,14 @@ public class HellOnRails : AbstractDungeon
         CapabilityManager.Update(
             elevationMovementHandle,
             CapabilityFlags.Movement,
-            caster.SpellCastInfo.RemainingCastTime,
+            TimeSpan.FromSeconds(1) + (caster?.SpellCastInfo.RemainingCastTime ?? TimeSpan.Zero),
             lowerDeckIsUnsafe
                 ? "Holding the upper deck for Thunderous Breath"
                 : "Holding the lower deck for Headlight");
 
         if (playerIsAlreadySafe)
         {
-            StopOwnedMovement(ref movingForElevation);
+            StopOwnedMovement(ref movingForElevation, HellOnRailsMovement.Request.Elevation);
             return false;
         }
 
@@ -355,9 +548,11 @@ public class HellOnRails : AbstractDungeon
             return false;
         }
 
-        Vector3 destination = GetNearestElevationPanel(car, playerIsUpperDeck);
+        // Upper coordinates are arrival points, not return portals. Walk across the inner
+        // edge onto the central deck; targeting the arrival point causes oscillation.
+        Vector3 destination = playerIsUpperDeck ? GetPlatformDescent() : GetNearestElevationPanel(car, false);
         movingForElevation = true;
-        Navigator.PlayerMover.MoveTowards(destination);
+        movement.Move(HellOnRailsMovement.Request.Elevation, destination);
         await Coroutine.Yield();
         return true;
     }
@@ -382,9 +577,9 @@ public class HellOnRails : AbstractDungeon
             tower.SpellCastInfo.RemainingCastTime,
             "Holding the shared Doomtrain tower");
 
-        if (Core.Player.Distance2D(tower) <= TowerHoldRadius)
+        if (!IsUpperDeck(Core.Player) && Core.Player.Distance2D(tower) <= TowerHoldRadius)
         {
-            StopOwnedMovement(ref movingForTower);
+            StopOwnedMovement(ref movingForTower, HellOnRailsMovement.Request.Tower);
             return false;
         }
 
@@ -394,25 +589,13 @@ public class HellOnRails : AbstractDungeon
         }
 
         movingForTower = true;
-        Navigator.PlayerMover.MoveTowards(tower.Location);
+        // Descend toward the central deck first, keeping away from the car's
+        // outside edge before approaching a ground-level tower.
+        var destination = IsUpperDeck(Core.Player) && TryGetCurrentCar(out int car) && car is 3 or 5
+            ? GetPlatformDescent() : tower.Location;
+        movement.Move(HellOnRailsMovement.Request.Tower, destination);
         await Coroutine.Yield();
         return true;
-    }
-
-    /// <summary>
-    /// Registers one same-elevation Electray cast rectangle.
-    /// </summary>
-    /// <param name="actionId">Turret action identifying the authored line length.</param>
-    /// <param name="authoredLength">Observed forward line length in yalms.</param>
-    private static void AddElectrayAvoid(uint actionId, float authoredLength)
-    {
-        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: IsInHellOnRailsCombat,
-            objectSelector: turret => turret.CastingSpellId == actionId && IsSameElevation(turret, Core.Player),
-            width: ElectrayWidthWithMargin,
-            length: authoredLength + 1.0f,
-            yOffset: -0.5f,
-            priority: AvoidancePriority.High);
     }
 
     /// <summary>
@@ -436,7 +619,9 @@ public class HellOnRails : AbstractDungeon
     private static bool TryBuildLightningExpressPlan(int car, BattleCharacter[] signals, out LightningExpressPlan plan)
     {
         plan = default;
-        if (signals.Length == 0)
+        // Signals spawn over several frames. Absence in a partially observed row
+        // does not prove safety; wait for all four authored columns to be present.
+        if (!SignalLaneCenters.All(lane => signals.Any(signal => Math.Abs(signal.X - lane) <= SignalLaneTolerance)))
         {
             return false;
         }
@@ -451,7 +636,10 @@ public class HellOnRails : AbstractDungeon
                 return false;
             }
 
-            float lane = safeGroundLanes.OrderBy(candidate => Math.Abs(Core.Player.X - candidate)).First();
+            // On car two, an outer landing leaves a long cross-car escape before the following
+            // turrets. A safe inner lane lands near crate cover; proximity breaks remaining ties.
+            float lane = safeGroundLanes.OrderBy(candidate => car == 2 ? Math.Abs(candidate - 100) : 0)
+                .ThenBy(candidate => Math.Abs(Core.Player.X - candidate)).First();
             float stagingZ = car * 50.0f + 40.0f;
             plan = new LightningExpressPlan(false, new(lane, 0.0f, stagingZ), default, default);
             return true;
@@ -460,6 +648,7 @@ public class HellOnRails : AbstractDungeon
         if (car == 3)
         {
             List<LightningExpressPlan> candidates = [];
+            AddCentralGroundPlans(candidates, signals, car);
             AddUpperPlatformPlanIfSafe(
                 candidates,
                 signals,
@@ -480,10 +669,12 @@ public class HellOnRails : AbstractDungeon
 
         if (car == 5)
         {
-            // The northern/eastern platform begins near Z=295. Starting at Z=297 leaves room for
-            // the observed sixteen-yalm southward knockback to land on the still-intact car. The
-            // southern/western platform begins too far back to provide the same landing margin.
+            // Both platforms stop the backward knockback at the car wall. Their
+            // different north edges determine where the ground beam ends.
             List<LightningExpressPlan> candidates = [];
+            AddCentralGroundPlans(candidates, signals, car);
+            AddUpperPlatformPlanIfSafe(candidates, signals, 92.4f, 307.0f,
+                ArenaCenter.CarFiveGroundPanels[0], ArenaCenter.CarFiveUpperPanels[0]);
             AddUpperPlatformPlanIfSafe(
                 candidates,
                 signals,
@@ -498,13 +689,64 @@ public class HellOnRails : AbstractDungeon
         return false;
     }
 
+    // Both upper platforms can carry beams simultaneously while a central ground column is safe.
+    // Central columns have uninterrupted floor for the full thirty-yalm push;
+    // outer ground columns need platform collision modeling and are not candidates.
+    private static void AddCentralGroundPlans(List<LightningExpressPlan> candidates, BattleCharacter[] signals, int car)
+    {
+        foreach (float lane in new[] { 97.5f, 102.5f })
+        {
+            if (!signals.Any(signal => !IsUpperDeck(signal) && Math.Abs(signal.X - lane) <= SignalLaneTolerance))
+                candidates.Add(new(false, new(lane, 0, car * 50.0f + 40.0f), default, default));
+        }
+    }
+
     /// <summary>
     /// Returns the live signal actors associated with one train car.
     /// </summary>
     private static BattleCharacter[] GetLevinSignals(int car) =>
-        GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.LevinSignal)
-            .Where(signal => IsSignalOnCar(signal, car))
+        GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(signal => signal.IsValid && signal.IsVisible && signal.BaseId == EnemyNpc.LevinSignal && IsSignalOnCar(signal, car))
             .ToArray();
+
+    // Crates and raised platforms truncate each signal lane. These extents match
+    // the captured helper rows; elevation filtering keeps upper beams off the deck.
+    private static Vector2[] GetSignalRectangle(BattleCharacter signal)
+    {
+        int car = (int)Math.Round((signal.Z - 35.0f) / 50.0f);
+        bool upper = IsUpperDeck(signal);
+        float start = 0.0f;
+        float length = 30.0f;
+        if (car == 2 && !upper)
+            length = signal.X is > 95.0f and < 100.0f ? 20.0f
+                : signal.X is > 100.0f and < 105.0f ? 10.0f : 30.0f;
+        else if (car == 3 && (signal.X < 95.0f || signal.X > 105.0f))
+        {
+            start = upper ? 10.0f : 0.0f;
+            length = upper ? 20.0f : 10.0f;
+        }
+        else if (car == 5 && (signal.X < 95.0f || signal.X > 105.0f))
+        {
+            float platformStart = signal.X < 95.0f ? 20.0f : 10.0f;
+            start = upper ? platformStart : 0.0f;
+            length = upper ? 10.0f : platformStart;
+        }
+        return [new(-3.0f, start - 0.5f), new(3.0f, start - 0.5f),
+            new(3.0f, start + length + 0.5f), new(-3.0f, start + length + 0.5f)];
+    }
+
+    // Both platforms have an inner edge at X95/105. Leave the arrival lane before
+    // crossing it, otherwise the descent lands on the one-yalm ascent trigger.
+    // All input still passes through the same encounter movement owner.
+    private static Vector3 GetPlatformDescent()
+    {
+        TryGetCurrentCar(out int car);
+        Vector3 arrival = GetNearestUpperPanel(car);
+        float offset = Core.Player.Z - arrival.Z;
+        if (Math.Abs(offset) < 2.0f)
+            return new(Core.Player.X, Core.Player.Y, arrival.Z + (offset < 0.0f ? -3.0f : 3.0f));
+        return new(Core.Player.X < 100.0f ? 97.0f : 103.0f, Core.Player.Y, Core.Player.Z);
+    }
 
     /// <summary>
     /// Adds a platform plan only when no upper Levin Signal occupies that lane.
@@ -535,7 +777,9 @@ public class HellOnRails : AbstractDungeon
         }
 
         plan = candidates
-            .OrderBy(candidate => Core.Player.Distance2D(IsUpperDeck(Core.Player) ? candidate.UpperPanel : candidate.GroundPanel))
+            .OrderBy(candidate => Core.Player.Distance2D(candidate.UpperDeck
+                ? (IsUpperDeck(Core.Player) ? candidate.UpperPanel : candidate.GroundPanel)
+                : candidate.Staging))
             .First();
         return true;
     }
@@ -548,7 +792,7 @@ public class HellOnRails : AbstractDungeon
     private static bool TryGetCurrentCar(out int car)
     {
         car = 0;
-        if (Core.Player == null)
+        if (Core.Player == null || Math.Abs(Core.Player.X - 100.0f) > 15.0f)
         {
             return false;
         }
@@ -634,11 +878,11 @@ public class HellOnRails : AbstractDungeon
     /// Stops movement only when this handler previously issued it and emergency avoidance is idle.
     /// </summary>
     /// <param name="ownedMovement">Movement ownership flag to clear.</param>
-    private static void StopOwnedMovement(ref bool ownedMovement)
+    private void StopOwnedMovement(ref bool ownedMovement, HellOnRailsMovement.Request request)
     {
         if (ownedMovement && !AvoidanceManager.IsRunningOutOfAvoid)
         {
-            Navigator.PlayerMover.MoveStop();
+            movement?.Release(request);
         }
 
         ownedMovement = false;
@@ -646,6 +890,18 @@ public class HellOnRails : AbstractDungeon
 
     private void ReleaseAllMovement(string reason)
     {
+        externalGroundRoute = null;
+        ResetLightningBurst();
+        ReleaseOverlapState(reason);
+        lightningHoldUntil = DateTime.MinValue;
+        lightningSignalImpactUntil = DateTime.MinValue;
+        windpipeHoldUntil = DateTime.MinValue;
+        lightningCastObserved = false;
+        lightningKnockbackResolved = false;
+        if (windpipeActive)
+            CapabilityManager.Clear(windpipeMovementHandle, CapabilityFlags.Movement, reason);
+        windpipeActive = false;
+        movement?.Release(HellOnRailsMovement.Request.Windpipe);
         ReleaseElevationMovement(reason);
         ReleaseLightningExpressMovement(reason);
         ReleaseTowerMovement(reason);
@@ -654,13 +910,15 @@ public class HellOnRails : AbstractDungeon
 
     private void ReleaseLightningExpressMovement(string reason)
     {
+        lightningGroundRoute = null;
+        lightningGroundRouteIndex = 0;
         if (lightningExpressMovementActive)
         {
             CapabilityManager.Clear(lightningExpressMovementHandle, CapabilityFlags.Movement, reason);
             lightningExpressMovementActive = false;
         }
 
-        StopOwnedMovement(ref movingForLightningExpress);
+        StopOwnedMovement(ref movingForLightningExpress, HellOnRailsMovement.Request.Lightning);
     }
 
     private void ReleaseElevationMovement(string reason)
@@ -671,7 +929,7 @@ public class HellOnRails : AbstractDungeon
             elevationMovementActive = false;
         }
 
-        StopOwnedMovement(ref movingForElevation);
+        StopOwnedMovement(ref movingForElevation, HellOnRailsMovement.Request.Elevation);
     }
 
     private void ReleaseTowerMovement(string reason)
@@ -682,7 +940,7 @@ public class HellOnRails : AbstractDungeon
             towerMovementActive = false;
         }
 
-        StopOwnedMovement(ref movingForTower);
+        StopOwnedMovement(ref movingForTower, HellOnRailsMovement.Request.Tower);
     }
 
     private void ReleaseDerailMovement(string reason)
@@ -693,13 +951,17 @@ public class HellOnRails : AbstractDungeon
             derailMovementActive = false;
         }
 
-        StopOwnedMovement(ref movingForDerail);
+        StopOwnedMovement(ref movingForDerail, HellOnRailsMovement.Request.Derail);
     }
 
     private static bool IsInHellOnRailsCombat() =>
         Core.Player != null
-        && Core.Player.InCombat
-        && WorldManager.ZoneId == (uint)Data.ZoneId.HellOnRails;
+        && Core.Player.IsAlive && TreeRoot.IsRunning && DutyManager.InInstance
+        && WorldManager.ZoneId == (uint)Data.ZoneId.HellOnRails
+        // The clear can leave live helper actors behind while LLLeaveDuty waits. They no longer
+        // own movement once the director has ended the fight.
+        && (DirectorManager.ActiveDirector is not ff14bot.Directors.InstanceContentDirector director || !director.InstanceEnded)
+        && !ff14bot.Behavior.CommonBehaviors.IsLoading && !QuestLogManager.InCutscene;
 
     private static bool IsUpperDeck(BattleCharacter actor) => actor != null && actor.Y >= UpperDeckHeightThreshold;
 
@@ -715,7 +977,6 @@ public class HellOnRails : AbstractDungeon
     private const float SignalLaneTolerance = 2.0f;
     private const float TrainCarSafeWidth = 19.0f;
     private const float TrainCarSafeLength = 29.0f;
-    private const float ElectrayWidthWithMargin = 6.0f;
     private const float ArcaneRevelationAvoidRadius = 16.5f;
     private const float IntermissionLeashRadius = 14.5f;
     private const float TowerHoldRadius = 3.5f;
@@ -732,7 +993,8 @@ public class HellOnRails : AbstractDungeon
 
     private static class ArenaCenter
     {
-        internal static readonly Vector3 Intermission = new(-400.0f, 0.0f, -400.0f);
+        // Arena transfers and Aether helpers place the separate intermission floor at Y-900.
+        internal static readonly Vector3 Intermission = new(-400.0f, -900.0f, -400.0f);
         internal static readonly Vector3 CarFourEscapePanel = new(100.0f, 0.0f, 262.5f);
 
         internal static readonly Vector3[] CarThreeGroundPanels =
@@ -776,6 +1038,8 @@ public class HellOnRails : AbstractDungeon
 
         // Windpipe's helper-owned front-two-row impact.
         internal const uint Blastpipe = 45627;
+        internal const uint WindpipeVisual = 45625;
+        internal const uint Windpipe = 45667;
 
         // Car-transition raidwide and intermission transition.
         internal const uint UnlimitedExpressVisual = 45623;
@@ -792,8 +1056,8 @@ public class HellOnRails : AbstractDungeon
         internal const uint ThunderousBreathLowerDeck = 45635;
         internal const uint HeadlightUpperDeck = 45637;
 
-        // Add-phase center cones. The rotating Ghost Train's icon/status-driven Aetherial Ray is
-        // intentionally absent until live RebornBuddy evidence exposes a safe prediction signal.
+        // Add-phase center cones. Ghost Train's Aetherial Ray uses its stopped state and tank
+        // target instead of a cast warning; see RegisterGhostTrainAvoid.
         internal const uint AetherSurge = 45643;
 
         // Arcane Revelation's short cast-location fallback and shared tower lifecycle.
