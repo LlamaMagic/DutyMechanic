@@ -32,6 +32,7 @@
       </If>
 
       <If Condition="IsOnMap(&ZoneId;)">
+        <WaitForLoading/>
         <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
 
         <If Condition="ObjectExistsWithId(&Shortcut;) and GameObjectManager.GetObjectByNPCId(&Shortcut;).IsTargetable">
@@ -48,69 +49,72 @@
         </If>
 
         <If Condition="IsOnSubMap(&UnderseaEntrance;)">
+          <!-- Ambujam: Tentacle Dig follow + fountain avoids handled in Dungeons\AlzadaalsLegacy.cs -->
           <SetPlugins PluginNames="SideStep,回避" IsEnabled="false"/>
           <Grind GrindRef="Ambujam" PostCombatDelay="2.0" While="GetInstanceTodo(1) == 0"/>
+          <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
           <MoveTo XYZ="124.0726, 303.4002, -123.8607" Distance="0.5"/>
-          <LLOpenChest/>
+          <LootTreasure/>
 
           <!-- Take Portal -->
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
           <MoveTo XYZ="123.9738, 305.6002, -145.2243"/>
           <WaitWhile Condition="not GameObjectManager.GetObjectByNPCId(&SaltEncrustedTeleporter;).IsTargetable"/>
-          <UseObject NpcId="&SaltEncrustedTeleporter;" XYZ="123.9795, 305.6, -149.9784" Condition="IsOnSubMap(&TheBhaflauRemnants;)"/>
+          <UseObject NpcId="&SaltEncrustedTeleporter;" XYZ="123.9795, 305.6, -149.9784" Condition="IsOnMap(&ZoneId;) and not IsOnSubMap(&TheArrapagoRemnants;)"/>
           <WaitForLoading/>
         </If>
 
         <If Condition="IsOnSubMap(&TheArrapagoRemnants;)">
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
-          <MoveTo XYZ="57.69048, 0.0003038645, 110.795"/>
-          <LLOpenChest/>
+          <!-- Chest route only while still north of the second chest; the loop re-enters this block
+               after the corridor, and walking back from there drops into the boss arena -->
+          <If Condition="Core.Me.Location.Z &gt; -30">
+            <LootTreasure XYZ="57.69048, 0.0003038645, 110.795"/>
 
-          <MoveTo XYZ="-11.02436, 2.646446, -21.00627"/>
-          <LLOpenChest/>
+            <LootTreasure XYZ="-11.02436, 2.646446, -21.00627"/>
+          </If>
 
-          <MoveTo XYZ="0.06374817, -7.145303, -141.0012" Distance="0.5"/>
+          <!-- Walk on into Armored Chariot's arena (The Threshold of Bounty) -->
+          <MoveTo XYZ="0.06374817, -7.145303, -141.0012" Distance="1"/>
+          <MoveTo XYZ="0, -16.00106, -172" Distance="1"/>
         </If>
 
         <If Condition="IsOnSubMap(&TheThresholdOfBounty;)">
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="false"/>
+          <!-- Armored Chariot has no DutyMechanic handling yet; leave SideStep on -->
           <MoveTo XYZ="-0.05154048, -16.00106, -193.1886"/>
           <Grind GrindRef="Armored Chariot" PostCombatDelay="2.0" While="GetInstanceTodo(3) == 0"/>
           <MoveTo XYZ="-0.05154048, -16.00106, -193.1886"/>
-          <LLOpenChest/>
+          <LootTreasure/>
 
-          <!-- Manual Transition -->
+          <!-- Manual transition: walk north off the ledge until we land in the lower level -->
           <MoveTo XYZ="-0.1881048, -18.54502, -243.2915"/>
-          <While Condition="IsOnSubMap(&TheArrapagoRemnants;)">
+          <While Condition="IsOnMap(&ZoneId;) and WorldManager.SubZoneId in [&TheThresholdOfBounty;, &TheArrapagoRemnants;,]">
             <RunCode Name="Transition"/>
           </While>
+          <WaitForLoading/>
         </If>
 
         <If Condition="IsOnSubMap(&TheZhayolmRemnants;)">
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
-          <MoveTo XYZ="-26.74413, -350.1011, -23.45172"/>
-          <LLOpenChest/>
+          <!-- XYZ: walk to this chest unless it's already open (e.g. after a wipe) -->
+          <LootTreasure XYZ="-26.74413, -350.1011, -23.45172"/>
 
-          <MoveTo XYZ="-34.981, -350, 9.557016" />
+          <MoveTo XYZ="-34.981, -350, 9.557016"/>
         </If>
 
         <If Condition="IsOnSubMap(&TheThriceWonHoard;)">
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
-          <MoveTo XYZ="114.5225, -350.0501, 6.586664"/>
-          <LLOpenChest/>
+          <LootTreasure XYZ="114.5225, -350.0501, 6.586664"/>
 
           <MoveTo XYZ="110.0813, -350, -44.27398" Distance="0.5"/>
         </If>
 
         <If Condition="IsOnSubMap(&WeaversWarding;)">
-          <SetPlugins PluginNames="SideStep,回避" IsEnabled="false"/>
+          <!-- Kapikulu has no DutyMechanic handling yet; leave SideStep on -->
           <MoveTo XYZ="110, -350, -74" Distance="0.5"/>
           <Grind GrindRef="Kapikulu" PostCombatDelay="2.0" While="not IsDutyEnded()"/>
+          <WaitForLoading/>
           <MoveTo XYZ="110, -350, -74" Distance="0.5"/>
-          <LLOpenChest/>
+          <LootTreasure/>
+
+          <LeaveDuty/>
         </If>
-        <SetPlugins PluginNames="SideStep,回避" IsEnabled="true"/>
-        <LLLeaveDuty/>
       </If>
     </While>
   </Order>
@@ -151,33 +155,27 @@
     </GrindArea>
     <GrindArea Name="Ambujam">
       <Hotspots>
-        <Hotspot Radius="250" XYZ="123.5224, 303, -83.47326"/>
+        <Hotspot Radius="90" XYZ="123.5224, 303, -83.47326"/>
       </Hotspots>
       <TargetMobs>
-        <TargetMob Id="&Ambujam;"/>
+        <TargetMob Name="Ambujam" Id="&Ambujam;" Weight="1"/>
       </TargetMobs>
-      <MinLevel/>
-      <MaxLevel/>
     </GrindArea>
     <GrindArea Name="Armored Chariot">
       <Hotspots>
-        <Hotspot Radius="250" XYZ="0, -16.00106, -190.3089"/>
+        <Hotspot Radius="90" XYZ="0, -16.00106, -190.3089"/>
       </Hotspots>
       <TargetMobs>
-        <TargetMob Id="&ArmoredChariot;"/>
+        <TargetMob Name="Armored Chariot" Id="&ArmoredChariot;" Weight="1"/>
       </TargetMobs>
-      <MinLevel/>
-      <MaxLevel/>
     </GrindArea>
     <GrindArea Name="Kapikulu">
       <Hotspots>
-        <Hotspot Radius="250" XYZ="110, -350, -74"/>
+        <Hotspot Radius="90" XYZ="110, -350, -74"/>
       </Hotspots>
       <TargetMobs>
-        <TargetMob Id="&Kapikulu;"/>
+        <TargetMob Name="Kapikulu" Id="&Kapikulu;" Weight="1"/>
       </TargetMobs>
-      <MinLevel/>
-      <MaxLevel/>
     </GrindArea>
   </GrindAreas>
   <CodeChunks>
