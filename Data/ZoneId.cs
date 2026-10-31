@@ -545,4 +545,10 @@ public enum ZoneId : ushort
     /// Lv. 100.7: Clyteum
     /// </summary>
     Clyteum = 1345,
+
+    /// <summary>
+    /// Lv. 100 normal trial: The Unmaking. Content Finder row 1115 maps to this
+    /// territory; the separate Extreme encounter must not inherit these mechanics.
+    /// </summary>
+    TheUnmaking = 1361,
 }

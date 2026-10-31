@@ -172,6 +172,8 @@ internal static class DungeonManager
             // leak into the mechanically different Extreme encounter.
             { ZoneId.HellOnRails, typeof(HellOnRails) },
             { ZoneId.Clyteum, typeof(Clyteum) },
+            // Normal Enuo has distinct stack, shelter and arena behavior from Extreme.
+            { ZoneId.TheUnmaking, typeof(Unmaking) },
         };
     private static AbstractDungeon _currentDungeon = null;
     private static bool _clear = false;

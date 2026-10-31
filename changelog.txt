@@ -1,5 +1,13 @@
 DutyMechanic Changelog
 
+7.5.4282015.22 10/30/2026
+
+The Unmaking
+- Support normal matched parties, including changing arena boundaries and the approach to the beacon.
+- Handle sequential cones, chasing orbs, spreads, shared attacks and the shelter phase.
+- Keep healers within range of the party and allow healing during targetless damage phases.
+- Prevent ordinary combat movement from pulling the player back into an active hazard.
+
 7.5.4282015.21 10/30/2026
 
 Thok ast Thok (Hard)
