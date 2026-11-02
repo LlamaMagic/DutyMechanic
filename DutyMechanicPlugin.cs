@@ -103,6 +103,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.SohmAl.CheckLifecycle();
         // Aery flight/add phases retain the same owned avoidance/input channel.
         Dungeons.Aery.CheckLifecycle();
+        // Vault's scoped movement lease must survive yielding profile hooks.
+        Dungeons.Vault.CheckLifecycle();
         Dungeons.ThokAstThokHard.CheckLifecycle();
         // Trial combat/cutscene coroutines can retain TreeStart. Keep the shared
         // diagnostic collector on the bot-thread pulse for future Ravana captures.
@@ -239,6 +241,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.KeeperOfTheLake.ResetActive();
         Dungeons.SohmAl.ResetActive();
         Dungeons.Aery.ResetActive();
+        Dungeons.Vault.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();

@@ -1,11 +1,13 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,7 +17,7 @@ namespace DutyMechanic.Dungeons;
 /// <summary>
 /// Lv. 57: The Vault dungeon logic.
 /// </summary>
-public class Vault : AbstractDungeon
+public partial class Vault : AbstractDungeon
 {
     private const uint BrightsphereNpc = 4385;
     private const uint SerAdelphelNpc = 3849;
@@ -36,6 +38,7 @@ public class Vault : AbstractDungeon
     private const uint DuskKnightNpc = 3852;
     private const uint HolyFlame = 4400;
     private const uint BurningChainsAura = 769;
+    private readonly VaultChainState chainState = new();
 
     private static readonly Vector3 SerAdelphelArenaCenter = new(0f, -292f, -100f);
     private static readonly Vector3 SerGrinnauxArenaCenter = new(0f, 0f, 72f);
@@ -53,33 +56,69 @@ public class Vault : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+        ResetActive();
+        active = this;
+        RegisterTimedCasts();
 
-        // Bright Flare reaches six yalms from the sphere center (five plus its one-yalm
-        // hitbox). Keep a 0.5-yalm margin; the October 16 capture confirms sphere avoidance
-        // is active, but does not prove that the earlier death was caused by this radius.
-        AvoidanceManager.AddAvoid(new AvoidObjectInfo<GameObject>(
+        // Heavenly Slash has no cast bar; the transformed, targetable boss is
+        // base 0x1051, distinct from the original 0x104E and helper actors.
+        // Its 10.2y reach includes the boss hitbox; add 0.5y and 5 degrees per side.
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheQuire && !Core.Me.IsTank(),
+            objectSelector: a => a.BaseId == 0x1051 && a.IsAlive && a.CanAttack,
+            leashPointProducer: () => SerAdelphelArenaCenter,
+            leashRadius: 40f, rotationDegrees: 0f, radius: 10.7f, arcDegrees: 100f);
+
+        // Bright Flare reaches six yalms from the sphere center (five plus its
+        // hitbox), with 0.5y clearance. November 2 captured exploded spheres
+        // lingering as valid, visible but dead actors; retaining their circles
+        // removed safe spread routes and caused an Execution overlap hit.
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheQuire,
-            objectSelector: obj => obj.NpcId == BrightsphereNpc,
+            objectSelector: obj => obj.NpcId == BrightsphereNpc && obj.IsAlive,
             radiusProducer: obj => 6.5f,
             priority: AvoidancePriority.Medium));
+
+        // Execution targets one marked participant; when Rowan is marked the
+        // other party members are the hazards, otherwise only the marked ally is.
+        // The marker's timed delivery tail is owned by UpdateExecutionSpread.
+        AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
+            condition: () => executionFallback && execution.Active(DateTime.UtcNow),
+            objectSelector: a => a.IsValid && a.IsAlive && a.ObjectId != Core.Me.ObjectId &&
+                PartyManager.AllMembers.Any(p => p.ObjectId == a.ObjectId) &&
+                (execution.Target == Core.Me.ObjectId || a.ObjectId == execution.Target),
+            radiusProducer: _ => 5.5f,
+            priority: AvoidancePriority.High));
+
+        // The original Grinnaux can use instant Overpower before transforming.
+        // Keep its 6.5y, 120-degree cleave covered while boss-local SideStep is
+        // suspended; the transformed boss below has a different reach and base ID.
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse && !Core.Me.IsTank(),
+            objectSelector: a => a.BaseId == 0x1053 && a.IsAlive && a.CanAttack,
+            leashPointProducer: () => SerGrinnauxArenaCenter,
+            leashRadius: 40f, rotationDegrees: 0f, radius: 7f, arcDegrees: 130f);
 
         // Boss 2
         // In general, if not tank stay out of the front to avoid AOE attacks
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
             canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse &&
                           !Core.Me.IsTank(),
-            objectSelector: (bc) => bc.NpcId == SerGrinnauxNpc && bc.CanAttack,
+            // The transformed boss reports NPC 3639 and base 0x1054; 3850 is
+            // the original phase and cannot own the instant Heavy Swing cleave.
+            objectSelector: (bc) => bc.BaseId == 0x1054 && bc.IsAlive && bc.CanAttack,
             leashPointProducer: () => SerGrinnauxArenaCenter,
             leashRadius: 40.0f,
             rotationDegrees: 0.0f,
-            radius: 11.0f,
-            arcDegrees: 160.0f);
+            radius: 10.7f,
+            arcDegrees: 130.0f);
 
         // Boss 2 Faith Unmoving
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse,
-            objectSelector: c => c.CastingSpellId == FaithUnmovingSpell,
+            // Only the no-plan fallback owns this donut. A selected staging
+            // destination must not compete with an independent center pull.
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse && (active?.faithFallback ?? false) && DateTime.UtcNow < active.faithUntil,
+            objectSelector: c => c.IsValid && c.ObjectId == active.faithCaster,
             outerRadius: 40.0f,
             innerRadius: 3.0F,
             priority: AvoidancePriority.Medium);
@@ -91,75 +130,38 @@ public class Vault : AbstractDungeon
             radiusProducer: obj => 5.5f,
             priority: AvoidancePriority.Medium));
 
-        // Boss 2: Aetherial Tear / Black Holes
+        // The November 2 retest escaped a 7.5y avoid and then suffered Torsion
+        // while stationary about 7.61y from the existing tear. An 8.25y radius
+        // covers the observed trigger plus more than half a yalm of clearance;
+        // a seven-yalm reference alone does not account for this client result.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<GameObject>(
             condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse,
             objectSelector: obj => obj.NpcId == AetherialTearNpc,
-            radiusProducer: obj => 7f,
+            radiusProducer: obj => 8.25f,
             priority: AvoidancePriority.Medium));
 
-        // Boss 2: Dimensional Collapse red/black half-donut AOEs
-        // These are actually collections of half-donut AOEs cast slightly offset from center
-        // by helper NPCs but we can't draw that shape right now, so let's use full donuts.
-        // It's an acceptable approximation because the combined shapes are almost symmetrical donuts
-        // or fly off the arena edge, so the "phantom" donut halves won't cause trouble.
-        // 4136 => Dimensional Collapse, fake cast by targetable NPC
-        // 4137 => Dimensional Collapse, small (7.5, 2.0), x2 and x4
-        // 4138 => Dimensional Collapse, medium (12.0, 7.5), x0 and x2
-        // 4139 => Dimensional Collapse, large (17.5, 12.5), x0 and x4
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse,
-            objectSelector: c => c.CastingSpellId == DimensionalCollapseSmallSpell,
-            outerRadius: 7.5f,
-            innerRadius: 2.0f,
-            priority: AvoidancePriority.Medium);
-
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse,
-            objectSelector: c => c.CastingSpellId == DimensionalCollapseMediumSpell,
-            outerRadius: 12.0f,
-            innerRadius: 7.5f,
-            priority: AvoidancePriority.Medium);
-
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.ChapterHouse,
-            objectSelector: c => c.CastingSpellId == DimensionalCollapseLargeSpell,
-            outerRadius: 17.5f,
-            innerRadius: 12.5f,
-            priority: AvoidancePriority.Medium);
-
-        // Move away from the other chained actor, never an avoid centered on ourselves.
-        // Preserve the existing separation distance until chain-break timing is captured.
+        // The November 1 capture kept a self-chain active for its full 15-second
+        // duration at 20.1y separation. Its threshold is relative to the paired
+        // actors' initial distance, so freeze that distance as the aura appears.
+        // When the partner is not uniquely readable, retain the prior 20y fallback.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel && Core.Player.HasAura(BurningChainsAura),
+            condition: () => chainFallback && UpdateChainSeparation(),
             objectSelector: bc => bc.ObjectId != Core.Player.ObjectId && bc.HasAura(BurningChainsAura),
-            radiusProducer: bc => 20f,
+            radiusProducer: bc => chainState.RadiusFor(bc.ObjectId),
             priority: AvoidancePriority.Medium));
 
         // Boss 3: Dawn Knight + Dusk Knight
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel && !GameObjectManager.GetObjectsByNPCId(HolyFlame).Any(),
-            objectSelector: bc => bc.NpcId is DawnKnightNpc or DuskKnightNpc,
-            width: 4f,
-            length: 27f,
-            yOffset: -7f,
+            // Only actual edge-spawned marchers own this moving lane. Dormant
+            // knight helpers remain in the object table near the arena center.
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel,
+            objectSelector: bc => bc.IsValid && bc.IsVisible && marchActors.Contains(bc.ObjectId),
+            // Captured march speed is about 6y/s. Cover the 2.5y actor hazard
+            // plus 0.5y clearance behind it and roughly 1.5s of forward travel.
+            width: 6f,
+            length: 12f,
+            yOffset: -3f,
             priority: AvoidancePriority.Medium);
-
-        // Boss 3: White Knight's Tour
-        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel,
-            objectSelector: bc => bc.CastingSpellId == WhiteKnightsTourSpell,
-            width: 7f,
-            length: 60f,
-            priority: AvoidancePriority.High);
-
-        // Boss 3: Black Knight's Tour
-        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.TheChancel,
-            objectSelector: bc => bc.CastingSpellId == BlackKnightsTourSpell,
-            width: 7f,
-            length: 60f,
-            priority: AvoidancePriority.High);
 
         // Boss Arenas
         AvoidanceHelpers.AddAvoidDonut(
@@ -195,6 +197,46 @@ public class Vault : AbstractDungeon
     {
         await FollowDodgeSpells();
 
-        return false;
+        // Native avoidance must finish its escape before ordinary combat movement
+        // can issue another destination through the same mover.
+        return faithMoving || chainMoving || executionMoving || escapeInput?.IsCurrent == true && AvoidanceManager.IsRunningOutOfAvoid && !MovementManager.GenerallyOutOfControl;
+    }
+
+    /// <inheritdoc/>
+    protected override Task<bool> ExitDungeonAsync()
+    {
+        ResetActive();
+        return Task.FromResult(false);
+    }
+
+    // The avoidance pulse owns this observation, so it keeps the initial tether
+    // distance even when a profile coroutine retains TreeStart. Ambiguous or
+    // temporarily absent partners cannot replace a still-active captured owner.
+    private bool UpdateChainSeparation()
+    {
+        if (!TreeRoot.IsRunning || WorldManager.ZoneId != (uint)ZoneId ||
+            WorldManager.SubZoneId != (uint)SubZoneId.TheChancel ||
+            Core.Me == null || !Core.Me.IsValid || !Core.Me.IsAlive ||
+            !Core.Me.InCombat || !Core.Me.HasAura(BurningChainsAura))
+        {
+            if (chainState.PartnerId != 0)
+                Logger.Information("[Vault] Holy Chain partner released.");
+            chainState.Reset();
+            return false;
+        }
+
+        var partyIds = PartyManager.AllMembers.Select(member => member.ObjectId).ToHashSet();
+        var partners = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(actor => actor.IsValid && actor.IsAlive && actor.ObjectId != Core.Me.ObjectId &&
+                            partyIds.Contains(actor.ObjectId) && actor.HasAura(BurningChainsAura))
+            .Take(2).ToArray();
+        if (partners.Length == 1 && chainState.PartnerId == 0)
+        {
+            chainState.Observe(partners[0].ObjectId, partners[0].Distance2D(Core.Me.Location));
+            if (chainState.PartnerId != 0)
+                Logger.Information("[Vault] Holy Chain partner {0}; required separation {1:F2}y.",
+                    chainState.PartnerId, chainState.RequiredRadius);
+        }
+        return true;
     }
 }
