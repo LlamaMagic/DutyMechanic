@@ -1,5 +1,11 @@
 DutyMechanic Changelog
 
+7.5.4282015.24 11/02/2026
+
+Everkeep
+- Improve Duty Support handling for both phases, including Vorpal Trail, paired cleaves and Dawn of an Age.
+- Keep combat and healing available around encounter movement and release movement cleanly on exit.
+
 7.5.4282015.23 11/02/2026
 
 The Limitless Blue (Hard)

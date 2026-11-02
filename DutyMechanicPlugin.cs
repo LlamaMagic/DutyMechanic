@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 23);
+    public override Version Version => new(7, 5, 04282015, 24);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -219,6 +219,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Stop and hook replacement must release the trial movement lease.
+        Dungeons.Everkeep.ResetActive();
         // Ravana's native escape and rail staging share a scoped input owner.
         Dungeons.ThokAstThokHard.ResetActive();
         // Pillar holds must release their borrowed navigation and targeting on stop.
