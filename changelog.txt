@@ -1,5 +1,12 @@
 DutyMechanic Changelog
 
+7.5.4282015.25 11/02/2026
+
+The Pool of Tribute
+- Improve synchronized party handling for Seasplitter, Rasen Kaikyo, and the sword phase.
+- Keep non-tanks on damage during a live-party sword clash and preserve the lower-level interaction in two-player unsynced runs.
+- Stop abandoned movement after a target disappears and keep combat available during safe holds.
+
 7.5.4282015.24 11/02/2026
 
 Everkeep

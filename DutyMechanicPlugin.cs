@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 24);
+    public override Version Version => new(7, 5, 04282015, 25);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -97,6 +97,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.CheckLifecycle();
         Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
+        // Release Pool of Tribute input even when a combat hook yields.
+        Dungeons.PoolOfTributeCoordinator.CheckLifecycle();
         // Keeper sequences and input cleanup must survive yielding boss/add profile hooks.
         Dungeons.KeeperOfTheLake.CheckLifecycle();
         // Sohm's helper/wing phases must retain the same input owner through yielding grinds.
@@ -219,6 +221,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // The trial's movement owner must not outlive a stop or hook replacement.
+        Dungeons.PoolOfTributeCoordinator.Reset();
         // Stop and hook replacement must release the trial movement lease.
         Dungeons.Everkeep.ResetActive();
         // Ravana's native escape and rail staging share a scoped input owner.

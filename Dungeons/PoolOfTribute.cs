@@ -2,6 +2,7 @@ using Buddy.Coroutines;
 using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Navigation;
@@ -19,12 +20,11 @@ namespace DutyMechanic.Dungeons;
 /// Provides preliminary normal-mode support for the level 63 trial The Pool of Tribute.
 /// </summary>
 /// <remarks>
-/// The companion OrderBot profile owns entry, Susano targeting, the sword damage check, the
-/// stone-prison target, and the blade-clash interaction; this handler deliberately performs no
-/// interaction or target-lifecycle work. DutyMechanic owns the normal-only cast-time circles,
-/// rectangles, and Seasplitter safe-band positioning while SideStep retains the shared Dark Cloud
-/// line and any unmodeled signals. Yata-no-Kagami and Brightstorm are excluded because their
-/// knockback and stack responses require evidence beyond harmful cast geometry.
+/// The companion profile owns entry, Susano and add targeting, and completion. The encounter
+/// coordinator owns the blade interaction, sword-finish and Seasplitter movement through one
+/// input channel; the profile and AutoParty requester hand off through their existing adapter.
+/// SideStep retains the shared Dark Cloud line and unmodeled signals. Yata-no-Kagami and
+/// Brightstorm still require evidence beyond harmful cast geometry.
 /// </remarks>
 public sealed class PoolOfTribute : AbstractDungeon
 {
@@ -38,13 +38,7 @@ public sealed class PoolOfTribute : AbstractDungeon
     // AvoidanceHelpers interprets yOffset as the back edge and length + yOffset as the front edge.
     private const float RectangleRearMargin = -0.5f;
 
-    // The 2026-08-27 normal-mode capture established that Seasplitter's two 8232 helpers share one
-    // origin and face in opposite directions. Their common axis is the safe band, not harmful
-    // geometry. A sub-yalm tolerance keeps the player near its middle without unnecessary movement
-    // along the lane or relying on the helpers' zero CastLocation values.
-    private const float SeasplitterCenterlineTolerance = 0.75f;
-
-    private bool movingToSeasplitterCenterline;
+    private DateTime clashTraceUntilUtc, nextClashTraceUtc;
 
     /// <inheritdoc/>
     public override ZoneId ZoneId => Data.ZoneId.ThePoolOfTribute;
@@ -68,15 +62,16 @@ public sealed class PoolOfTribute : AbstractDungeon
         SideStep.Override(EnemyAction.Seasplitter);
         SideStep.Override(EnemyAction.Stormsplitter);
 
-        // Rasen Kaikyo's damaging helpers cast at each party member's selected ground location.
-        // Use the cast location rather than following the target actor so a player who has already
-        // left their telegraph cannot drag the registered hazard across the arena.
+        // The 2026-11-02 synced capture and the earlier 2026-10-21 capture both show 8222
+        // helpers placed at the selected ground circles while CastLocation is zero. Using
+        // CastLocation collapses every avoid to the arena origin and leaves the real circles
+        // unprotected; the helper's own location supplies each circle's ground origin.
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
             condition: IsEncounterCombatActive,
             objectSelector: caster => caster.IsValid && caster.IsCasting &&
                 caster.CastingSpellId == EnemyAction.RasenKaikyoAoe,
             radiusProducer: _ => RasenKaikyoAvoidRadius,
-            locationProducer: caster => caster.SpellCastInfo.CastLocation,
+            locationProducer: caster => caster.Location,
             priority: AvoidancePriority.High));
 
         // Stormsplitter is a 4-by-20-yalm line tankbuster. Its target must hold position and use the
@@ -97,25 +92,29 @@ public sealed class PoolOfTribute : AbstractDungeon
     /// <inheritdoc/>
     protected override Task<bool> ExitDungeonAsync()
     {
-        StopSeasplitterMovement();
+        PoolOfTributeCoordinator.Reset();
+        clashTraceUntilUtc = nextClashTraceUtc = DateTime.MinValue;
         return Task.FromResult(false);
     }
 
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
+        CaptureClashMovement();
         // Selective overrides give the three registered normal-only casts one geometry owner. Keep
         // SideStep enabled for the shared Dark Cloud line and any other preliminary telegraph.
         SidestepPlugin.Enabled = true;
 
+        // The lotus can be available while Susano is untargetable and before the
+        // sword is visible; the coordinator gates itself by this trial's lifecycle.
+        if (PoolOfTributeCoordinator.Tick())
+        {
+            return true;
+        }
+
         if (!IsEncounterActive())
         {
             return false;
-        }
-
-        if (await HandleSeasplitterAsync())
-        {
-            return true;
         }
 
         if (await TankBusterSpells())
@@ -126,75 +125,44 @@ public sealed class PoolOfTribute : AbstractDungeon
         return await DamageMitigationSpells();
     }
 
-    /// <summary>
-    /// Moves laterally to Seasplitter's safe centerline while preserving progress along the band.
-    /// </summary>
-    /// <returns><see langword="true"/> while the cast owns movement or holds the safe position.</returns>
-    private async Task<bool> HandleSeasplitterAsync()
+    // The 2026-11-02 live report described continuous wall-running during the
+    // lotus phase, but the failure-only movement buffer did not cover that window.
+    // Sample throughout the trial so post-avoidance drift outside the lotus phase
+    // remains visible. A destination alone does not prove the current input owner.
+    private void CaptureClashMovement()
     {
-        BattleCharacter caster = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
-            .FirstOrDefault(actor => actor.IsValid && actor.IsCasting &&
-                actor.CastingSpellId == EnemyAction.Seasplitter);
-
-        if (caster == null)
+        if (!LoggingHelpers.MechanicDiagnosticsEnabled || Core.Player == null) return;
+        DateTime now = DateTime.UtcNow;
+        if (now < nextClashTraceUtc) return;
+        nextClashTraceUtc = now.AddSeconds(1);
+        try
         {
-            StopSeasplitterMovement();
-            return false;
+            var shadows = GameObjectManager.GetObjectsOfType<ff14bot.Objects.GameObject>(true, false)
+                .Where(actor => actor.IsValid && actor.IsVisible && actor.NpcId == 2008185).ToArray();
+            if (shadows.Length > 0) clashTraceUntilUtc = now.AddSeconds(5);
+            if (!DutyManager.InInstance || WorldManager.ZoneId != (uint)Data.ZoneId.ThePoolOfTribute) return;
+            var members = PartyManager.VisibleMembers.Where(member => member.IsInObjectManager)
+                .Select(member => member.BattleCharacter).Where(member => member != null && member.IsValid)
+                .Select(member => new PoolOfTributeClashPolicy.Member(member.ObjectId, member.ClassLevel,
+                    ClassJobRoles.Tanks.Contains(member.CurrentJob), member.IsAlive)).ToArray();
+            var election = PoolOfTributeClashPolicy.Select(members, (int)PartyManager.NumMembers);
+            string destination = Navigator.PlayerMover is SlideMover slide ? slide.LastMoveLocation.ToString() : "unavailable";
+            var target = Core.Player.CurrentTarget;
+            Logger.Information($"[PoolOfTribute] CLASH_TRACE utc={now:O} player={Core.Player.Location} " +
+                $"moving={MovementManager.IsMoving} mover={Navigator.PlayerMover?.GetType().Name ?? "none"} " +
+                $"lastMoveCommand={destination} escaping={AvoidanceManager.IsRunningOutOfAvoid} " +
+                $"target=0x{target?.ObjectId ?? 0:X8} targetable={target?.IsTargetable ?? false} " +
+                $"shadows={shadows.Length} targetable={shadows.Count(actor => actor.IsTargetable)} " +
+                $"partyMode={election.PartyMode} blocker=0x{election.BlockerId.GetValueOrDefault():X8} " +
+                $"visibleMembers={members.Length} partyMembers={PartyManager.NumMembers} " +
+                $"input=({PoolOfTributeCoordinator.InputSnapshot})");
         }
-
-        CapabilityManager.Update(
-            CapabilityHandle,
-            CapabilityFlags.Movement,
-            caster.SpellCastInfo.RemainingCastTime,
-            "Holding the middle of Seasplitter's safe band");
-
-        Vector3 destination = ProjectOntoSeasplitterCenterline(
-            Core.Player.Location,
-            caster.Location,
-            caster.Heading);
-
-        if (Core.Player.Distance2D(destination) <= SeasplitterCenterlineTolerance)
+        catch (Exception ex)
         {
-            StopSeasplitterMovement();
-            await Coroutine.Yield();
-            return true;
+            // Optional telemetry must never interrupt combat if an object becomes invalid.
+            nextClashTraceUtc = now.AddSeconds(30);
+            Logger.Information("[PoolOfTribute] CLASH_TRACE unavailable: " + ex.GetType().Name);
         }
-
-        Navigator.PlayerMover.MoveTowards(destination);
-        movingToSeasplitterCenterline = true;
-        await Coroutine.Yield();
-        return true;
-    }
-
-    private static Vector3 ProjectOntoSeasplitterCenterline(
-        Vector3 playerLocation,
-        Vector3 helperLocation,
-        float helperHeading)
-    {
-        // RB's FFXIV heading convention maps forward to (sin(heading), cos(heading)) in X/Z.
-        // Orthogonal projection chooses the closest point on the infinite band axis, preventing the
-        // old rectangle avoid from sending the player farther toward an arena edge.
-        float directionX = (float)Math.Sin(helperHeading);
-        float directionZ = (float)Math.Cos(helperHeading);
-        float deltaX = playerLocation.X - helperLocation.X;
-        float deltaZ = playerLocation.Z - helperLocation.Z;
-        float distanceAlongBand = (deltaX * directionX) + (deltaZ * directionZ);
-
-        return new Vector3(
-            helperLocation.X + (distanceAlongBand * directionX),
-            playerLocation.Y,
-            helperLocation.Z + (distanceAlongBand * directionZ));
-    }
-
-    private void StopSeasplitterMovement()
-    {
-        if (!movingToSeasplitterCenterline)
-        {
-            return;
-        }
-
-        Navigator.PlayerMover.MoveStop();
-        movingToSeasplitterCenterline = false;
     }
 
     private static bool IsEncounterActive() =>
