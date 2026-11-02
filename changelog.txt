@@ -1,5 +1,11 @@
 DutyMechanic Changelog
 
+7.5.4282015.23 11/02/2026
+
+The Limitless Blue (Hard)
+- Improve synchronized trial handling, including boarding, Dragonkillers and tank add assignments.
+- Keep combat and healing available around encounter movement and recover cleanly when the duty ends.
+
 7.5.4282015.22 10/30/2026
 
 The Unmaking

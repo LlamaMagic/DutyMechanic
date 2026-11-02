@@ -37,6 +37,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private bool leavingHazard;
     private bool directEscapeOutstanding;
     private Vector3? directEscapeDestination;
+    private string navigationRequest;
+    private bool forwardingNavigation;
+    private bool deferredNavigationEnd;
     internal ChrysalisMovement(IPlayerMover inner,
         Func<Vector3, Vector3?> failedEscapeWaypoint = null, Func<bool> canContinueNativeEscape = null,
         Func<Vector3, bool> canMoveOrdinary = null)
@@ -56,6 +59,49 @@ internal sealed class ChrysalisMovement : IPlayerMover
     // have been stopped when queried, so use the planner's lifetime, not held keys.
     internal bool IsEscaping => IsCurrent &&
         AvoidanceManager.IsRunningOutOfAvoid && !MovementManager.GenerallyOutOfControl;
+
+    // Interactions need a mesh route rather than an unvalidated straight crossing.
+    // The same owner gates competing travel and gives native escape precedence.
+    internal void BeginNavigation(string name)
+    {
+        if (!IsCurrent || string.IsNullOrWhiteSpace(name) || navigationRequest == name ||
+            AvoidanceManager.IsRunningOutOfAvoid || MovementManager.GenerallyOutOfControl) return;
+        if (deferredNavigationEnd)
+        {
+            navigation.AbandonDeferredNavigation();
+            deferredNavigationEnd = false;
+        }
+        // Path generation can take multiple ticks; do not leave the predecessor's
+        // forward input held while the new route is being computed.
+        StopInput();
+        navigationRequest = name;
+        navigation.BeginSemanticNavigation();
+    }
+
+    internal MoveResult Navigate(Vector3 point, float arrivalTolerance)
+    {
+        if (!IsCurrent || navigationRequest == null || AvoidanceManager.IsRunningOutOfAvoid ||
+            MovementManager.GenerallyOutOfControl) return MoveResult.PathGenerating;
+        return navigation.MoveTo(new MoveToParameters(point, navigationRequest)
+        {
+            DistanceTolerance = arrivalTolerance,
+            UseMount = false
+        });
+    }
+
+    internal void EndNavigation()
+    {
+        if (navigationRequest == null) return;
+        navigationRequest = null;
+        if (MovementManager.GenerallyOutOfControl)
+        {
+            // Forced motion owns the input channel. Retire our path only after
+            // control returns, unless an escape or successor has already taken it.
+            deferredNavigationEnd = true;
+            return;
+        }
+        navigation.EndSemanticNavigation();
+    }
 
     internal void Request(Vector3? point, float arrivalTolerance)
     {
@@ -82,9 +128,18 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// <param name="location">The destination selected by the current navigation or combat request.</param>
     public void MoveTowards(Vector3 location)
     {
-        if (!IsCurrent || destination.HasValue && !AvoidanceManager.IsRunningOutOfAvoid)
+        if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
+            (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
         {
             return;
+        }
+
+        if (deferredNavigationEnd && !MovementManager.GenerallyOutOfControl)
+        {
+            // A new input supersedes the old cannon route; clear only that old
+            // path before forwarding the successor, never stop the successor later.
+            navigation.AbandonDeferredNavigation();
+            deferredNavigationEnd = false;
         }
 
         bool escaping = AvoidanceManager.IsRunningOutOfAvoid;
@@ -108,7 +163,8 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// <summary>Accepts a stop without letting a routine callback cancel semantic positioning.</summary>
     public void MoveStop()
     {
-        if (!IsCurrent || destination.HasValue && !AvoidanceManager.IsRunningOutOfAvoid)
+        if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
+            (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
         {
             return;
         }
@@ -133,6 +189,12 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 StopInput();
             }
             return;
+        }
+
+        if (deferredNavigationEnd)
+        {
+            navigation.EndSemanticNavigation();
+            deferredNavigationEnd = false;
         }
 
         navigation.Synchronize();
@@ -214,6 +276,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
             // If only the provider was replaced, unwrap our mover without stopping
             // input now owned by that successor. Requiring both identities here
             // leaves a detached mover installed and blocks all subsequent travel.
+            if (IsCurrent) navigation.CancelSemanticPathOnDetach();
             if (IsCurrent && (mechanicOutstanding || escapeOutstanding))
             {
                 StopInput();
@@ -224,6 +287,8 @@ internal sealed class ChrysalisMovement : IPlayerMover
 
         navigation.Detach();
         detached = true;
+        navigationRequest = null;
+        deferredNavigationEnd = false;
         destination = null;
         acquiring = mechanicOutstanding = escapeOutstanding = false;
         leavingHazard = false;
@@ -245,12 +310,38 @@ internal sealed class ChrysalisMovement : IPlayerMover
         internal NavigationGate(NavigationProvider original, ChrysalisMovement owner) : base(original) => this.owner = owner;
         internal bool OwnsProvider => !detached && ReferenceEquals(Navigator.NavigationProvider, this);
 
-        private bool Allowed(MoveToParameters request) => AvoidanceManager.IsRunningOutOfAvoid ? request.Destination?.StartsWith("Running from ", StringComparison.Ordinal) == true : !owner.destination.HasValue;
+        private bool Allowed(MoveToParameters request) => !(owner.deferredNavigationEnd && MovementManager.GenerallyOutOfControl) && (AvoidanceManager.IsRunningOutOfAvoid
+            ? request.Destination?.StartsWith("Running from ", StringComparison.Ordinal) == true
+            : !owner.destination.HasValue && (owner.navigationRequest == null || request.Destination == owner.navigationRequest));
+
+        internal void BeginSemanticNavigation()
+        {
+            if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid) Handoff("semantic-navigation");
+        }
+
+        internal void EndSemanticNavigation()
+        {
+            if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid && accepted == "semantic-navigation")
+            {
+                Handoff(null);
+                owner.StopInput();
+            }
+        }
+        internal void AbandonDeferredNavigation()
+        {
+            if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid && accepted == "semantic-navigation") Handoff(null);
+        }
+        internal void CancelSemanticPathOnDetach()
+        {
+            // Retire only this route before restoring the provider. Clearing a
+            // path does not issue input, so forced motion retains its priority.
+            if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid && accepted == "semantic-navigation") Handoff(null);
+        }
         internal void Synchronize()
         {
             if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid)
             {
-                Handoff(owner.destination.HasValue ? "mechanic" : null);
+                Handoff(owner.destination.HasValue ? "mechanic" : owner.navigationRequest != null ? "semantic-navigation" : null);
             }
         }
 
@@ -280,7 +371,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 return MoveResult.PathGenerating;
             }
 
-            Handoff(AvoidanceManager.IsRunningOutOfAvoid ? "escape" : null);
+            Handoff(AvoidanceManager.IsRunningOutOfAvoid ? "escape" : owner.navigationRequest != null ? "semantic-navigation" : null);
             // A service retry can return a path rooted at the pre-recovery position.
             // In Unmaking's Looming capture that pulled the player back into Empty
             // Shadow. Finish the still-valid recovery to the same native endpoint
@@ -300,7 +391,10 @@ internal sealed class ChrysalisMovement : IPlayerMover
             // the service's jump/turn recovery from bypassing the input guard.
             if (owner.ordinaryBlocked && !AvoidanceManager.IsRunningOutOfAvoid)
                 Original.ClearStuckInfo();
-            var result = Original.MoveTo(parameters);
+            MoveResult result;
+            owner.forwardingNavigation = owner.navigationRequest != null && !AvoidanceManager.IsRunningOutOfAvoid;
+            try { result = Original.MoveTo(parameters); }
+            finally { owner.forwardingNavigation = false; }
             // Unmaking's enlarged floor produced a native escape endpoint but the
             // service route failed repeatedly until death. An opt-in encounter planner
             // may supply a validated segment toward that same native endpoint. Keep
@@ -333,18 +427,21 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 return;
             }
 
-            if (owner.IsCurrent && !owner.destination.HasValue && !owner.ordinaryBlocked && !AvoidanceManager.IsRunningOutOfAvoid)
+            if (owner.IsCurrent && !owner.destination.HasValue && !owner.ordinaryBlocked && !AvoidanceManager.IsRunningOutOfAvoid && !owner.deferredNavigationEnd &&
+                (owner.navigationRequest == null || accepted == "semantic-navigation"))
             {
-                Original.OnPulse();
+                owner.forwardingNavigation = owner.navigationRequest != null && accepted == "semantic-navigation";
+                try { Original.OnPulse(); }
+                finally { owner.forwardingNavigation = false; }
             }
         }
 
         /// <inheritdoc/>
-        public override bool Clear() => owner.IsCurrent && !owner.destination.HasValue && !AvoidanceManager.IsRunningOutOfAvoid && Original.Clear();
+        public override bool Clear() => owner.IsCurrent && !owner.destination.HasValue && owner.navigationRequest == null && !owner.deferredNavigationEnd && !AvoidanceManager.IsRunningOutOfAvoid && Original.Clear();
         /// <inheritdoc/>
         public override void ClearStuckInfo()
         {
-            if (owner.IsCurrent && !owner.destination.HasValue && !AvoidanceManager.IsRunningOutOfAvoid)
+            if (owner.IsCurrent && !owner.destination.HasValue && owner.navigationRequest == null && !owner.deferredNavigationEnd && !AvoidanceManager.IsRunningOutOfAvoid)
             {
                 Original.ClearStuckInfo();
             }
