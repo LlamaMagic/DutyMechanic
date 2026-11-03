@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 25);
+    public override Version Version => new(7, 5, 04282015, 26);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -89,6 +89,16 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        // Encounter observations and movement must continue while an OrderBot hook yields.
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 1199)
+        {
+            switch (WorldManager.SubZoneId)
+            {
+                case 4356: Dungeons.Alexandria.ObserveAntivirusOnPulse(); break;
+                case 4495: Dungeons.Alexandria.ObserveAmalgamOnPulse(); break;
+                case 4499: Dungeons.Alexandria.ObserveEliminatorOnPulse(); break;
+            }
+        }
         // ARR boss ownership must release even when death/loading skips its hook.
         Dungeons.Sastasha.CheckLifecycle();
         Dungeons.TamTaraDeepcroft.CheckLifecycle();
@@ -245,6 +255,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
+        // Release encounter-owned input even when a stop bypasses its combat hook.
+        Dungeons.Alexandria.ResetActive();
         Dungeons.SohmAl.ResetActive();
         Dungeons.Aery.ResetActive();
         Dungeons.Vault.ResetActive();

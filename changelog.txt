@@ -1,5 +1,11 @@
 DutyMechanic Changelog
 
+7.5.4282015.26 11/03/2026
+
+Alexandria
+- Improve movement for boss attacks, shared damage and overlapping mechanics.
+- Keep combat available during safe positioning and recover encounter movement on exit.
+
 7.5.4282015.25 11/02/2026
 
 The Pool of Tribute

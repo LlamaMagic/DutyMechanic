@@ -1,4 +1,4 @@
-﻿using Clio.Common;
+using Clio.Common;
 using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
@@ -16,7 +16,8 @@ namespace DutyMechanic.Dungeons;
 /// <summary>
 /// Lv. 100: Alexandria dungeon logic.
 /// </summary>
-public class Alexandria : AbstractDungeon
+[System.Runtime.Versioning.SupportedOSPlatform("windows7.0")]
+public partial class Alexandria : AbstractDungeon
 {
     private const int QuarantineDuration = 10_000;
 
@@ -30,63 +31,55 @@ public class Alexandria : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.Superbolt, EnemyAction.Overexposure, EnemyAction.LightofDevotion];
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
 
-    private static GameObject InterferonC => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonC)
-        .FirstOrDefault(bc => bc.IsVisible); // +
-
-    private static GameObject InterferonR => GameObjectManager.GetObjectsByNPCId<BattleCharacter>(EnemyNpc.InterferonR)
-        .FirstOrDefault(bc => bc.IsVisible); // O
-
-    private static bool InterfornPresent => InterferonC != null || InterferonR != null;
-
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        
+        // Interferon and Immune Response are handled by the encounter input
+        // owner. Duplicate native avoids previously preempted its staged route.
 
-        // Boss 1: Immune Response Front
-        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.VolatileMemory && !InterfornPresent,
-            objectSelector: (bc) => bc.CastingSpellId == EnemyAction.ImmuneResponseFront && !InterfornPresent,
-            leashPointProducer: () => ArenaCenter.AntivirusX,
-            leashRadius: 40.0f,
-            rotationDegrees: 0.0f,
-            radius: 40.0f,
-            arcDegrees: 125f);
-
-        // Boss 1: Immune Response Sides
-        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.VolatileMemory && !InterfornPresent,
-            objectSelector: (bc) => bc.CastingSpellId == EnemyAction.ImmuneResponseSides,
-            leashPointProducer: () => ArenaCenter.AntivirusX,
-            leashRadius: 40.0f,
-            rotationDegrees: -180.0f,
-            radius: 40.0f,
-            arcDegrees: 255f);
-
-        // Boss 1: Quantine
+        // Keep the marked tankbuster target avoided throughout its marker
+        // lifetime. A proximity-triggered 20y avoid repeatedly appeared and
+        // vanished as the stack movement crossed its nine-yalm trigger.
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && !Core.Player.IsTank() && WorldManager.SubZoneId is (uint)SubZoneId.VolatileMemory,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.QuarantineConst && bc.SpellCastInfo.TargetId != Core.Player.ObjectId && Core.Player.Distance2D(MovementHelpers.GetClosestTank.Location) < 9f,
-            radiusProducer: bc => 20f,
-            locationProducer: bc => MovementHelpers.GetClosestTank.Location);
+            canRun: () => Core.Player.InCombat && !Core.Player.IsTank() && WorldManager.SubZoneId is (uint)SubZoneId.VolatileMemory &&
+                System.DateTime.UtcNow < quarantineUntil,
+            objectSelector: bc => bc.ObjectId != Core.Player.ObjectId && HasQuarantineMarker(bc, 344),
+            radiusProducer: bc => 6.5f,
+            locationProducer: bc => bc.Location);
 
         // Boss 2: Static Spark
         // Boss 2: Voltburst
         // Boss 3: Electray
+        // In the observed Halo/Partition/Electray overlap, spreading before the
+        // donut resolves left no path and contributed to a death. Keep the
+        // earlier donut active first; Electray resolves later and remains cast.
         AvoidanceManager.AddAvoidObject<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId is (uint)SubZoneId.CorruptedMemoryCache or (uint)SubZoneId.Reascension,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.Voltburst or EnemyAction.StaticSpark or EnemyAction.Electray && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
+            canRun: () => Core.Player.InCombat && (WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive ||
+                WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive),
+            objectSelector: bc => (bc.CastingSpellId is EnemyAction.StaticSpark
+                || (bc.CastingSpellId == EnemyAction.Electray && !EnemyAction.HaloCasts.IsCasting()))
+                && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius * 1.05f,
             locationProducer: bc => GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId)?.Location ?? bc.SpellCastInfo.CastLocation);
 
+        // The three baited ground-circle waves overlap in cast time, but resolve
+        // sequentially. Retain only the earliest wave through its observed effect
+        // margin, independently of helper visibility and cast disappearance.
+        AvoidanceManager.AddAvoidLocation<VoltburstCircle>(
+            canRun: () => Core.Me.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive,
+            radiusProducer: _ => 6.5f,
+            locationProducer: circle => circle.Origin,
+            collectionProducer: ActiveVoltburstCircles,
+            objectValidator: circle => circle.Expires > System.DateTime.UtcNow);
+
         // Boss 2: Supercell Matrix
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && AmalgamMatrixReady && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.SupercellMatrix,
             width: 60f,
             length: 28.5f,
@@ -95,7 +88,7 @@ public class Alexandria : AbstractDungeon
 
         // Boss 2: Supercell Matrix Lines
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && AmalgamMatrixReady && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.SupercellMatrixLine,
             width: 8.5f,
             length: 120f,
@@ -104,7 +97,7 @@ public class Alexandria : AbstractDungeon
 
         // Boss 2: Split Current
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.SplitCurrent,
             width: 20.5f,
             length: 120f,
@@ -113,7 +106,7 @@ public class Alexandria : AbstractDungeon
             priority: AvoidancePriority.High);
         // Boss 2: Split Current
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.SplitCurrent,
             width: 20.5f,
             length: 120f,
@@ -123,7 +116,7 @@ public class Alexandria : AbstractDungeon
 
         // Boss 2: Centralized Current
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.CentralizedCurrent,
             width: 16f,
             length: 120f,
@@ -132,14 +125,17 @@ public class Alexandria : AbstractDungeon
 
         // Boss 2: Ternary Charge Inner
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache,
+            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !amalgamAuthoredActive,
             objectSelector: bc => bc.CastingSpellId is EnemyAction.TernaryChargeInner,
             radiusProducer: eo => 11.0f,
             priority: AvoidancePriority.High));
 
         // Boss 2: Ternary Charge Outer
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache && !EnemyAction.TernaryChargeHash.IsCasting(),
+            // The later rings must not pull the player back into the first
+            // circle while its captured effect window is still resolving.
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.CorruptedMemoryCache &&
+                !EnemyAction.TernaryChargeHash.IsCasting() && !TernaryFirstCircleActive && !amalgamAuthoredActive,
             objectSelector: c => c.CastingSpellId == EnemyAction.TernaryChargeOuter,
             outerRadius: 40.0f,
             innerRadius: 9.0F,
@@ -147,24 +143,26 @@ public class Alexandria : AbstractDungeon
 
         // Boss 3: Unknown Lazer
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !EnemyAction.Impact.IsCasting(),
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.Unknown && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !EnemyAction.Impact.IsCasting() && !eliminatorAuthoredActive,
+            objectSelector: bc => bc.CastingSpellId == EnemyAction.TargetedLine && bc.SpellCastInfo.TargetId != Core.Player.ObjectId,
             width: 7f,
             length: 100f,
             rotationProducer: bc => -MathEx.CalculateNeededFacing(bc.Location, GameObjectManager.GetObjectByObjectId(bc.SpellCastInfo.TargetId).Location));
 
         // Boss 3: Explosion
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.Explosion,
             width: 8f,
             length: 100f,
             yOffset: -40f,
             priority: AvoidancePriority.High);
 
+        // Halo resolves before the overlapping Terminate line; don't constrain
+        // the initial donut shelter with the later line before it is needed.
         // Boss 3: Terminate
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !EnemyAction.HaloCasts.IsCasting() && !eliminatorAuthoredActive,
             objectSelector: bc => bc.CastingSpellId == EnemyAction.Terminate,
             width: 12f,
             length: 40f,
@@ -173,18 +171,18 @@ public class Alexandria : AbstractDungeon
 
         // Boss 3: Impact
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: c => c.CastingSpellId == EnemyAction.ImpactConst,
             outerRadius: 40.0f,
             innerRadius: 8F,
             priority: AvoidancePriority.Medium);
         AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            condition: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: bc => bc.CastingSpellId is EnemyAction.ImpactConst,
             radiusProducer: eo => 6.5f,
             priority: AvoidancePriority.High));
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: (bc) => bc.CastingSpellId == EnemyAction.ImpactConst,
             leashPointProducer: () => ArenaCenter.Eliminator,
             leashRadius: 40.0f,
@@ -194,17 +192,19 @@ public class Alexandria : AbstractDungeon
 
         // Boss 3: Halo of Destruction
         AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: c => c.CastingSpellId == EnemyAction.HaloofDestruction,
             outerRadius: 40.0f,
             innerRadius: 4.0F,
             priority: AvoidancePriority.Medium);
 
+        // Both Partition casters are in Eliminator's arena; using Antivirus X's distant
+        // center prevents the leash from finding them at all.
         // Boss 3: Partition Left
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: (bc) => bc.CastingSpellId is EnemyAction.PartitionLeft or EnemyAction.PartitionLeft2,
-            leashPointProducer: () => ArenaCenter.AntivirusX,
+            leashPointProducer: () => ArenaCenter.Eliminator,
             leashRadius: 40.0f,
             rotationDegrees: -90f,
             radius: 40.0f,
@@ -212,9 +212,9 @@ public class Alexandria : AbstractDungeon
 
         // Boss 3: Partition Right
         AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
-            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension,
+            canRun: () => Core.Player.InCombat && WorldManager.SubZoneId == (uint)SubZoneId.Reascension && !eliminatorAuthoredActive,
             objectSelector: (bc) => bc.CastingSpellId is EnemyAction.PartitionRight,
-            leashPointProducer: () => ArenaCenter.AntivirusX,
+            leashPointProducer: () => ArenaCenter.Eliminator,
             leashRadius: 40.0f,
             rotationDegrees: 90f,
             radius: 40.0f,
@@ -254,18 +254,9 @@ public class Alexandria : AbstractDungeon
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
-        await FollowDodgeSpells();
-
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
-        if (WorldManager.SubZoneId is (uint)SubZoneId.VolatileMemory or (uint)SubZoneId.CorruptedMemoryCache or (uint)SubZoneId.Reascension)
-        {
-            SidestepPlugin.Enabled = false;
-        }
-        else
-        {
-            SidestepPlugin.Enabled = true;
-        }
+        SetBossSideStep(currentSubZoneId is SubZoneId.VolatileMemory or SubZoneId.CorruptedMemoryCache or SubZoneId.Reascension);
 
         bool result = currentSubZoneId switch
         {
@@ -277,14 +268,46 @@ public class Alexandria : AbstractDungeon
 
         lastSubZoneId = currentSubZoneId;
 
+        if (currentSubZoneId is not (SubZoneId.VolatileMemory or SubZoneId.CorruptedMemoryCache or SubZoneId.Reascension)) DetachQuarantineMovement();
+
         return result;
+    }
+
+    /// <inheritdoc/>
+    protected override Task<bool> ExitDungeonAsync()
+    {
+        DetachQuarantineMovement();
+        SetBossSideStep(false);
+        return Task.FromResult(false);
+    }
+
+    // SideStep is needed on trash but duplicates the authored boss geometry.
+    // Restore the state held before the boss if a stop bypasses the next pulse.
+    private static bool? sideStepBeforeBoss;
+    private static void SetBossSideStep(bool inBoss)
+    {
+        if (SidestepPlugin == null) return;
+        if (inBoss)
+        {
+            sideStepBeforeBoss ??= SidestepPlugin.Enabled;
+            SidestepPlugin.Enabled = false;
+        }
+        else if (sideStepBeforeBoss is bool previous)
+        {
+            SidestepPlugin.Enabled = previous;
+            sideStepBeforeBoss = null;
+        }
     }
 
     /// <summary>
     /// Boss 1: Antivirus X.
     /// </summary>
-    private static async Task<bool> AntivirusX()
+    private async Task<bool> AntivirusX()
     {
+        if (antivirusPulseHandled) return antivirusPulseMoving;
+        if (PositionForQuarantineStack())
+            return true;
+
         if (EnemyAction.Quarantine.IsCasting())
         {
             // If you're on tank you want to spread during Quarantine as it does an AOE tank buster on the tank
@@ -294,18 +317,7 @@ public class Alexandria : AbstractDungeon
                 await MovementHelpers.Spread(QuarantineDuration, 10f);
             }
 
-            if (!Core.Player.IsTank() && Core.Player.Distance2D(MovementHelpers.GetClosestTank.Location) > 7.5f)
-            {
-                await MovementHelpers.GetClosestDps.Follow();
-            }
-        }
 
-        // Follow the NPCs while the intererons are present.
-        // Sidestep detects the omens, but the spell cast is so fast that the character can't move into position quick enough if you rely only on spell cast.
-        // The NPCs are good at dodging
-        if (Core.Me.InCombat && InterfornPresent)
-        {
-            await MovementHelpers.GetClosestDps.Follow();
         }
 
         return false;
@@ -314,17 +326,19 @@ public class Alexandria : AbstractDungeon
     /// <summary>
     /// Boss 2: Amalgam.
     /// </summary>
-    private static async Task<bool> Amalgam()
+    private Task<bool> Amalgam()
     {
-        return false;
+        if (amalgamPulseHandled) return Task.FromResult(amalgamPulseMoving);
+        return Task.FromResult(PositionForSuperboltStack());
     }
 
     /// <summary>
     /// Boss 3: Eliminator.
     /// </summary>
-    private static async Task<bool> Eliminator()
+    private Task<bool> Eliminator()
     {
-        return false;
+        if (eliminatorPulseHandled) return Task.FromResult(eliminatorPulseMoving);
+        return Task.FromResult(PositionForLineStack());
     }
 
     private static class EnemyNpc
@@ -470,10 +484,9 @@ public class Alexandria : AbstractDungeon
 
         /// <summary>
         /// Eliminator
-        /// Unkown
-        /// Small line AOE
+        /// Targeted line attack.
         /// </summary>
-        public const uint Unknown = 36783;
+        public const uint TargetedLine = 36783;
 
         /// <summary>
         /// Eliminator
@@ -509,6 +522,10 @@ public class Alexandria : AbstractDungeon
         /// Donut AoE
         /// </summary>
         public const uint HaloofDestruction = 36776;
+
+        // The Elimbit choreography and its damage helper overlap in the capture;
+        // wait until both end before admitting the later spread or line avoid.
+        public static readonly HashSet<uint> HaloCasts = [36776, 39616];
 
         /// <summary>
         /// Eliminator
@@ -553,6 +570,12 @@ public class Alexandria : AbstractDungeon
         public static readonly HashSet<uint> Impact = [36794];
 
         public const uint ImpactConst = 36794;
+
+        // Captured helper actions for the final boss's partition and knockback waves.
+        public const uint PartitionRight2 = 39008;
+        public const uint TerminateHelper = 39615;
+        public const uint HaloHelper = 39616;
+        public const uint CompressionDamage = 36793;
     }
 
     private static class PlayerAura
