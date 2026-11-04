@@ -74,3 +74,9 @@ package must exclude build output, test fixtures, captures and local settings.
 
 When updating an older ZIP installation, replace the Duty Mechanic folder rather
 than merging files; merging can leave the obsolete Tests directory behind.
+
+Emanation's synchronized captures include clears without recorded deaths or
+vulnerability gains. Full four-star coverage is not yet established: one later
+capture showed a player remain inside another player's moving cross while native
+avoidance failed to find a route, followed by a death of unconfirmed cause.
+Cross-overlap recovery and the circle-marker hold need further live verification.

@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 27);
+    public override Version Version => new(7, 5, 04282015, 28);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -107,6 +107,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.CheckLifecycle();
         Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
+        // Lakshmi's input owner must release even when a combat hook yields.
+        Dungeons.Emanation.CheckLifecycle();
         // Release Pool of Tribute input even when a combat hook yields.
         Dungeons.PoolOfTributeCoordinator.CheckLifecycle();
         // Keeper sequences and input cleanup must survive yielding boss/add profile hooks.
@@ -254,6 +256,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.ResetActive();
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
+        Dungeons.Emanation.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
         // Release encounter-owned input even when a stop bypasses its combat hook.
         Dungeons.Alexandria.ResetActive();

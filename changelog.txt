@@ -1,5 +1,11 @@
 DutyMechanic Changelog
 
+7.5.4282015.28 11/04/2026
+
+Emanation
+- Improve Vril collection and activation, player-targeted spear placement, and shared-damage positioning.
+- Keep combat available while avoiding attacks and clean up encounter movement on exit.
+
 7.5.4282015.27 11/04/2026
 
 Alexandria
