@@ -41,6 +41,12 @@ public class Emanation : AbstractDungeon
     // and Beauty use player markers 107 and 109 respectively.
     private const uint PallOfLightAction = 9361, PallStackMarker = 62, GraceMarker = 107, BeautyMarker = 109;
     private const string BeautyRoute = "Emanation Beauty edge";
+    private const string GraceRoute = "Emanation Grace edge";
+    private bool graceOwned, graceHolding;
+    private Vector3? graceDestination;
+    private Vector3? failedGraceDestination;
+    private DateTime failedGraceUntil;
+    private DateTime nextGraceRouteAttempt;
     private bool beautyOwned;
     private bool beautyHolding;
     private Vector3? beautyDestination;
@@ -187,6 +193,7 @@ public class Emanation : AbstractDungeon
                 DreamingKshatriyTarget == null && LakshmiTarget == null && Core.Player.InCombat);
         if (canUseVril && shouldUseVril)
         {
+            ReleaseGraceMovement();
             ReleaseBeautyMovement();
             ReleasePallMovement();
             ReleaseVrilRoute();
@@ -199,12 +206,15 @@ public class Emanation : AbstractDungeon
         if (DateTime.UtcNow < denialSafetyUntil &&
             (denialBoss == null || denialBoss.SpellCastInfo.RemainingCastTime.TotalSeconds < 3))
         {
+            ReleaseGraceMovement();
             ReleaseBeautyMovement();
             ReleasePallMovement();
             ReleaseVrilRoute();
             return false;
         }
 
+        if (!denialCasting && PositionGraceAtEdge()) return false;
+        ReleaseGraceMovement();
         if (!denialCasting && PositionBeautyAtEdge()) return false;
         ReleaseBeautyMovement();
 
@@ -350,6 +360,8 @@ public class Emanation : AbstractDungeon
             beautyOwned = false;
             beautyHolding = false;
             beautyDestination = null;
+            graceOwned = graceHolding = false;
+            graceDestination = null;
             movement.Detach();
             movement = null;
         }
@@ -536,6 +548,91 @@ public class Emanation : AbstractDungeon
         return true;
     }
 
+    private bool PositionGraceAtEdge()
+    {
+        if (!Core.Me.VfxContainer.IsValid || !Core.Me.VfxContainer.LockOns.Any(v => v != null && v.IsValid && v.Id == GraceMarker) ||
+            movement?.IsCurrent != true || MovementManager.GenerallyOutOfControl || AvoidanceManager.IsRunningOutOfAvoid)
+            return false;
+
+        var center = ArenaCenter.Lakshmi;
+        var party = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(a => a != null && a.IsValid && a.IsAlive && a.IsVisible && a.ObjectId != Core.Me.ObjectId &&
+                PartyManager.VisibleMembers.Any(p => p.ObjectId == a.ObjectId)).Select(a => a.Location).ToArray();
+        // Grace's cross is world-aligned, so radial separation alone is not
+        // enough: a party member must be clear of both arms at impact.
+        int Hits(Vector3 p, float margin) => party.Count(a => Math.Abs(a.X - p.X) < margin || Math.Abs(a.Z - p.Z) < margin);
+        var here = Core.Me.Location;
+        if (here.Distance2D(center) >= 13.5f && here.Distance2D(center) < 16.0f && Hits(here, 5.0f) == 0 && IsOrdinaryWaypointSafe(here))
+        {
+            if (!graceHolding)
+            {
+                ReleaseBeautyMovement(); ReleasePallMovement(); ReleaseVrilRoute();
+                if (graceOwned) movement.EndNavigation();
+                movement.BeginNavigation(GraceRoute);
+                graceOwned = graceHolding = true;
+            }
+            return true;
+        }
+
+        var candidates = Enumerable.Range(0, 64).Select(i =>
+        {
+            double angle = i * Math.PI / 32;
+            return new Vector3(center.X + 14.5f * (float)Math.Sin(angle), here.Y,
+                center.Z + 14.5f * (float)Math.Cos(angle));
+        }).Where(p => (!failedGraceDestination.HasValue || DateTime.UtcNow >= failedGraceUntil ||
+                p.Distance2D(failedGraceDestination.Value) > 0.5f) && IsOrdinaryWaypointSafe(p)).ToArray();
+        if (candidates.Length == 0)
+            return graceHolding && here.Distance2D(center) < 16 && IsOrdinaryWaypointSafe(here);
+        // Prefer avoiding every party member; when that is impossible, choose
+        // the least harmful improvement instead of forcing a worse cross.
+        var best = candidates.OrderBy(p => Hits(p, 5.5f)).ThenBy(p => p.Distance2D(here)).First();
+        int bestHits = Hits(best, 5.5f);
+        if (bestHits > 0 && bestHits >= Hits(here, 5.0f))
+            return graceHolding && here.Distance2D(center) < 16 && IsOrdinaryWaypointSafe(here);
+        if (!graceDestination.HasValue || !IsOrdinaryWaypointSafe(graceDestination.Value) ||
+            Hits(graceDestination.Value, 5.5f) > bestHits)
+            graceDestination = best;
+        if (!graceOwned) { ReleaseBeautyMovement(); ReleasePallMovement(); ReleaseVrilRoute(); }
+        if (here.Distance2D(graceDestination.Value) <= 0.75f && Hits(here, 5.0f) <= bestHits)
+        {
+            if (!graceHolding)
+            {
+                if (graceOwned) movement.EndNavigation();
+                movement.BeginNavigation(GraceRoute);
+                graceOwned = graceHolding = true;
+            }
+            return true;
+        }
+        if (graceHolding) { movement.EndNavigation(); graceOwned = graceHolding = false; }
+        if (!graceOwned && DateTime.UtcNow < nextGraceRouteAttempt) return true;
+        graceOwned = true;
+        movement.BeginNavigation(GraceRoute);
+        var result = movement.Navigate(graceDestination.Value, 0.75f);
+        if (result is MoveResult.Failed or MoveResult.PathGenerationFailed)
+        {
+            // A failed mesh destination should not monopolize the marker window.
+            failedGraceDestination = graceDestination;
+            failedGraceUntil = DateTime.UtcNow.AddSeconds(2);
+            ReleaseGraceMovement();
+            nextGraceRouteAttempt = DateTime.UtcNow.AddSeconds(1);
+            return false;
+        }
+        if (result is MoveResult.Done or MoveResult.ReachedDestination)
+        {
+            ReleaseGraceMovement();
+            nextGraceRouteAttempt = DateTime.UtcNow.AddSeconds(1);
+            return false;
+        }
+        return true;
+    }
+
+    private void ReleaseGraceMovement()
+    {
+        if (graceOwned) movement?.EndNavigation();
+        graceOwned = graceHolding = false;
+        graceDestination = null;
+    }
+
     private bool PositionBeautyAtEdge()
     {
         if (!Core.Me.VfxContainer.IsValid || !Core.Me.VfxContainer.LockOns.Any(v => v != null && v.IsValid && v.Id == BeautyMarker) ||
@@ -625,6 +722,10 @@ public class Emanation : AbstractDungeon
 
     private void ReleaseMovement()
     {
+        ReleaseGraceMovement();
+        nextGraceRouteAttempt = default;
+        failedGraceDestination = null;
+        failedGraceUntil = default;
         ReleaseBeautyMovement();
         nextBeautyRouteAttempt = default;
         ReleasePallMovement();

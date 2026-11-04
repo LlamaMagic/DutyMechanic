@@ -1,5 +1,10 @@
 DutyMechanic Changelog
 
+7.5.4282015.29 11/04/2026
+
+Emanation
+- Move a player marked with a cross toward the arena edge while minimizing exposure to party members.
+
 7.5.4282015.28 11/04/2026
 
 Emanation
