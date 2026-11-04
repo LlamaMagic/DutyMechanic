@@ -1,20 +1,22 @@
-// Scoped semantic movement and diagnostic observation for Alexandria.
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Clio.Utilities;
 using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
-using ff14bot;
+using System.Collections.Generic;
+using System.Linq;
+using Vector2 = System.Numerics.Vector2;
+using Vector3 = Clio.Utilities.Vector3;
+using System;
 using ff14bot.Interfaces;
 using ff14bot.Managers;
 using ff14bot.Navigation;
 using ff14bot.Objects;
+using ff14bot;
 
 namespace DutyMechanic.Dungeons;
 
+// Scoped semantic movement and diagnostic observation for Alexandria.
 public partial class Alexandria
 {
     private static Alexandria activeStackOwner;
@@ -23,7 +25,10 @@ public partial class Alexandria
     private bool reportedForeignMover;
     private static DateTime quarantineUntil;
     private static readonly AlexandriaInterferonSequence interferonSequence = new();
+    private static readonly AlexandriaAntivirusPattern antivirusPattern = new();
     private static double? interferonDue;
+    private static bool antivirusSequenceActive;
+    private static bool antivirusPatternOwns;
     private static readonly AlexandriaConeTimeline immuneResponse = new();
     private DateTime superboltUntil;
     private DateTime superboltCastEnd;
@@ -62,7 +67,10 @@ public partial class Alexandria
             ResetAntivirusRoute();
             antivirusNodes.Clear();
             interferonSequence.Reset();
+            antivirusPattern.Reset();
             interferonDue = null;
+            antivirusSequenceActive = false;
+            antivirusPatternOwns = false;
             immuneResponse.Reset();
             return;
         }
@@ -80,6 +88,10 @@ public partial class Alexandria
         }).ToArray();
         interferonSequence.Observe(now, nodes);
         interferonDue = interferonSequence.NextDue(now);
+        // A visible or unresolved node keeps all wave movement under one
+        // owner; independent cone casts return to native avoidance afterward.
+        antivirusSequenceActive = nodes.Any(node => node.Visible) || antivirusPattern.Active ||
+            interferonSequence.Forecast().Length != 0 || interferonSequence.UnanchoredUnresolved;
         if (interferonDue == null)
         {
             var live = nodes.Where(node => node.Casting).Select(node => now + node.RemainingSeconds).ToArray();
@@ -91,13 +103,67 @@ public partial class Alexandria
             .Select(actor => new AlexandriaConeTimeline.Observation(actor.ObjectId, actor.CastingSpellId,
                 actor.SpellCastInfo.IsValid ? actor.SpellCastInfo.RemainingCastTime.TotalSeconds : double.NaN)).ToArray();
         immuneResponse.Observe(now, cones);
-        CaptureAntivirusHazards(now, actors);
-        // Combat coroutines can yield across several waypoint deadlines. Pulse
-        // runs on the same bot input channel while those casts are pending, so
-        // it must drive exact route execution as well as hazard observation.
-        if (activeStackOwner is { } owner)
-            antivirusPulseMoving = owner.PositionForAntivirusRoute(out antivirusPulseHandled);
+        var patternNodes = actors.Where(actor => actor.BaseId is 0x4174 or 0x4175).Select(actor =>
+        {
+            uint action = actor.CastingSpellId is 36382 or 36383 ? actor.CastingSpellId : 0;
+            double remaining = action == 0 ? 0 : actor.SpellCastInfo.IsValid ? actor.SpellCastInfo.RemainingCastTime.TotalSeconds : double.NaN;
+            return new AlexandriaAntivirusPattern.Node(actor.ObjectId, actor.BaseId,
+                new System.Numerics.Vector2(actor.X, actor.Z), actor.IsVisible, action, remaining);
+        }).ToArray();
+        var decision = antivirusPattern.Observe(now, patternNodes, immuneResponse.Active
+            .Where(cone => cone.Due.HasValue).Select(cone => new AlexandriaAntivirusPattern.Cone(cone.Action, cone.Due.Value)).ToArray());
+        if (decision.State == AlexandriaAntivirusPattern.State.Complete)
+        {
+            if (antivirusPatternOwns) activeStackOwner?.ReleaseQuarantineStack();
+            antivirusPatternOwns = false;
+            antivirusSequenceActive = false;
+            ResetAntivirusRoute();
+            if (!nodes.Any(node => node.Visible)) { antivirusPattern.Reset(); interferonSequence.Reset(); antivirusNodes.Clear(); }
+            return;
+        }
+        if (antivirusSequenceActive)
+        {
+            bool usePattern = decision.State == AlexandriaAntivirusPattern.State.Ready &&
+                DateTime.UtcNow >= quarantineUntil && !immuneResponse.Incomplete;
+            if (usePattern != antivirusPatternOwns)
+            {
+                if (antivirusPatternOwns) activeStackOwner?.ReleaseQuarantineStack();
+                ResetAntivirusRoute();
+                antivirusPatternOwns = usePattern;
+            }
+            CaptureAntivirusHazards(now, actors);
+            if (activeStackOwner is { } owner)
+            {
+                if (usePattern)
+                    antivirusPulseMoving = owner.PositionForAntivirusPattern(decision, now, out antivirusPulseHandled);
+                else if (DateTime.UtcNow >= quarantineUntil && owner.stackInputOwner?.IsCurrent == true)
+                {
+                    // An unrecognized or incomplete wave has no justified
+                    // pattern destination; keep input owned until it recovers.
+                    antivirusPulseHandled = true;
+                    owner.stackLeased = true;
+                    owner.stackInputOwner.HoldStack();
+                }
+            }
+        }
+        else
+        {
+            antivirusPatternOwns = false;
+            ResetAntivirusRoute();
+        }
     }
+
+    // A later cone must not constrain an earlier node until their impact
+    // windows overlap. Both remain active when they resolve together.
+    private static (bool Interferon, bool Cone) AntivirusEffects()
+    {
+        double? cone = immuneResponse.Active.Where(c => c.Due.HasValue)
+            .Select(c => c.Due).OrderBy(due => due).FirstOrDefault();
+        return AlexandriaInterferonSequence.SelectEffects(interferonDue, cone);
+    }
+
+    private static bool AntivirusConeActive(BattleCharacter actor, uint action) =>
+        actor.IsValid && immuneResponse.Active.Any(cone => cone.Actor == actor.ObjectId && cone.Action == action);
 
     // Combat may immediately request a route back through the first circle
     // after native escape reports success. Keep its verified ground origin
@@ -183,6 +249,7 @@ public partial class Alexandria
         ResetAmalgamRoute();
         ResetAntivirusRoute();
         antivirusNodes.Clear();
+        antivirusPattern.Reset(); antivirusPatternOwns = false;
         ReleaseQuarantineStack();
         stackInputOwner?.Detach();
         stackInputOwner = null;
@@ -218,6 +285,7 @@ public partial class Alexandria
         SetBossSideStep(false);
         ResetAntivirusRoute();
         antivirusNodes.Clear();
+        antivirusPattern.Reset(); antivirusPatternOwns = false;
         activeStackOwner?.DetachQuarantineMovement();
         quarantineUntil = default;
         interferonSequence.Reset();
@@ -549,5 +617,114 @@ public partial class Alexandria
             }
             command = Command.None; detached = true;
         }
+    }
+}
+
+// The movement adapter supplies current party and hazard snapshots, arbitrates
+// input, and retains each marked stack through its observed lifecycle.
+internal static class AlexandriaStackPlanner
+{
+    // The final-boss instant marker target is not exposed by the captured RB
+    // actor state. Evaluate every living member as the possible carrier, including
+    // the player. This shares the actual source-to-carrier line without treating
+    // an unrelated ally as a proxy for safety. Width six leaves 0.5y clearance.
+    internal static Vector2? ChooseLine(Vector2 player, Vector2 source,
+        IReadOnlyList<Vector2> others, Func<Vector2, bool> safe,
+        Func<Vector2, Vector2, bool> reachable)
+    {
+        if (others == null || others.Count == 0) return null;
+        int Coverage(Vector2 candidate)
+        {
+            var members = others.Concat(new[] { candidate }).ToArray();
+            int worst = members.Length;
+            foreach (var carrier in members)
+            {
+                var axis = carrier - source;
+                if (axis.LengthSquared() < .25f) return 0;
+                axis = Vector2.Normalize(axis);
+                int count = members.Count(p =>
+                {
+                    var delta = p - source;
+                    float along = Vector2.Dot(delta, axis);
+                    return along >= 0 && along <= 39 && Math.Abs(delta.X * axis.Y - delta.Y * axis.X) <= 2.5f;
+                });
+                worst = Math.Min(worst, count);
+            }
+            return worst;
+        }
+        var candidates = new List<Vector2> { player };
+        var center = others.Aggregate(Vector2.Zero, (sum, p) => sum + p) / others.Count;
+        foreach (var anchor in others.Concat(new[] { center }))
+            for (int z = -4; z <= 4; ++z)
+                for (int x = -4; x <= 4; ++x)
+                    candidates.Add(anchor + new Vector2(x, z));
+        return candidates.Where(p => safe(p) && reachable(player, p))
+            .Select(p => (Point: p, Count: Coverage(p)))
+            .Where(p => p.Count >= 2)
+            .OrderByDescending(p => p.Count)
+            .ThenBy(p => Vector2.DistanceSquared(p.Point, player))
+            .Select(p => (Vector2?)p.Point).FirstOrDefault();
+    }
+
+    internal static bool KeepSuperbolt(bool casting, bool markerSeen, bool markerPresent, double secondsSinceCastEnd)
+    {
+        if (secondsSinceCastEnd >= 3) return false;
+        if (casting || secondsSinceCastEnd < .35) return true;
+        return markerSeen ? markerPresent : secondsSinceCastEnd < 2.5;
+    }
+
+    internal static Vector2? Choose(Vector2 player, bool selfMarked, Vector2 marked,
+        IReadOnlyList<Vector2> participants, Func<Vector2, bool> safe,
+        Func<Vector2, Vector2, bool> reachable, int selfRequired = 2)
+    {
+        if (participants == null || safe == null || reachable == null ||
+            selfRequired < 1 || (selfMarked && participants.Count == 0))
+            return null;
+
+        // Radius six with a 1y arrival tolerance and half-yalm clearance.
+        int Coverage(Vector2 point) => selfMarked
+            ? participants.Count(member => Vector2.Distance(member, point) <= 4.5f)
+            : Vector2.Distance(marked, point) <= 4.5f ? 1 : 0;
+        var centers = selfMarked ? participants : new[] { marked };
+        var candidates = new List<Vector2> { player };
+        foreach (var center in centers)
+        {
+            candidates.Add(center);
+            for (int i = 0; i < 16; ++i)
+            {
+                double angle = i * Math.PI / 8;
+                candidates.Add(center + new Vector2(4f * (float)Math.Sin(angle), 4f * (float)Math.Cos(angle)));
+            }
+        }
+        // If the group is still scattered, move toward the best available
+        // participation instead of leaving an isolated marked player behind.
+        // Coverage is re-evaluated as members converge on later pulses.
+        return candidates.Where(point => Coverage(point) >= 1 && safe(point) && reachable(player, point))
+            .OrderByDescending(point => Math.Min(Coverage(point), selfMarked ? selfRequired : 1))
+            .ThenByDescending(Coverage).ThenBy(point => Vector2.DistanceSquared(point, player))
+            .Select(point => (Vector2?)point).FirstOrDefault();
+    }
+}
+
+// Used only after authored and checked movement fail. Keep the chosen Trust
+// while it remains visible so similar distances do not alternate input owners.
+internal static class AlexandriaTrustSelector
+{
+    internal readonly record struct Candidate(uint Id, Vector2 Position);
+
+    internal static Candidate? Choose(Vector2 player, uint previous, Candidate[] candidates)
+    {
+        if (!AlexandriaGeometry.Finite(player) || candidates == null) return null;
+        Candidate? nearest = null;
+        float distance = float.PositiveInfinity;
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Id is 0 or 0xE0000000 || !AlexandriaGeometry.Finite(candidate.Position)) continue;
+            if (candidate.Id == previous) return candidate;
+            float next = Vector2.DistanceSquared(player, candidate.Position);
+            if (next < distance || next == distance && (nearest == null || candidate.Id < nearest.Value.Id))
+            { distance = next; nearest = candidate; }
+        }
+        return nearest;
     }
 }

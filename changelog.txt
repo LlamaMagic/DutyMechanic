@@ -1,5 +1,10 @@
 DutyMechanic Changelog
 
+7.5.4282015.27 11/04/2026
+
+Alexandria
+- Improve movement through Antivirus X patterns and overlapping attacks on later bosses.
+
 7.5.4282015.26 11/03/2026
 
 Alexandria

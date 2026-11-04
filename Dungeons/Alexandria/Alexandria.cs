@@ -39,8 +39,20 @@ public partial class Alexandria : AbstractDungeon
     /// <inheritdoc/>
     protected override async Task<bool> EnterDungeonAsync()
     {
-        // Interferon and Immune Response are handled by the encounter input
-        // owner. Duplicate native avoids previously preempted its staged route.
+        // The ordered node wave and overlapping cone share one route owner.
+        // Standalone cones remain native avoids outside that sequence.
+        bool InAntivirus() => Core.Me != null && Core.Me.InCombat &&
+            WorldManager.SubZoneId == (uint)SubZoneId.VolatileMemory;
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => InAntivirus() && !antivirusSequenceActive && AntivirusEffects().Cone,
+            objectSelector: actor => AntivirusConeActive(actor, 36379),
+            leashPointProducer: () => ArenaCenter.AntivirusX, leashRadius: 40f,
+            rotationDegrees: 0f, radius: 40f, arcDegrees: 125f, priority: AvoidancePriority.High);
+        AvoidanceManager.AddAvoidUnitCone<BattleCharacter>(
+            canRun: () => InAntivirus() && !antivirusSequenceActive && AntivirusEffects().Cone,
+            objectSelector: actor => AntivirusConeActive(actor, 36381),
+            leashPointProducer: () => ArenaCenter.AntivirusX, leashRadius: 40f,
+            rotationDegrees: 180f, radius: 40f, arcDegrees: 250f, priority: AvoidancePriority.High);
 
         // Keep the marked tankbuster target avoided throughout its marker
         // lifetime. A proximity-triggered 20y avoid repeatedly appeared and
