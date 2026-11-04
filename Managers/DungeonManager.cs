@@ -158,6 +158,8 @@ internal static class DungeonManager
             { ZoneId.Vanguard, typeof(Vanguard) },
             { ZoneId.Origenics, typeof(Origenics) },
             { ZoneId.Everkeep, typeof(Everkeep) },
+            // Normal Interphos has its own floor transitions and encounter owner.
+            { (ZoneId)1202, typeof(Interphos) },
             { ZoneId.Alexandria, typeof(Alexandria) },
             { ZoneId.YuweyawataFieldStation, typeof(YuweyawataFieldStation) },
             { ZoneId.SouthHorn, typeof(SouthHorn) },

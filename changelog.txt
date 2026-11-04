@@ -1,5 +1,13 @@
 DutyMechanic Changelog
 
+7.5.4282015.30 11/04/2026
+
+The Interphos
+- Add normal live-party trial handling for changing platforms, ordered attacks and overlapping mechanics.
+- Approach after another party member pulls, keep hand-strike movement stable, and preserve combat during safe positioning.
+- Keep authored circle escape available when Absolute Authority has no safe pair position.
+- Group encounter sources together and keep detailed capture logging behind the developer diagnostics switch.
+
 7.5.4282015.29 11/04/2026
 
 Emanation
