@@ -22,9 +22,7 @@ using System.Threading.Tasks;
 namespace DutyMechanic.Dungeons;
 
 /// <summary>
-/// Coordinates normal Shinryu's verified positioning through one movement owner.
-/// Later semantic mechanics remain under diagnostic capture until their actor lifetimes are verified.
-/// OrderBot owns combat and QTE progression; this handler never selects combat actions or targets.
+/// Coordinates Shinryu's positioning while OrderBot retains combat and duty progression.
 /// </summary>
 public sealed class TheRoyalMenagerie : AbstractDungeon
 {
@@ -36,12 +34,19 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     private DateTime waveFinish;
     private Vector3 wavePoint;
     private bool moving, leased, arrived;
-    private DateTime nextCapture;
     private DateTime meteorUntil;
     private string meteorPattern;
     private Vector3 meteorPoint;
     private DateTime windUntil;
     private Vector3 windPoint;
+    private DateTime hellfireUntil;
+    private Vector3 hellfirePoint;
+    private DateTime hypernovaUntil;
+    private uint hypernovaTarget;
+    private DateTime icicleFirstImpact, icicleUntil;
+    private DateTime nextIciclePlan;
+    private Vector3 icicleFirstPoint, icicleSecondPoint;
+    private bool icicleOverride, icicleSecondChecked;
     private DateTime chargeUntil;
     private uint chargeActor;
     private Vector3 chargePoint;
@@ -49,6 +54,8 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     private uint fistActor;
     private Vector3 fistPoint;
     private MovementGate movementGate;
+    private bool sideStepSuppressed, sideStepWasEnabled;
+    private bool upperArenaEntered;
     private readonly HashSet<uint> ownedOverrides = [];
     private static TheRoyalMenagerie activeHandler;
     private bool ownsTick;
@@ -64,6 +71,7 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     {
         activeHandler?.Release("Bot stop/disable");
         activeHandler?.ReleaseOverrides();
+        activeHandler?.RestoreSideStep();
         activeHandler = null;
     }
 
@@ -86,15 +94,41 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     protected override Task<bool> EnterDungeonAsync()
     {
         activeHandler = this;
-        // Keep SideStep's ordinary telegraphs, but remove its confirmed inverted full-arena wave.
+        // Boss positioning and telegraphs must share this encounter's movement ownership.
+        // Restore the prior plugin state when this handler relinquishes the duty.
+        if (SidestepPlugin != null)
+        {
+            sideStepWasEnabled = SidestepPlugin.Enabled;
+            sideStepSuppressed = true;
+            SidestepPlugin.Enabled = false;
+        }
         // One square replaces the old circle19 plus square5 intersection. Widths are FULL widths.
         // Captured9291/8086 are proximity falloffs, not60y exclusion circles. Their
         // repeated no-path failures at12:19:59 require one explicit max-clearance goal.
-        foreach (var action in new uint[] { TidalWave, 9291, 8086, 8077, 8085, 8088, 8080, 8984, 8180, 9456 })
+        foreach (var action in new uint[] { TidalWave, 9291, 8086, 8077, 8085, 8088, 8080, 8984, 8180, 9456, 8097 })
             if (SideStep.Override(action)) ownedOverrides.Add(action);
+        // If the ordered plan cannot establish a supported route, retain a scoped native
+        // escape instead of treating an unknown floor or missing actor group as safe.
+        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+            () => Active() && !icicleOverride,
+            a => a.IsValid && a.IsCasting && a.CastingSpellId == 8097,
+            10f, 65f, yOffset: -2.5f, priority: AvoidancePriority.High);
+        // The captured tail marks a 40-by-20 forward strip; add lines use their
+        // own caster and retain RB's urgent escape priority over semantic movement.
+        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+            () => Active(), a => a.IsValid && a.IsCasting && a.CastingSpellId is 8083 or 9130,
+            20f, 40f, priority: AvoidancePriority.High);
+        AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
+            () => Active(), a => a.IsValid && a.IsCasting && a.CastingSpellId == 8730,
+            11f, 16.8f, priority: AvoidancePriority.High);
+        AvoidanceManager.AddAvoidLocation<BattleCharacter>(
+            () => Active(), () => Center, 60f, _ => 4f, a => a.SpellCastInfo.CastLocation,
+            () => Actors().Where(a => a.IsCasting && a.CastingSpellId == 8732 && a.SpellCastInfo != null));
         AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && Core.Player.Y < 100,
             38.5f, 38.5f, 180, 180, () => [new Vector3(0, -380, 0)], AvoidancePriority.High);
-        AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && Core.Player.Y > 100,
+        // The QTE carries players through the air outside the final platform. The
+        // boundary must not ask RB to escape until a grounded arrival is observed.
+        AvoidanceHelpers.AddAvoidSquareDonut(() => Active() && upperArenaEntered && Core.Player.Y > 100,
             58.5f, 58.5f, 180, 180, () => [new Vector3(0, 620, 0)], AvoidancePriority.High);
         return Task.FromResult(false);
     }
@@ -104,8 +138,14 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
 
     private bool Tick()
     {
-        if (!Active()) { Release("Death/loading/exit"); return false; }
-        Capture();
+        if (!Active()) { upperArenaEntered = false; Release("Death/loading/exit"); return false; }
+        if (Core.Player.Y < 100) upperArenaEntered = false;
+        else if (!upperArenaEntered && Math.Abs(Core.Player.Y - 620) < 0.6f &&
+            Math.Abs(Core.Player.X) < 29 && Math.Abs(Core.Player.Z) < 29 && !MovementManager.GenerallyOutOfControl)
+        {
+            upperArenaEntered = true;
+            Logger.Information("Menagerie: final arena boundary enabled after grounded arrival at {0}", Core.Player.Location);
+        }
         var wave = Actors().Where(a => a.IsCasting && a.CastingSpellId == TidalWave)
             .OrderBy(a => a.SpellCastInfo.RemainingCastTime).FirstOrDefault();
         if (wave != null)
@@ -137,12 +177,11 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
         {
             if (windUntil < DateTime.UtcNow)
             {
-                // Live12:22:59/12:23:01/12:23:03 pulses each push5y; the first killed
-                // both edge-positioned players. The center tile is unbreakable. Stage3y
-                // south of its center, returning between pulses; the final15y push ends
-                // on the south-center tile. Broken-floor validation remains a separate
-                // later-phase capture gate, not a claim inferred from a rectangular bound.
-                windPoint = new Vector3(wind.X, wind.Y, wind.Z + 3);
+                // The small pulses and final 15y knockback require staging near the eye,
+                // but Domestic observed repeated inward travel into the cyclone itself.
+                // Keep an 8y radius and select a direction whose entire projected push
+                // has same-height collision; do not cross the eye just to return after a pulse.
+                windPoint = CycloneStaging(wind.Location, Core.Player.Location);
                 arrived = false;
                 Logger.Information("Menagerie: Aerial Blast staging goal={0}", windPoint);
             }
@@ -154,6 +193,88 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
             wavePoint = windPoint;
             return PositionForMechanic("Aerial Blast");
         }
+        if (icicleUntil == DateTime.MinValue && Core.Player.Y > 100)
+            TryStartIcicleSequence();
+        if (DateTime.UtcNow < icicleUntil)
+        {
+            if (!icicleSecondChecked && DateTime.UtcNow >= icicleFirstImpact)
+            {
+                // Tail Slap can remove floor after the initial plan was sampled.
+                // Do not issue its second segment against stale collision evidence.
+                icicleSecondChecked = true;
+                arrived = false;
+                if (!SupportedSegment(Core.Player.Location, icicleSecondPoint))
+                {
+                    Release("Spikesicle floor changed; yielding to native escape");
+                    return false;
+                }
+            }
+            waveOwner = 0;
+            wavePoint = DateTime.UtcNow < icicleFirstImpact ? icicleFirstPoint : icicleSecondPoint;
+            return PositionForMechanic("Spikesicle");
+        }
+        if (icicleOverride)
+        {
+            icicleOverride = false;
+            Release("Spikesicle resolution complete");
+        }
+        var hellfire = Actors().FirstOrDefault(a => a.IsCasting && a.CastingSpellId == 8076);
+        if (hellfire != null && hellfireUntil < DateTime.UtcNow)
+        {
+            // Water fields shelter the party from Hellfire; hold the nearest one through impact.
+            var puddle = GameObjectManager.GetObjectsOfType<EventObject>(true, false)
+                .Where(o => o.IsValid && o.IsVisible && o.NpcId == 0x1E950D &&
+                    Math.Abs(o.Y - Core.Player.Y) < 5)
+                .OrderBy(o => o.Distance2D(Core.Player.Location)).FirstOrDefault();
+            if (puddle != null)
+            {
+                hellfirePoint = puddle.Location;
+                hellfireUntil = DateTime.UtcNow + hellfire.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(700);
+                arrived = false;
+                Logger.Information("Menagerie: Hellfire shelter goal={0} remaining={1}", hellfirePoint, hellfire.SpellCastInfo.RemainingCastTime);
+            }
+        }
+        if (DateTime.UtcNow < hellfireUntil)
+        {
+            waveOwner = 0;
+            wavePoint = hellfirePoint;
+            return PositionForMechanic("Hellfire");
+        }
+        var hypernova = Actors().FirstOrDefault(a => a.IsCasting && a.CastingSpellId == 8089);
+        if (hypernova != null && Core.Player.Y < 100)
+        {
+            // Marker 62 identifies the stack target. A marked player joins the largest nearby group.
+            var party = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+                .Concat(new BattleCharacter[] { Core.Me })
+                .Where(a => a != null && a.IsValid && a.IsAlive && a.IsVisible &&
+                    (a.ObjectId == Core.Me.ObjectId || PartyManager.VisibleMembers.Any(p => p.ObjectId == a.ObjectId)))
+                .GroupBy(a => a.ObjectId).Select(g => g.First()).ToArray();
+            var marked = party.FirstOrDefault(a => a.VfxContainer.IsValid &&
+                a.VfxContainer.Vfx.Any(v => v != null && v.IsValid && v.Id == 62));
+            if (marked != null)
+            {
+                var destination = marked.ObjectId == Core.Me.ObjectId
+                    ? party.Where(a => a.ObjectId != Core.Me.ObjectId)
+                        .OrderByDescending(a => party.Count(b => b.ObjectId != Core.Me.ObjectId && b.Distance2D(a.Location) < 5f))
+                        .ThenBy(a => a.Distance2D(Core.Me.Location)).FirstOrDefault()
+                    : marked;
+                if (destination != null)
+                {
+                    if (hypernovaTarget != marked.ObjectId)
+                    {
+                        arrived = false;
+                        hypernovaTarget = marked.ObjectId;
+                        Logger.Information("Menagerie: Hypernova target={0:X} destination={1}", hypernovaTarget, destination.Location);
+                    }
+                    hypernovaUntil = DateTime.UtcNow + hypernova.SpellCastInfo.RemainingCastTime + TimeSpan.FromMilliseconds(700);
+                    wavePoint = destination.Location;
+                    waveOwner = 0;
+                    return PositionForMechanic("Hypernova");
+                }
+            }
+        }
+        if (DateTime.UtcNow < hypernovaUntil)
+            return PositionForMechanic("Hypernova");
         var meteors = Actors().Where(a => a.IsCasting && a.CastingSpellId is 9291 or 8086).ToArray();
         if (meteors.Length > 0 && Core.Player.Y < 100)
         {
@@ -282,6 +403,13 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
         meteorUntil = DateTime.MinValue;
         meteorPattern = null;
         windUntil = DateTime.MinValue;
+        hellfireUntil = DateTime.MinValue;
+        hypernovaUntil = DateTime.MinValue;
+        hypernovaTarget = 0;
+        icicleOverride = false;
+        icicleFirstImpact = DateTime.MinValue;
+        icicleUntil = DateTime.MinValue;
+        icicleSecondChecked = false;
         chargeUntil = DateTime.MinValue;
         chargeActor = 0;
         fistUntil = DateTime.MinValue;
@@ -293,6 +421,7 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     {
         Release("Encounter cleanup");
         ReleaseOverrides();
+        RestoreSideStep();
         if (ReferenceEquals(activeHandler, this)) activeHandler = null;
         return Task.FromResult(false);
     }
@@ -301,6 +430,13 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
     {
         foreach (var action in ownedOverrides) SideStep.RemoveHandler(action);
         ownedOverrides.Clear();
+    }
+
+    private void RestoreSideStep()
+    {
+        if (sideStepSuppressed && SidestepPlugin != null && !SidestepPlugin.Enabled)
+            SidestepPlugin.Enabled = sideStepWasEnabled;
+        sideStepSuppressed = false;
     }
 
     // One synchronous final-input gate, not another mover loop. Stale callbacks into a
@@ -382,6 +518,131 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
         }
     }
 
+    private void TryStartIcicleSequence()
+    {
+        if (DateTime.UtcNow < nextIciclePlan) return;
+        var icicles = Actors().Where(a => a.BaseId == 0x1B16).ToArray();
+        var first = icicles.Where(a => a.IsCasting && a.CastingSpellId == 8097).ToArray();
+        if (first.Length != 3 || first.Any(a => a.SpellCastInfo == null)) return;
+        var firstIds = first.Select(a => a.ObjectId).ToHashSet();
+        var second = icicles.Where(a => !firstIds.Contains(a.ObjectId) &&
+            a.Location.Distance2D(first[0].Location) < 61f).ToArray();
+        if (second.Length != 3) return;
+
+        // The alternating waves require an ordered route; native avoidance cannot reliably
+        // select both lanes before the second hit, especially around a broken tile.
+        bool lanesAlongZ = Math.Abs(Math.Cos(first[0].Heading)) > 0.7;
+        float Lateral(Vector3 p) => lanesAlongZ ? p.X : p.Z;
+        Vector3 At(float lateral, float longitudinal) => lanesAlongZ
+            ? new Vector3(lateral, Core.Player.Y, longitudinal)
+            : new Vector3(longitudinal, Core.Player.Y, lateral);
+        float[] firstLanes = first.Select(a => Lateral(a.Location)).ToArray();
+        float[] secondLanes = second.Select(a => Lateral(a.Location)).ToArray();
+        float current = Lateral(Core.Player.Location);
+        var firstCandidates = firstLanes.SelectMany(x => new[] { x - 6.5f, x + 6.5f })
+            .Concat(new[] { current }).Where(x => x >= -28 && x <= 28 && firstLanes.All(l => Math.Abs(x - l) >= 6f))
+            .OrderBy(x => Math.Abs(x - current)).ToArray();
+        // Stage outside the tail's 40-by-20 strip before its cast: a late emergency
+        // dodge can otherwise consume the second-wave window. Native escape remains
+        // available when no supported route can be established.
+        var tails = Actors().Where(a => a.BaseId == 0x1B12 && a.IsVisible).ToArray();
+        bool OutsideTail(Vector3 point) => tails.All(t =>
+        {
+            double dx = Math.Sin(t.Heading), dz = Math.Cos(t.Heading);
+            double x = point.X - t.X, z = point.Z - t.Z;
+            double forward = x * dx + z * dz;
+            double lateral = Math.Abs(x * dz - z * dx);
+            return forward < -1 || forward > 41 || lateral >= 11.5;
+        });
+        float longitudinal = lanesAlongZ ? Core.Player.Z : Core.Player.X;
+        var alongCandidates = new List<float> { longitudinal };
+        // Tail strips observed perpendicular to the icicle lanes are centered on the
+        // tail's longitudinal coordinate. The 1.5y inset includes arrival tolerance.
+        foreach (var tail in tails)
+        {
+            float center = lanesAlongZ ? tail.Z : tail.X;
+            alongCandidates.Add(center - 11.5f);
+            alongCandidates.Add(center + 11.5f);
+        }
+        var candidatePoints = firstCandidates.SelectMany(start => alongCandidates.Select(along => At(start, along)))
+            .Where(p => Math.Abs(p.X) <= 28 && Math.Abs(p.Z) <= 28 && OutsideTail(p))
+            .OrderBy(p => Core.Player.Location.Distance2D(p)).ToArray();
+        double firstBudget = Math.Max(0, first.Min(a => a.SpellCastInfo.RemainingCastTime.TotalSeconds) - 0.1) * 5.5;
+        foreach (var firstPoint in candidatePoints)
+        {
+            float start = Lateral(firstPoint);
+            float along = lanesAlongZ ? firstPoint.Z : firstPoint.X;
+            if (Core.Player.Location.Distance2D(firstPoint) > firstBudget || !SupportedSegment(Core.Player.Location, firstPoint)) continue;
+            foreach (float end in firstLanes.OrderBy(x => Math.Abs(x - start)))
+            {
+                var secondPoint = At(end, along);
+                if (end < -28 || end > 28 || secondLanes.Any(l => Math.Abs(end - l) < 6f) ||
+                    !OutsideTail(secondPoint) || Math.Abs(end - start) > 8.5f ||
+                    !SupportedSegment(firstPoint, secondPoint)) continue;
+                icicleFirstPoint = firstPoint;
+                icicleSecondPoint = secondPoint;
+                // The damage effect is delayed; move after the first cast snapshot
+                // so the second lane can be reached before its own snapshot.
+                icicleFirstImpact = DateTime.UtcNow + first.Min(a => a.SpellCastInfo.RemainingCastTime) + TimeSpan.FromMilliseconds(100);
+                icicleUntil = icicleFirstImpact + TimeSpan.FromSeconds(3.75);
+                icicleOverride = true;
+                icicleSecondChecked = false;
+                arrived = false;
+                Logger.Information("Menagerie: Spikesicle stages first={0} second={1} firstImpact={2:O}", firstPoint, secondPoint, icicleFirstImpact);
+                return;
+            }
+        }
+        nextIciclePlan = DateTime.UtcNow.AddMilliseconds(500);
+        Logger.Information("Menagerie: Spikesicle has no floor-verified ordered route; native escape remains available");
+    }
+
+    private static bool SupportedSegment(Vector3 from, Vector3 to)
+    {
+        // A broken tile can retain a valid arena coordinate. Probe the actual collision
+        // beneath each yalm of the direct segment; reject a lower floor or missing hit.
+        int steps = Math.Max(1, (int)Math.Ceiling(from.Distance2D(to)));
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = (float)i / steps;
+            var point = new Vector3(from.X + (to.X - from.X) * t, from.Y, from.Z + (to.Z - from.Z) * t);
+            if (!WorldManager.AdvancedRaycast(point + new Vector3(0, 2, 0), point - new Vector3(0, 2, 0),
+                    RaycastFlags.PassthruBoundaries, RaycastFlags.PassthruBoundaries, out var ground) ||
+                Math.Abs(ground.Y - point.Y) > 0.75f) return false;
+        }
+        return true;
+    }
+
+    private static Vector3 CycloneStaging(Vector3 origin, Vector3 player)
+    {
+        // Radius8 stays outside the visible center and leaves a 15y final push within
+        // the 30y platform. Prefer the player's current radial side to avoid crossing it.
+        double baseAngle = Math.Atan2(player.X - origin.X, player.Z - origin.Z);
+        Vector3 fallback = new(origin.X + (float)Math.Sin(baseAngle) * 8, origin.Y,
+            origin.Z + (float)Math.Cos(baseAngle) * 8);
+        for (int i = 0; i < 16; i++)
+        {
+            int signed = i == 0 ? 0 : (i + 1) / 2 * (i % 2 == 1 ? 1 : -1);
+            double angle = baseAngle + signed * Math.PI / 8;
+            var direction = new Vector3((float)Math.Sin(angle), 0, (float)Math.Cos(angle));
+            var staging = origin + direction * 8;
+            var landing = origin + direction * 23;
+            double dx = staging.X - player.X, dz = staging.Z - player.Z;
+            double lengthSquared = dx * dx + dz * dz;
+            double t = lengthSquared < 0.001 ? 0 : Math.Clamp(((origin.X - player.X) * dx + (origin.Z - player.Z) * dz) / lengthSquared, 0, 1);
+            double closestX = player.X + t * dx - origin.X, closestZ = player.Z + t * dz - origin.Z;
+            bool crossesEye = player.Distance2D(origin) >= 5 && closestX * closestX + closestZ * closestZ < 25;
+            if (!crossesEye && SupportedSegment(player, staging) && SupportedSegment(staging, landing))
+            {
+                Logger.Information("Menagerie: Cyclone floor-checked stage={0} landing={1}", staging, landing);
+                return staging;
+            }
+        }
+        // Collision may not yet be published when the cast starts. Preserve the outward
+        // side as a bounded fallback; its broken-floor safety remains unverified.
+        Logger.Warning("Menagerie: Cyclone has no floor-verified radial route; using unverified outward fallback {0}", fallback);
+        return fallback;
+    }
+
     private static Vector3 FistRetreat(Vector3 origin, Vector3 player)
     {
         // Preserve the player's radial side instead of crossing the central blast.
@@ -446,17 +707,4 @@ public sealed class TheRoyalMenagerie : AbstractDungeon
         return best;
     }
 
-    private void Capture()
-    {
-        if (!LoggingHelpers.MechanicDiagnosticsEnabled || DateTime.UtcNow < nextCapture) return;
-        nextCapture = DateTime.UtcNow.AddSeconds(1);
-        LoggingHelpers.LogActorSignalChanges("Menagerie", a => Math.Abs(a.Y - Core.Player.Y) < 15);
-        // Event objects include inactive upper-platform actors before transition. Preserve height,
-        // visibility and IDs rather than assuming that presence means a live puddle or safe tile.
-        foreach (var o in GameObjectManager.GetObjectsOfType<EventObject>(true, false).Where(o => o.IsValid))
-            Logger.Information("Menagerie object id={0:X} npc={1:X} visible={2} pos={3}",
-                o.ObjectId, o.NpcId, o.IsVisible, o.Location);
-    }
 }
-
-
