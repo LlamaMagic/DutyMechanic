@@ -26,6 +26,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private readonly Func<Vector3, Vector3?> failedEscapeWaypoint;
     private readonly Func<bool> canContinueNativeEscape;
     private readonly Func<Vector3, bool> canMoveOrdinary;
+    private readonly Func<Vector3, Vector3?> validateNativeWaypoint;
+    private readonly bool gateUnsafeNativeRecovery;
+    private readonly Func<bool> prioritizeRequestedHazardExit;
     private Vector3? ordinaryDestination;
     private bool ordinaryBlocked;
     private Vector3? destination;
@@ -42,15 +45,25 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private bool deferredNavigationEnd;
     internal ChrysalisMovement(IPlayerMover inner,
         Func<Vector3, Vector3?> failedEscapeWaypoint = null, Func<bool> canContinueNativeEscape = null,
-        Func<Vector3, bool> canMoveOrdinary = null)
+        Func<Vector3, bool> canMoveOrdinary = null, Func<Vector3, Vector3?> validateNativeWaypoint = null,
+        bool gateUnsafeNativeRecovery = false, Func<bool> prioritizeRequestedHazardExit = null)
     {
         this.inner = inner;
         this.failedEscapeWaypoint = failedEscapeWaypoint;
         this.canContinueNativeEscape = canContinueNativeEscape;
         this.canMoveOrdinary = canMoveOrdinary;
+        this.validateNativeWaypoint = validateNativeWaypoint;
+        this.gateUnsafeNativeRecovery = gateUnsafeNativeRecovery;
+        this.prioritizeRequestedHazardExit = prioritizeRequestedHazardExit;
         navigation = new NavigationGate(Navigator.NavigationProvider, this);
         Navigator.NavigationProvider = navigation;
     }
+
+    // Recollection can explicitly own a validated combined escape even while
+    // native avoidance reports an overlapping unrelated shape. The default is
+    // false so other encounters retain their established native handoff.
+    private bool EncounterEscapeOwnsInput => destination.HasValue && leavingHazard &&
+        prioritizeRequestedHazardExit?.Invoke() == true;
 
     internal bool IsCurrent => !detached && ReferenceEquals(Navigator.PlayerMover, this) && navigation.OwnsProvider;
 
@@ -128,6 +141,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// <param name="location">The destination selected by the current navigation or combat request.</param>
     public void MoveTowards(Vector3 location)
     {
+        if (EncounterEscapeOwnsInput) return;
         if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
             (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
         {
@@ -143,6 +157,22 @@ internal sealed class ChrysalisMovement : IPlayerMover
         }
 
         bool escaping = AvoidanceManager.IsRunningOutOfAvoid;
+        if (escaping && !MovementManager.GenerallyOutOfControl && validateNativeWaypoint != null)
+        {
+            // Recollection's November 5 native path crossed the center bleed and
+            // an active petal. Only its opted-in guard may redirect that waypoint;
+            // callers without the guard retain the original native behavior.
+            Vector3? safeWaypoint = validateNativeWaypoint(location);
+            if (!safeWaypoint.HasValue)
+            {
+                // A rejected native waypoint must stop the currently held input even
+                // if its bookkeeping was cleared during the preceding handoff. The
+                // November 5 Recollection capture continued through the arena wall.
+                StopInput();
+                return;
+            }
+            location = safeWaypoint.Value;
+        }
         // Unmaking's combat approach repeatedly re-entered a Vacuum immediately
         // after escape. Validate the actual next waypoint, not the final combat
         // destination: navigation may have a safe detour. Native escape is exempt.
@@ -163,6 +193,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// <summary>Accepts a stop without letting a routine callback cancel semantic positioning.</summary>
     public void MoveStop()
     {
+        if (EncounterEscapeOwnsInput) return;
         if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
             (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
         {
@@ -179,7 +210,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
             return;
         }
 
-        if (AvoidanceManager.IsRunningOutOfAvoid)
+        if (AvoidanceManager.IsRunningOutOfAvoid && !EncounterEscapeOwnsInput)
         {
             // A changing native route can keep its escape flag and old forward input
             // while requesting the next path. An opt-in floor guard may release only
@@ -372,6 +403,19 @@ internal sealed class ChrysalisMovement : IPlayerMover
             }
 
             Handoff(AvoidanceManager.IsRunningOutOfAvoid ? "escape" : owner.navigationRequest != null ? "semantic-navigation" : null);
+            // In Recollection the service's anti-stuck wall-follow bypassed the
+            // mover guard and walked through the center after every path was denied.
+            // Opted-in encounters hold and clear that recovery until a validated
+            // segment exists; forced movement and all other encounters retain control.
+            if (owner.gateUnsafeNativeRecovery && AvoidanceManager.IsRunningOutOfAvoid &&
+                !MovementManager.GenerallyOutOfControl &&
+                owner.failedEscapeWaypoint?.Invoke(parameters.Location) == null)
+            {
+                Original.Clear();
+                Original.ClearStuckInfo();
+                owner.StopInput();
+                return MoveResult.PathGenerating;
+            }
             // A service retry can return a path rooted at the pre-recovery position.
             // In Unmaking's Looming capture that pulled the player back into Empty
             // Shadow. Finish the still-valid recovery to the same native endpoint
