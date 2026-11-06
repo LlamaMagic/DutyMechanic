@@ -109,6 +109,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.StoneVigil.CheckLifecycle();
         // Lakshmi's input owner must release even when a combat hook yields.
         Dungeons.Emanation.CheckLifecycle();
+        // Keep trial-owned movement and SideStep cleanup alive through yielding hooks.
+        Dungeons.CastrumFluminis.CheckLifecycle();
         // Release Recollection's movement owner when its combat hook yields.
         Dungeons.Recollection.CheckLifecycle();
         // Release Pool of Tribute input even when a combat hook yields.
@@ -259,6 +261,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
         Dungeons.Emanation.ResetActive();
+        Dungeons.CastrumFluminis.ResetActive();
         Dungeons.Recollection.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
         // Release encounter-owned input even when a stop bypasses its combat hook.

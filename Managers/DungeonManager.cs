@@ -176,6 +176,8 @@ internal static class DungeonManager
             { ZoneId.Clyteum, typeof(Clyteum) },
             // Normal Enuo has distinct stack, shelter and arena behavior from Extreme.
             { ZoneId.TheUnmaking, typeof(Unmaking) },
+            // Normal Tsukuyomi has its own trial lifecycle and mechanic ownership.
+            { ZoneId.CastrumFluminis, typeof(CastrumFluminis) },
         };
     private static AbstractDungeon _currentDungeon = null;
     private static bool _clear = false;

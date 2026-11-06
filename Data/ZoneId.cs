@@ -287,6 +287,9 @@ public enum ZoneId : ushort
     /// </summary>
     TheRoyalMenagerie = 679,
 
+    /// <summary>Lv. 70: Castrum Fluminis normal trial.</summary>
+    CastrumFluminis = 778,
+
     /// <summary>
     /// Lv. 70: Eureka Anemos
     /// </summary>
