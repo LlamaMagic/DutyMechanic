@@ -115,6 +115,8 @@ internal static class DungeonManager
             { ZoneId.TheGhimlytDark, typeof(GhimlytDark) },
 
             // 5.0 - Shadowbringers
+            // Story Titania uses a distinct territory from the Extreme trial.
+            { (ZoneId)845, typeof(DancingPlague) },
             { ZoneId.HolminsterSwitch, typeof(HolminsterSwitch) },
             { ZoneId.DohnMheg, typeof(DohnMheg) },
             { ZoneId.TheQitanaRavel, typeof(QitanaRavel) },
