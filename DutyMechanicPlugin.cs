@@ -262,6 +262,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.ResetActive();
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
+        // Release Gubal movement and SideStep ownership even when a stop bypasses dungeon exit.
+        Dungeons.GreatGubalLibrary.ResetActive();
         Dungeons.Emanation.ResetActive();
         Dungeons.CastrumFluminis.ResetActive();
         Dungeons.DancingPlague.ResetActive();
