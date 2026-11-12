@@ -300,7 +300,20 @@ internal sealed class ChrysalisMovement : IPlayerMover
         ordinaryBlocked = true;
     }
 
-    internal void Detach()
+    // Replan an ordinary route without taking over its destination. Releasing
+    // only our input while no escape, mechanic or hazard owns the channel lets
+    // the original provider rebuild its own route on the next caller pulse.
+    internal bool RefreshOrdinaryPath()
+    {
+        if (!IsCurrent || destination.HasValue || navigationRequest != null || deferredNavigationEnd ||
+            AvoidanceManager.IsRunningOutOfAvoid || MovementManager.GenerallyOutOfControl ||
+            AvoidanceManager.Avoids.Any(avoid => !avoid.ShouldIgnore)) return false;
+        if (!navigation.RefreshOrdinaryPath()) return false;
+        if (ordinaryDestination.HasValue) StopInput();
+        return true;
+    }
+
+    internal void Detach(bool preserveCurrentInput = false)
     {
         if (!detached && ReferenceEquals(Navigator.PlayerMover, this))
         {
@@ -308,7 +321,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
             // input now owned by that successor. Requiring both identities here
             // leaves a detached mover installed and blocks all subsequent travel.
             if (IsCurrent) navigation.CancelSemanticPathOnDetach();
-            if (IsCurrent && (mechanicOutstanding || escapeOutstanding))
+            // Doma can yield while native escape or forced movement owns input.
+            // Only that explicit handoff leaves the successor's input alone.
+            if (IsCurrent && !preserveCurrentInput && (mechanicOutstanding || escapeOutstanding))
             {
                 StopInput();
             }
@@ -344,6 +359,17 @@ internal sealed class ChrysalisMovement : IPlayerMover
         private bool Allowed(MoveToParameters request) => !(owner.deferredNavigationEnd && MovementManager.GenerallyOutOfControl) && (AvoidanceManager.IsRunningOutOfAvoid
             ? request.Destination?.StartsWith("Running from ", StringComparison.Ordinal) == true
             : !owner.destination.HasValue && (owner.navigationRequest == null || request.Destination == owner.navigationRequest));
+
+        internal bool RefreshOrdinaryPath()
+        {
+            if (!owner.IsCurrent || accepted != null) return false;
+            // Clear only the current service path and its stuck state; callers
+            // continue to supply the same route target and own retry decisions.
+            Original.Clear();
+            Original.ClearStuckInfo();
+            generation++;
+            return true;
+        }
 
         internal void BeginSemanticNavigation()
         {

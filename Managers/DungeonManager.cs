@@ -202,12 +202,17 @@ internal static class DungeonManager
         if (_currentDungeon?.ZoneId != currentZoneId || _clear)
         {
             //Logger.Debug($"Current dungeon: {_currentDungeon?.ZoneId}, Current zone: {currentZoneId}, Clear flag: {_clear}");
+            // Doma preserves the user’s SideStep setting across the base lifecycle.
+            if (_currentDungeon is DomaCastle departingDoma)
+                departingDoma.PrepareBoundary(leaving: true);
             await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
             if (AvailableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
             {
                 //Logger.Debug($"Instantiating dungeon class {newDungeon}");
                 _currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
+                if (_currentDungeon is DomaCastle enteringDoma)
+                    enteringDoma.PrepareBoundary(leaving: false);
                 await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
             else
