@@ -107,6 +107,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.CheckLifecycle();
         Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
+        // Keep Dohn's mechanic ownership and cleanup active through yielding hooks.
+        Dungeons.DohnMheg.CheckLifecycle();
         // Release Doma movement and SideStep ownership when its hook yields.
         Dungeons.DomaCastle.CheckLifecycle();
         // Lakshmi's input owner must release even when a combat hook yields.
@@ -266,6 +268,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.ResetActive();
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
+        Dungeons.DohnMheg.ResetActive();
         Dungeons.DomaCastle.ResetActive();
         // Release Gubal movement and SideStep ownership even when a stop bypasses dungeon exit.
         Dungeons.GreatGubalLibrary.ResetActive();

@@ -205,6 +205,8 @@ internal static class DungeonManager
             // Doma preserves the user’s SideStep setting across the base lifecycle.
             if (_currentDungeon is DomaCastle departingDoma)
                 departingDoma.PrepareBoundary(leaving: true);
+            if (_currentDungeon is DohnMheg departingDohn)
+                departingDohn.PrepareBoundary(leaving: true);
             await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
             if (AvailableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
@@ -213,6 +215,8 @@ internal static class DungeonManager
                 _currentDungeon = (AbstractDungeon)Activator.CreateInstance(newDungeon);
                 if (_currentDungeon is DomaCastle enteringDoma)
                     enteringDoma.PrepareBoundary(leaving: false);
+                if (_currentDungeon is DohnMheg enteringDohn)
+                    enteringDohn.PrepareBoundary(leaving: false);
                 await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
             else
