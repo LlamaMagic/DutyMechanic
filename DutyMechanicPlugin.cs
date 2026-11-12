@@ -123,6 +123,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.SohmAl.CheckLifecycle();
         // Aery flight/add phases retain the same owned avoidance/input channel.
         Dungeons.Aery.CheckLifecycle();
+        // Release Sirensong's encounter ownership when its combat hook yields.
+        Dungeons.SirensongSea.CheckLifecycle();
         // Vault's scoped movement lease must survive yielding profile hooks.
         Dungeons.Vault.CheckLifecycle();
         Dungeons.ThokAstThokHard.CheckLifecycle();
@@ -273,6 +275,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.Alexandria.ResetActive();
         Dungeons.SohmAl.ResetActive();
         Dungeons.Aery.ResetActive();
+        Dungeons.SirensongSea.ResetActive();
         Dungeons.Vault.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
