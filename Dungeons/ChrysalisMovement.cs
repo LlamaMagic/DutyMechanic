@@ -32,6 +32,17 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private readonly bool fenceNativeNavigationWhileOwned;
     private Vector3? ordinaryDestination;
     private bool ordinaryBlocked;
+    // An unsafe final request may still have a valid detour. Once its service
+    // child is fenced before Unstick, this owner must finish that admitted leg
+    // even if the caller stops asking for navigation while the routine acts.
+    private bool ordinaryArrivalOwned;
+    private Vector3 ordinaryLegStart;
+    // Malikah's captured hazard holds entered service recovery despite denied
+    // waypoints. Opt in to retiring that coroutine, not merely its stuck history.
+    // Other encounters keep their existing movement and cancellation behavior.
+    private readonly bool retireBlockedOrdinaryNavigation;
+    private bool detachDeferred;
+    private bool ForcedInput => MovementManager.MovementLocked || MovementManager.ForceMoved;
     private Vector3? destination;
     private float tolerance;
     private bool detached;
@@ -48,9 +59,10 @@ internal sealed class ChrysalisMovement : IPlayerMover
         Func<Vector3, Vector3?> failedEscapeWaypoint = null, Func<bool> canContinueNativeEscape = null,
         Func<Vector3, bool> canMoveOrdinary = null, Func<Vector3, Vector3?> validateNativeWaypoint = null,
         bool gateUnsafeNativeRecovery = false, Func<bool> prioritizeRequestedHazardExit = null,
-        bool fenceNativeNavigationWhileOwned = false)
+        bool fenceNativeNavigationWhileOwned = false, bool retireBlockedOrdinaryNavigation = false)
     {
         this.inner = inner;
+        this.retireBlockedOrdinaryNavigation = retireBlockedOrdinaryNavigation;
         this.failedEscapeWaypoint = failedEscapeWaypoint;
         this.canContinueNativeEscape = canContinueNativeEscape;
         this.canMoveOrdinary = canMoveOrdinary;
@@ -144,11 +156,23 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// <param name="location">The destination selected by the current navigation or combat request.</param>
     public void MoveTowards(Vector3 location)
     {
+        if (ReleaseDeferredForeignProvider()) return;
         if (EncounterEscapeOwnsInput) return;
         if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
             (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
         {
             return;
+        }
+
+        if (retireBlockedOrdinaryNavigation && !navigation.InProviderCall)
+        {
+            if (detachDeferred && !AvoidanceManager.IsRunningOutOfAvoid)
+            {
+                CompleteDeferredDetach();
+                return;
+            }
+            navigation.PrepareUpdate();
+            navigation.RetireGuardedOrdinaryBeforeSuccessor();
         }
 
         if (deferredNavigationEnd && !MovementManager.GenerallyOutOfControl)
@@ -179,23 +203,41 @@ internal sealed class ChrysalisMovement : IPlayerMover
         // Unmaking's combat approach repeatedly re-entered a Vacuum immediately
         // after escape. Validate the actual next waypoint, not the final combat
         // destination: navigation may have a safe detour. Native escape is exempt.
-        if (!escaping && !MovementManager.GenerallyOutOfControl && canMoveOrdinary?.Invoke(location) == false)
+        if (!escaping && (retireBlockedOrdinaryNavigation || !MovementManager.GenerallyOutOfControl) && canMoveOrdinary?.Invoke(location) == false)
         {
             BlockOrdinary();
             return;
         }
+        // Occupied/animation state is not proof of safe ordinary input. Actual
+        // forced motion retains priority; a queued predecessor is retired before
+        // any new ordinary command can become the successor it might stop.
+        if (retireBlockedOrdinaryNavigation && (ForcedInput || navigation.HasPendingOrdinary && !escaping)) return;
+        bool guardedRecovery = !escaping && navigation.GuardsUnsafeOrdinaryRecovery;
+        if (guardedRecovery && Core.Me.Location.Distance2D(location) <= .4f)
+        {
+            if (!ordinaryBlocked) StopInput();
+            ordinaryBlocked = true;
+            navigation.StopUnsafeOrdinaryRecovery(location);
+            return;
+        }
         ordinaryBlocked = false;
+        ordinaryArrivalOwned = guardedRecovery;
+        if (guardedRecovery) ordinaryLegStart = Core.Me.Location;
         ordinaryDestination = !escaping && canMoveOrdinary != null ? location : null;
         escapeOutstanding = escaping;
         directEscapeOutstanding = false; // A newer native/ordinary command owns cleanup now.
         directEscapeDestination = null;
         mechanicOutstanding = false;
         inner.MoveTowards(location);
+        // Keep the valid detour input, but do not let the same child immediately
+        // bypass this mover with a jump/turn/forward recovery behind unsafe intent.
+        if (guardedRecovery) navigation.StopUnsafeOrdinaryRecovery(location);
     }
 
     /// <summary>Accepts a stop without letting a routine callback cancel semantic positioning.</summary>
     public void MoveStop()
     {
+        if (ReleaseDeferredForeignProvider()) return;
         if (EncounterEscapeOwnsInput) return;
         if (!IsCurrent || deferredNavigationEnd && MovementManager.GenerallyOutOfControl ||
             (destination.HasValue || navigationRequest != null && !forwardingNavigation) && !AvoidanceManager.IsRunningOutOfAvoid)
@@ -208,6 +250,23 @@ internal sealed class ChrysalisMovement : IPlayerMover
 
     internal void Update()
     {
+        if (ReleaseDeferredForeignProvider()) return;
+        if (retireBlockedOrdinaryNavigation && IsCurrent)
+        {
+            if (detachDeferred) { CompleteDeferredDetach(); return; }
+            if (ordinaryArrivalOwned && !ForcedInput)
+            {
+                if (destination.HasValue || navigationRequest != null) ordinaryArrivalOwned = false;
+                else if (AvoidanceManager.IsRunningOutOfAvoid || OrdinaryLegFinished()) StopInput();
+            }
+            if (!destination.HasValue && navigationRequest == null && !AvoidanceManager.IsRunningOutOfAvoid &&
+                ordinaryDestination.HasValue && canMoveOrdinary?.Invoke(ordinaryDestination.Value) == false)
+                BlockOrdinary();
+            // Retire the provider outside Resume even when its nested child
+            // already stopped itself at rejection. Occupied state alone must not
+            // defer this cleanup; real forced-input flags still do.
+            navigation.PrepareUpdate();
+        }
         if (!IsCurrent || MovementManager.GenerallyOutOfControl)
         {
             return;
@@ -254,6 +313,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
             {
                 inner.MoveTowards(destination.Value);
                 ordinaryDestination = null;
+                ordinaryArrivalOwned = false;
                 ordinaryBlocked = false;
                 mechanicOutstanding = true;
                 escapeOutstanding = false;
@@ -281,6 +341,26 @@ internal sealed class ChrysalisMovement : IPlayerMover
         }
     }
 
+    private bool OrdinaryLegFinished()
+    {
+        if (!ordinaryDestination.HasValue) return true;
+        var point = Core.Me.Location;
+        var end = ordinaryDestination.Value;
+        // Match the existing owner's0.4y arrival window. A passed endpoint plane
+        // also catches an update that stepped over the whole arrival circle.
+        if (point.Distance2D(end) <= .4f) return true;
+        double dx = end.X - ordinaryLegStart.X, dz = end.Z - ordinaryLegStart.Z;
+        double lengthSquared = dx * dx + dz * dz;
+        if (lengthSquared < .0001) return true;
+        double projection = ((point.X - ordinaryLegStart.X) * dx + (point.Z - ordinaryLegStart.Z) * dz) / lengthSquared;
+        if (projection >= 1) return true;
+        double t = Math.Clamp(projection, 0, 1);
+        var nearest = new Vector3(ordinaryLegStart.X + (float)(dx * t), point.Y, ordinaryLegStart.Z + (float)(dz * t));
+        // The admitted straight segment does not authorize drifting off it.
+        // Release only its still-owned input beyond the default half-yalm margin.
+        return point.Distance2D(nearest) > .5f;
+    }
+
     private void StopInput()
     {
         if (!IsCurrent)
@@ -288,6 +368,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
             return;
         }
 
+        ordinaryArrivalOwned = false;
         mechanicOutstanding = escapeOutstanding = directEscapeOutstanding = false;
         ordinaryDestination = null;
         directEscapeDestination = null;
@@ -296,11 +377,13 @@ internal sealed class ChrysalisMovement : IPlayerMover
 
     private void BlockOrdinary()
     {
-        if (!ordinaryBlocked)
+        if (retireBlockedOrdinaryNavigation) navigation.RecordBlockedOrdinary();
+        if (!ordinaryBlocked && (!retireBlockedOrdinaryNavigation || !ForcedInput))
         {
             StopInput();
         }
         ordinaryBlocked = true;
+        if (retireBlockedOrdinaryNavigation) navigation.StopRejectedServiceCoroutine();
     }
 
     // Replan an ordinary route without taking over its destination. Releasing
@@ -318,15 +401,32 @@ internal sealed class ChrysalisMovement : IPlayerMover
 
     internal void Detach(bool preserveCurrentInput = false)
     {
+        if (retireBlockedOrdinaryNavigation && IsCurrent)
+        {
+            if (ForcedInput || AvoidanceManager.IsRunningOutOfAvoid || navigation.InProviderCall)
+            {
+                // Keep the existing provider fence until cancellation is safe.
+                // Restoring Original now could resume its old jump/wall-follow
+                // after forced motion. The next navigation pulse completes it.
+                detachDeferred = true;
+                destination = null;
+                acquiring = false;
+                return;
+            }
+            navigation.PrepareUpdate();
+            navigation.RetireGuardedOrdinaryBeforeSuccessor();
+        }
+
         if (!detached && ReferenceEquals(Navigator.PlayerMover, this))
         {
             // If only the provider was replaced, unwrap our mover without stopping
             // input now owned by that successor. Requiring both identities here
             // leaves a detached mover installed and blocks all subsequent travel.
             if (IsCurrent) navigation.CancelSemanticPathOnDetach();
-            // Doma can yield while native escape or forced movement owns input.
-            // Only that explicit handoff leaves the successor's input alone.
-            if (IsCurrent && !preserveCurrentInput && (mechanicOutstanding || escapeOutstanding))
+            // Doma can end its lifecycle while forced motion or native escape
+            // owns the channel. Its opt-in handoff unwraps without cancelling
+            // that successor; all existing callers retain the normal cleanup.
+            if (IsCurrent && !preserveCurrentInput && (mechanicOutstanding || escapeOutstanding || ordinaryArrivalOwned))
             {
                 StopInput();
             }
@@ -344,7 +444,35 @@ internal sealed class ChrysalisMovement : IPlayerMover
         directEscapeOutstanding = false;
         directEscapeDestination = null;
         ordinaryDestination = null;
+        ordinaryArrivalOwned = false;
         ordinaryBlocked = false;
+    }
+
+    private void CompleteDeferredDetach()
+    {
+        if (ReleaseDeferredForeignProvider()) return;
+        if (!detachDeferred || !IsCurrent || ForcedInput || AvoidanceManager.IsRunningOutOfAvoid || navigation.InProviderCall) return;
+        navigation.PrepareUpdate();
+        detachDeferred = false;
+        Detach();
+    }
+
+    private bool ReleaseDeferredForeignProvider()
+    {
+        if (!retireBlockedOrdinaryNavigation || !detachDeferred || navigation.OwnsProvider ||
+            !ReferenceEquals(Navigator.PlayerMover, this)) return false;
+        // The successor already owns navigation/input. Unwrap only our stale
+        // mover; clearing its provider or replaying this callback could stop or
+        // steer the successor. Its next request goes directly to the inner mover.
+        Navigator.PlayerMover = inner;
+        navigation.Detach();
+        detachDeferred = false;
+        detached = true;
+        destination = ordinaryDestination = directEscapeDestination = null;
+        navigationRequest = null;
+        acquiring = mechanicOutstanding = escapeOutstanding = directEscapeOutstanding = false;
+        ordinaryArrivalOwned = false;
+        return true;
     }
 
     // Service navigation's anti-stuck work can jump/turn without calling IPlayerMover.
@@ -356,6 +484,139 @@ internal sealed class ChrysalisMovement : IPlayerMover
         private bool detached;
         private string accepted;
         private long generation;
+        private long? blockedOrdinaryGeneration;
+        private bool inProviderCall;
+        private bool inServiceMove;
+        private Coroutine providerCaller;
+        private bool unsafeOrdinaryRequest;
+        private long unsafeRequestGeneration;
+        private Vector3 unsafeRequestGoal;
+        private bool reportedUnsafeRecovery;
+        private bool ordinaryServiceUsed;
+        private bool previousUnsafeOrdinary;
+        private long previousOrdinaryGeneration;
+        private long? protectedOrdinaryGeneration;
+
+        internal void RetireGuardedOrdinaryBeforeSuccessor()
+        {
+            if (!protectedOrdinaryGeneration.HasValue) return;
+            if (!owner.IsCurrent || protectedOrdinaryGeneration != generation)
+            {
+                protectedOrdinaryGeneration = null;
+                return;
+            }
+            if (inProviderCall || owner.ForcedInput) return;
+            // Near-waypoint progress can yield in the provider's final settle
+            // loop. Retire that predecessor before a direct successor or safe
+            // detach: its later StopMoving must not cancel replacement input.
+            Original.Clear();
+            Original.ClearStuckInfo();
+            protectedOrdinaryGeneration = null;
+            generation++;
+            owner.StopInput();
+        }
+
+        private Coroutine OwnedServiceChild
+        {
+            get
+            {
+                Coroutine current = Coroutine.Current;
+                return owner.IsCurrent && inServiceMove && !owner.ForcedInput &&
+                    !AvoidanceManager.IsRunningOutOfAvoid && current != null && !ReferenceEquals(current, providerCaller)
+                    ? current : null;
+            }
+        }
+        internal bool GuardsUnsafeOrdinaryRecovery => unsafeOrdinaryRequest && unsafeRequestGeneration == generation && OwnedServiceChild != null;
+
+        internal void StopUnsafeOrdinaryRecovery(Vector3 waypoint)
+        {
+            Coroutine child = OwnedServiceChild;
+            if (!unsafeOrdinaryRequest || unsafeRequestGeneration != generation || child == null) return;
+            protectedOrdinaryGeneration = generation;
+            // The inspected mapper skips Unstick below one yalm in3D. Let that
+            // callback finish so corridor completion/advancement is not starved.
+            // Horizontal proximity alone is insufficient during vertical motion.
+            if (Core.Me.Location.DistanceSqr(waypoint) < 1f) return;
+            if (!reportedUnsafeRecovery)
+            {
+                reportedUnsafeRecovery = true;
+                DutyMechanic.Logging.Logger.Information($"[MovementOwner] Guarded ordinary recovery goal={unsafeRequestGoal} waypoint={waypoint} player={Core.Me.Location} generation={generation}.");
+            }
+            // The safe leg remains admitted. Do not queue provider.Clear or a
+            // delayed stop: its input now has an owner-managed arrival lifetime.
+            child.Dispose();
+        }
+        private bool reportedOrdinaryRetirement;
+        private bool reportedServiceStop;
+        internal bool InProviderCall => inProviderCall;
+        internal bool HasPendingOrdinary => blockedOrdinaryGeneration == generation;
+        internal void RecordBlockedOrdinary()
+        {
+            if (!owner.ordinaryBlocked) reportedOrdinaryRetirement = reportedServiceStop = false;
+            blockedOrdinaryGeneration = generation;
+            // Detector history is separate from the progress-starvation pool.
+            // Clear it now, then unwind only the known nested service coroutine;
+            // clearing the provider itself must wait until its Resume returns.
+            Original.ClearStuckInfo();
+        }
+
+        internal void StopRejectedServiceCoroutine()
+        {
+            // RB's service mapper calls the mover before Unstick, which can issue
+            // input directly. A next-pulse Clear is too late: the captured Wellbore
+            // hold moved inward before retirement. Public self-disposal unwinds
+            // this child before recovery starts, without disposing its caller or
+            // the provider while Resume is active. Never catch its stop exception.
+            Coroutine current = OwnedServiceChild;
+            if (current == null) return;
+            if (!reportedServiceStop)
+            {
+                reportedServiceStop = true;
+                DutyMechanic.Logging.Logger.Information($"[MovementOwner] Stopped rejected service child at {Core.Me.Location} generation={generation}.");
+            }
+            current.Dispose();
+        }
+
+        internal void PrepareUpdate()
+        {
+            if (!owner.retireBlockedOrdinaryNavigation || !owner.IsCurrent || inProviderCall) return;
+            if (blockedOrdinaryGeneration.HasValue && blockedOrdinaryGeneration != generation) blockedOrdinaryGeneration = null;
+            // Clear disposes recovery; some finally blocks stop input directly.
+            // Therefore defer cancellation itself, not just our later stop.
+            if (owner.ForcedInput || AvoidanceManager.IsRunningOutOfAvoid) return;
+            if (owner.destination.HasValue)
+            {
+                bool acquiringInput = accepted != "mechanic";
+                Handoff("mechanic");
+                blockedOrdinaryGeneration = null;
+                if (acquiringInput && owner.IsCurrent && !owner.ForcedInput && !AvoidanceManager.IsRunningOutOfAvoid)
+                {
+                    owner.StopInput();
+                    owner.acquiring = false;
+                }
+                return;
+            }
+            // Direct native input clears ordinaryBlocked without replacing the
+            // service iterator. Its pending generation still needs retirement
+            // after escape ends, before an ordinary successor is admitted.
+            if (owner.navigationRequest != null || owner.deferredNavigationEnd || !HasPendingOrdinary) return;
+            blockedOrdinaryGeneration = null;
+            Original.Clear();
+            Original.ClearStuckInfo();
+            generation++;
+            if (!reportedOrdinaryRetirement)
+            {
+                // One record per continuous hold verifies the real cancellation
+                // without logging every cached-path retry on subsequent pulses.
+                reportedOrdinaryRetirement = true;
+                DutyMechanic.Logging.Logger.Information($"[MovementOwner] Retired unsafe ordinary navigation at {Core.Me.Location} generation={generation}.");
+            }
+            // JumpProbe has no input finally; release its held forward key once
+            // through this owner, before permitting a new ordinary successor.
+            if (owner.IsCurrent && !owner.ForcedInput && !AvoidanceManager.IsRunningOutOfAvoid &&
+                !owner.destination.HasValue && owner.navigationRequest == null)
+                owner.StopInput();
+        }
         internal NavigationGate(NavigationProvider original, ChrysalisMovement owner) : base(original) => this.owner = owner;
         internal bool OwnsProvider => !detached && ReferenceEquals(Navigator.NavigationProvider, this);
 
@@ -405,7 +666,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
             if (owner.IsCurrent && owner.fenceNativeNavigationWhileOwned && owner.EncounterEscapeOwnsInput &&
                 !MovementManager.GenerallyOutOfControl)
             {
-                // Retire native anti-stuck input before the encounter owns movement.
+                // A native escape's service path can run anti-stuck input
+                // independently of IPlayerMover. Holminster's verified timed
+                // hold must retire that predecessor before owning the channel.
                 Handoff("mechanic");
                 return;
             }
@@ -436,6 +699,12 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 return MoveResult.Done;
             }
 
+            if (owner.retireBlockedOrdinaryNavigation)
+            {
+                if (owner.ForcedInput || owner.detachDeferred && !AvoidanceManager.IsRunningOutOfAvoid)
+                    return MoveResult.PathGenerating;
+                PrepareUpdate();
+            }
             if (!Allowed(parameters))
             {
                 return MoveResult.PathGenerating;
@@ -476,8 +745,50 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 Original.ClearStuckInfo();
             MoveResult result;
             owner.forwardingNavigation = owner.navigationRequest != null && !AvoidanceManager.IsRunningOutOfAvoid;
-            try { result = Original.MoveTo(parameters); }
-            finally { owner.forwardingNavigation = false; }
+            inProviderCall = true;
+            // Bind cancellation to this exact built-in pipeline. Other providers
+            // and a callback running on the caller itself keep deferred cleanup.
+            inServiceMove = Original.GetType() == typeof(ServiceNavigationProvider);
+            providerCaller = Coroutine.Current;
+            try
+            {
+                // Intent is not a path veto. Forward safe actual waypoints, but
+                // forbid opaque recovery toward an unsafe final goal/straight crossing.
+                // Refresh and generation-bind it for this invocation only; expiry and
+                // safe successors immediately regain ordinary obstacle recovery.
+                unsafeOrdinaryRequest = owner.retireBlockedOrdinaryNavigation && owner.navigationRequest == null &&
+                    !AvoidanceManager.IsRunningOutOfAvoid && owner.canMoveOrdinary?.Invoke(parameters.Location) == false;
+                if (owner.retireBlockedOrdinaryNavigation && inServiceMove && owner.navigationRequest == null &&
+                    !owner.ForcedInput && !AvoidanceManager.IsRunningOutOfAvoid)
+                {
+                    // A formerly safe request may already be suspended inside
+                    // Unstick, before another mover callback can guard it. Retire
+                    // that predecessor once, before Original.MoveTo resumes it.
+                    // Native/semantic handoffs already changed the generation.
+                    if (unsafeOrdinaryRequest && ordinaryServiceUsed && previousOrdinaryGeneration == generation && !previousUnsafeOrdinary)
+                    {
+                        Original.Clear();
+                        Original.ClearStuckInfo();
+                        generation++;
+                        owner.StopInput();
+                    }
+                    ordinaryServiceUsed = true;
+                    previousOrdinaryGeneration = generation;
+                    previousUnsafeOrdinary = unsafeOrdinaryRequest;
+                }
+                unsafeRequestGeneration = generation;
+                unsafeRequestGoal = parameters.Location;
+                if (!unsafeOrdinaryRequest) reportedUnsafeRecovery = false;
+                result = Original.MoveTo(parameters);
+            }
+            finally
+            {
+                unsafeOrdinaryRequest = false;
+                inServiceMove = false;
+                providerCaller = null;
+                inProviderCall = false;
+                owner.forwardingNavigation = false;
+            }
             // Unmaking's enlarged floor produced a native escape endpoint but the
             // service route failed repeatedly until death. An opt-in encounter planner
             // may supply a validated segment toward that same native endpoint. Keep
@@ -504,6 +815,11 @@ internal sealed class ChrysalisMovement : IPlayerMover
         /// <inheritdoc/>
         public override void OnPulse()
         {
+            if (owner.detachDeferred && owner.IsCurrent)
+            {
+                owner.CompleteDeferredDetach();
+                return;
+            }
             if (OwnsProvider && !ReferenceEquals(Navigator.PlayerMover, owner))
             {
                 Detach();
@@ -514,8 +830,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
                 (owner.navigationRequest == null || accepted == "semantic-navigation"))
             {
                 owner.forwardingNavigation = owner.navigationRequest != null && accepted == "semantic-navigation";
+                inProviderCall = true;
                 try { Original.OnPulse(); }
-                finally { owner.forwardingNavigation = false; }
+                finally { inProviderCall = false; owner.forwardingNavigation = false; }
             }
         }
 
@@ -585,6 +902,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
 
         internal void Detach()
         {
+            protectedOrdinaryGeneration = null;
             if (OwnsProvider)
             {
                 Navigator.NavigationProvider = Original;

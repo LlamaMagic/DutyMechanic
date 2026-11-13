@@ -119,6 +119,10 @@ public class DutyMechanicPlugin : BotPlugin
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         // Keep Dohn's mechanic ownership and cleanup active through yielding hooks.
         Dungeons.DohnMheg.CheckLifecycle();
+        // Keep Malikah's mechanic ownership and cleanup active through yielding hooks.
+        Dungeons.MalikahsWell.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 836)
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         // Release Doma movement and SideStep ownership when its hook yields.
         Dungeons.DomaCastle.CheckLifecycle();
         // Lakshmi's input owner must release even when a combat hook yields.
@@ -288,6 +292,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.QitanaRavel.ResetActive();
         Dungeons.MtGulg.ResetActive();
         Dungeons.DohnMheg.ResetActive();
+        Dungeons.MalikahsWell.ResetActive();
         Dungeons.DomaCastle.ResetActive();
         // Release Gubal movement and SideStep ownership even when a stop bypasses dungeon exit.
         Dungeons.GreatGubalLibrary.ResetActive();

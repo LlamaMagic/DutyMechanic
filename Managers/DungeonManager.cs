@@ -209,6 +209,9 @@ internal static class DungeonManager
                 departingDoma.PrepareBoundary(leaving: true);
             if (_currentDungeon is DohnMheg departingDohn)
                 departingDohn.PrepareBoundary(leaving: true);
+            // Preserve Malikah's borrowed SideStep value across the base callbacks.
+            if (_currentDungeon is MalikahsWell departingMalikah)
+                departingMalikah.PrepareBoundary(leaving: true);
             await (_currentDungeon?.OnExitDungeonAsync() ?? Task.CompletedTask);
 
             if (AvailableDungeons.TryGetValue(currentZoneId, out Type newDungeon))
@@ -219,6 +222,8 @@ internal static class DungeonManager
                     enteringDoma.PrepareBoundary(leaving: false);
                 if (_currentDungeon is DohnMheg enteringDohn)
                     enteringDohn.PrepareBoundary(leaving: false);
+                if (_currentDungeon is MalikahsWell enteringMalikah)
+                    enteringMalikah.PrepareBoundary(leaving: false);
                 await (_currentDungeon?.OnEnterDungeonAsync() ?? Task.CompletedTask);
             }
             else
