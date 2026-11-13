@@ -107,6 +107,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.CheckLifecycle();
         Dungeons.BrayfloxsLongstop.CheckLifecycle();
         Dungeons.StoneVigil.CheckLifecycle();
+        // Release boss movement and avoidance ownership even when a hook yields.
+        Dungeons.HolminsterSwitch.CheckLifecycle();
         // Qitana's cast fences and input cleanup must survive yielding profile hooks.
         Dungeons.QitanaRavel.CheckLifecycle();
         // Keep Mt. Gulg ownership and cleanup active while profile hooks yield.
@@ -276,6 +278,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.HaukkeManor.ResetActive();
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
+        Dungeons.HolminsterSwitch.ResetActive();
         Dungeons.QitanaRavel.ResetActive();
         Dungeons.MtGulg.ResetActive();
         Dungeons.DohnMheg.ResetActive();

@@ -29,6 +29,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private readonly Func<Vector3, Vector3?> validateNativeWaypoint;
     private readonly bool gateUnsafeNativeRecovery;
     private readonly Func<bool> prioritizeRequestedHazardExit;
+    private readonly bool fenceNativeNavigationWhileOwned;
     private Vector3? ordinaryDestination;
     private bool ordinaryBlocked;
     private Vector3? destination;
@@ -46,7 +47,8 @@ internal sealed class ChrysalisMovement : IPlayerMover
     internal ChrysalisMovement(IPlayerMover inner,
         Func<Vector3, Vector3?> failedEscapeWaypoint = null, Func<bool> canContinueNativeEscape = null,
         Func<Vector3, bool> canMoveOrdinary = null, Func<Vector3, Vector3?> validateNativeWaypoint = null,
-        bool gateUnsafeNativeRecovery = false, Func<bool> prioritizeRequestedHazardExit = null)
+        bool gateUnsafeNativeRecovery = false, Func<bool> prioritizeRequestedHazardExit = null,
+        bool fenceNativeNavigationWhileOwned = false)
     {
         this.inner = inner;
         this.failedEscapeWaypoint = failedEscapeWaypoint;
@@ -55,6 +57,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
         this.validateNativeWaypoint = validateNativeWaypoint;
         this.gateUnsafeNativeRecovery = gateUnsafeNativeRecovery;
         this.prioritizeRequestedHazardExit = prioritizeRequestedHazardExit;
+        this.fenceNativeNavigationWhileOwned = fenceNativeNavigationWhileOwned;
         navigation = new NavigationGate(Navigator.NavigationProvider, this);
         Navigator.NavigationProvider = navigation;
     }
@@ -356,7 +359,10 @@ internal sealed class ChrysalisMovement : IPlayerMover
         internal NavigationGate(NavigationProvider original, ChrysalisMovement owner) : base(original) => this.owner = owner;
         internal bool OwnsProvider => !detached && ReferenceEquals(Navigator.NavigationProvider, this);
 
-        private bool Allowed(MoveToParameters request) => !(owner.deferredNavigationEnd && MovementManager.GenerallyOutOfControl) && (AvoidanceManager.IsRunningOutOfAvoid
+        private bool Allowed(MoveToParameters request) => !(owner.fenceNativeNavigationWhileOwned && owner.EncounterEscapeOwnsInput &&
+            (!MovementManager.GenerallyOutOfControl || Core.Me != null && Core.Me.IsValid && Core.Me.IsCasting && owner.destination.HasValue &&
+             Core.Me.Location.Distance2D(owner.destination.Value) <= Math.Max(0.3f, owner.tolerance))) &&
+            !(owner.deferredNavigationEnd && MovementManager.GenerallyOutOfControl) && (AvoidanceManager.IsRunningOutOfAvoid
             ? request.Destination?.StartsWith("Running from ", StringComparison.Ordinal) == true
             : !owner.destination.HasValue && (owner.navigationRequest == null || request.Destination == owner.navigationRequest));
 
@@ -396,6 +402,13 @@ internal sealed class ChrysalisMovement : IPlayerMover
         }
         internal void Synchronize()
         {
+            if (owner.IsCurrent && owner.fenceNativeNavigationWhileOwned && owner.EncounterEscapeOwnsInput &&
+                !MovementManager.GenerallyOutOfControl)
+            {
+                // Retire native anti-stuck input before the encounter owns movement.
+                Handoff("mechanic");
+                return;
+            }
             if (owner.IsCurrent && !AvoidanceManager.IsRunningOutOfAvoid)
             {
                 Handoff(owner.destination.HasValue ? "mechanic" : owner.navigationRequest != null ? "semantic-navigation" : null);
