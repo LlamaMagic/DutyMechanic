@@ -119,6 +119,8 @@ internal static class DungeonManager
             { (ZoneId)845, typeof(DancingPlague) },
             // Innocence normal has its own territory; Extreme uses a different handler.
             { (ZoneId)846, typeof(Immaculate) },
+            // Normal Hades owns its readiness and trial-specific movement leases.
+            { (ZoneId)847, typeof(DyingGasp) },
             { ZoneId.HolminsterSwitch, typeof(HolminsterSwitch) },
             { ZoneId.DohnMheg, typeof(DohnMheg) },
             { ZoneId.TheQitanaRavel, typeof(QitanaRavel) },

@@ -196,6 +196,7 @@ public class DutyMechanicPlugin : BotPlugin
                 LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
             }
 
+            Dungeons.DyingGasp.CheckLifecycle();
             Dungeons.DyingGaspMechanics.Pulse();
             if (WorldManager.ZoneId == 922)
             {
@@ -206,6 +207,7 @@ public class DutyMechanicPlugin : BotPlugin
         }
         else
         {
+            Dungeons.DyingGasp.ResetActive();
             Dungeons.DyingGaspMechanics.Reset();
             Dungeons.SeatOfSacrifice.Reset();
         }
@@ -322,6 +324,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.Vault.ResetActive();
         Dungeons.Lahabrea.ResetActive();
         Dungeons.TheRoyalMenagerie.ResetActive();
+        Dungeons.DyingGasp.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();
         Dungeons.SeatOfSacrifice.Reset();
         Dungeons.Amaurot.ResetActive();

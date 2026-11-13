@@ -6,6 +6,7 @@ using DutyMechanic.Helpers;
 using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Behavior;
+using ff14bot.Helpers;
 using ff14bot.Managers;
 using ff14bot.Objects;
 using ff14bot.Pathing.Avoidance;
@@ -27,16 +28,26 @@ public static class DyingGaspMechanics
         internal DateTime Until;
     }
 
+    private sealed class Disc
+    {
+        internal Vector3 Origin;
+        internal DateTime Starts, Expires;
+    }
+
     private static readonly Dictionary<(uint, uint), Shape> Shapes = new();
     private static readonly HashSet<(uint, uint)> Reported = new();
     private static readonly List<AvoidInfo> Avoids = new();
     private static readonly HashSet<uint> Overrides = new();
     private static DateTime captivityUntil;
+    private static readonly Dictionary<uint, int> DiscStates = new();
+    private static DateTime nextDiscSample;
+    private static readonly List<Disc> DiscWindows = new();
     private static readonly Vector3 Center = new(100, 0, 100);
     private static readonly uint[] OwnedActions =
     {
         16715,
         16716,
+        16722,
         16726,
         16727,
         16732,
@@ -44,11 +55,15 @@ public static class DyingGaspMechanics
         16740,
         16751,
         16753,
-        16754
+        16754,
+        17813
     };
     private static bool InDuty() => TreeRoot.IsRunning && !CommonBehaviors.IsLoading && DutyManager.InInstance && WorldManager.ZoneId == 847 && Core.Me != null && Core.Me.IsValid;
     private static bool Active() => InDuty() && Core.Me.IsAlive && Core.Me.InCombat;
-    private static BattleCharacter[] Actors() => GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false).Where(a => a.IsValid && a.NpcId == 8352).ToArray();
+    // Casts can belong to the invisible encounter helper or the shadow add, not
+    // only to a Hades-named actor. Action IDs below still restrict what we own.
+    private static BattleCharacter[] Actors() => GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+        .Where(a => a.IsValid && (a.NpcId == 8352 || a.BaseId is 0x233C or 0x27AE or 0x27B7)).ToArray();
     /// <summary>Updates scalar hazard snapshots on the existing plugin bot-thread pulse.</summary>
     public static void Pulse()
     {
@@ -68,10 +83,14 @@ public static class DyingGaspMechanics
             Shapes.Clear();
             Reported.Clear();
             captivityUntil = DateTime.MinValue;
+            DiscStates.Clear();
+            DiscWindows.Clear();
+            nextDiscSample = DateTime.MinValue;
             return;
         }
 
         var now = DateTime.UtcNow;
+        CaptureDiscStates(now);
         foreach (var key in Shapes.Where(p => p.Value.Until < now).Select(p => p.Key).ToArray())
         {
             Shapes.Remove(key);
@@ -100,7 +119,7 @@ public static class DyingGaspMechanics
             {
                 if (Reported.Add(key))
                 {
-                    Logger.Warning("[DyingGasp] No valid sweep matrix action={0}; sweep direction unavailable.", action);
+                    Logger.Warning("[DyingGasp] Invalid hazard origin or sweep matrix action={0}; geometry unavailable.", action);
                 }
 
                 continue;
@@ -124,6 +143,11 @@ public static class DyingGaspMechanics
         }
 
         Avoids.Add(AvoidanceManager.AddAvoidPolygon<Shape>(Active, () => Center, 30, _ => 0, _ => 1, _ => 10, s => s.Points, s => s.Origin, () => Shapes.Values.ToArray(), priority: AvoidancePriority.High));
+        // Disc warnings are staggered. Activate only the near-term windows so
+        // future circles do not falsely block the whole arena at once.
+        Avoids.Add(AvoidanceManager.AddAvoidLocation<Disc>(Active, () => Center, 30,
+            _ => 10.5f, d => d.Origin,
+            () => DiscWindows.Where(d => DateTime.UtcNow >= d.Starts && DateTime.UtcNow < d.Expires).ToArray()));
         // The normal arena is a 40y circle in both phases. The
         // 0.7y inset prevents the previous unrestricted Yawp escape reaching an edge.
         Avoids.Add(AvoidanceHelpers.AddAvoidDonut(Active, () => Center, 80, 19.3));
@@ -134,6 +158,13 @@ public static class DyingGaspMechanics
     {
         var origin = actor.Location;
         float heading = actor.Heading;
+        if (action == 16722)
+        {
+            // Ground eruptions resolve at the cast location, not the helper's
+            // position. Reject a missing location rather than inventing a hazard.
+            origin = actor.SpellCastInfo.CastLocation;
+            if (origin.Distance2D(Center) > 26 || Math.Abs(origin.Y - Center.Y) > 5) return null;
+        }
         if (action is 16739 or 16740)
         {
             // The actor keeps facing south for BOTH arm sweeps. Its cast's native
@@ -143,11 +174,24 @@ public static class DyingGaspMechanics
             double length = Math.Sqrt(m.M20 * m.M20 + m.M22 * m.M22);
             if (!double.IsFinite(length) || length < 1 || length > 200 || m.Center.Distance2D(origin) > 45 || Math.Abs(m.Center.Y - origin.Y) > 5)
             {
-                return null;
+                // With the large form fixed north and facing south, 16739 hit
+                // players east of center while western party positions survived;
+                // 16740 hit west/near-center while x>=110 survived. Keep an
+                // eight-yalm center overlap because the exact cone origin is unknown.
+                // Outside that observed pose, refuse to infer the orientation.
+                if (actor.BaseId != 0x294A || origin.Distance2D(new Vector3(100, 0, 80)) > 2 ||
+                    Math.Abs(Math.Sin(heading)) > 0.2 || Math.Cos(heading) < 0.98) return null;
+                return new Shape
+                {
+                    Origin = new Vector3(action == 16739 ? 106 : 94, Center.Y, Center.Z),
+                    Points = Rectangle(28, 42, -21, 0)
+                };
             }
-
-            origin = m.Center;
-            heading = (float)Math.Atan2(m.M20, m.M22);
+            else
+            {
+                origin = m.Center;
+                heading = (float)Math.Atan2(m.M20, m.M22);
+            }
         }
 
         var points = action switch
@@ -158,6 +202,8 @@ public static class DyingGaspMechanics
             // side lanes leave an8y central corridor; do not stack both at X100.
             16753 => Rectangle(17, 101, -.5f, heading),
             16754 => Rectangle(17, 101, -.5f, heading),
+            16722 => Circle(6.5f),
+            17813 => Rectangle(9, 41, -.5f, heading),
             16739 or 16740 => Cone(101, 46, heading),
             16751 => Cone(101, 31, heading),
             _ => Cone(41, 16, heading)};
@@ -187,6 +233,9 @@ public static class DyingGaspMechanics
         Rotate(width / 2, length + back, heading),
         Rotate(-width / 2, length + back, heading)
     };
+    private static Vector2[] Circle(float radius) => Enumerable.Range(0, 25)
+        .Select(i => new Vector2((float)Math.Sin(i * Math.PI / 12) * radius,
+            (float)Math.Cos(i * Math.PI / 12) * radius)).ToArray();
     internal static Vector2[] Cone(float radius, float halfDegrees, float heading)
     {
         var points = new List<Vector2>
@@ -203,6 +252,44 @@ public static class DyingGaspMechanics
     }
 
     private static Vector2 Rotate(float x, float z, float heading) => new(x * (float)Math.Cos(heading) + z * (float)Math.Sin(heading), z * (float)Math.Cos(heading) - x * (float)Math.Sin(heading));
+
+    private static void CaptureDiscStates(DateTime now)
+    {
+        if (now < nextDiscSample) return;
+        nextDiscSample = now.AddMilliseconds(100);
+        DiscWindows.RemoveAll(d => now >= d.Expires);
+        var discs = GameObjectManager.GameObjects.Where(o => o.IsValid && o.BaseId == 0x1EAD28).ToArray();
+        foreach (var disc in discs)
+        {
+            int state;
+            try { state = Lua.GetReturnVal<int>("local o=_G['" + disc.LuaString + "']; if not o or not o.GetSharedGroupTimelineState then return -1 end; return o:GetSharedGroupTimelineState()"); }
+            catch (Exception) { state = -1; }
+            if (state < 0) continue;
+            if (!DiscStates.TryGetValue(disc.ObjectId, out int previous) || previous != state)
+            {
+                bool known = DiscStates.ContainsKey(disc.ObjectId);
+                DiscStates[disc.ObjectId] = state;
+                if (LoggingHelpers.MechanicDiagnosticsEnabled)
+                    Logger.Information("[DyingGasp] DISC id=0x{0:X} state={1} position={2} player={3}", disc.ObjectId, state, disc.Location, Core.Me.Location);
+                if (state == 1 && (!known || previous == 4))
+                {
+                    // The synchronized capture showed each state-1 edge about
+                    // 9.6s before its 10y hit and object removal about 0.5s
+                    // before damage. Leave 3.6s to escape and hold through the
+                    // effect tail; a late attachment starts conservatively now.
+                    DiscWindows.Add(new Disc { Origin = disc.Location,
+                        Starts = known ? now.AddSeconds(6) : now,
+                        Expires = now.AddSeconds(10.2) });
+                }
+            }
+        }
+        foreach (uint id in DiscStates.Keys.Where(id => discs.All(d => d.ObjectId != id)).ToArray())
+        {
+            if (LoggingHelpers.MechanicDiagnosticsEnabled)
+                Logger.Information("[DyingGasp] DISC_REMOVED id=0x{0:X}", id);
+            DiscStates.Remove(id);
+        }
+    }
     /// <summary>Releases only this encounter's avoids and overrides on stop, loading, or exit.</summary>
     public static void Reset()
     {
@@ -215,6 +302,9 @@ public static class DyingGaspMechanics
         Shapes.Clear();
         Reported.Clear();
         captivityUntil = DateTime.MinValue;
+        DiscStates.Clear();
+        DiscWindows.Clear();
+        nextDiscSample = DateTime.MinValue;
         foreach (var action in Overrides)
         {
             SideStep.RemoveHandler(action);
