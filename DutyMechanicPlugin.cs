@@ -119,6 +119,14 @@ public class DutyMechanicPlugin : BotPlugin
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         // Keep Dohn's mechanic ownership and cleanup active through yielding hooks.
         Dungeons.DohnMheg.CheckLifecycle();
+        // Babil's stack positioning and native escape share one input owner.
+        Dungeons.TowerOfBabil.CheckBarnabasLifecycle();
+        if (EnableMechanicDiagnostics && TreeRoot.IsRunning && WorldManager.ZoneId == 969)
+        {
+            // The profile can retain TreeStart; sample the marker on the bot pulse.
+            LoggingHelpers.UpdateMechanicDiagnostics(true);
+            Dungeons.TowerOfBabil.ObservePolarityCapture();
+        }
         // Keep Zot cast snapshots and owned input current while profile hooks yield.
         Dungeons.TowerOfZot.CheckLifecycle();
         // Keep Malikah's mechanic ownership and cleanup active through yielding hooks.
@@ -294,6 +302,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.QitanaRavel.ResetActive();
         Dungeons.MtGulg.ResetActive();
         Dungeons.DohnMheg.ResetActive();
+        Dungeons.TowerOfBabil.ResetBarnabasActive();
         Dungeons.TowerOfZot.ResetActive();
         Dungeons.MalikahsWell.ResetActive();
         Dungeons.DomaCastle.ResetActive();

@@ -17,8 +17,41 @@ namespace DutyMechanic.Dungeons;
 /// <summary>
 /// Lv. 83: The Tower of Babil dungeon logic.
 /// </summary>
-public class TowerOfBabil : AbstractDungeon
+public partial class TowerOfBabil : AbstractDungeon
 {
+    private static DateTime polarityCaptureUntil;
+    private static DateTime nextPolaritySample;
+    private static DateTime nextPolarityHealth;
+
+    // Capture both the lock-on and landing after forced movement: the ordinary cast log
+    // omits the player's polarity, so it cannot distinguish attraction from repulsion.
+    internal static void ObservePolarityCapture()
+    {
+        if (!LoggingHelpers.MechanicDiagnosticsEnabled || WorldManager.SubZoneId != (uint)SubZoneId.MagitekServicing)
+            return;
+
+        // Helpers share Barnabas's NPC ID; only the targetable boss owns the polarity cast.
+        var boss = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
+            .Where(actor => actor.NpcId == EnemyNpc.Barnabas && actor.BaseId == 0x33F7 && actor.IsTargetable)
+            .FirstOrDefault(actor => actor.IsValid && actor.IsVisible);
+        var now = DateTime.UtcNow;
+        if (now >= nextPolarityHealth)
+        {
+            nextPolarityHealth = now.AddSeconds(5);
+            Logger.Information($"[BabilCapture] health bossFound={boss != null} combat={Core.Me.InCombat}.");
+        }
+        if (boss == null) return;
+        if (boss.CastingSpellId is EnemyAction.DynamicPoundNegative or EnemyAction.DynamicPoundPositive
+            or EnemyAction.DynamicScraplineNegative or EnemyAction.DynamicScraplinePositive)
+            polarityCaptureUntil = now.AddSeconds(5);
+        if (now > polarityCaptureUntil || now < nextPolaritySample) return;
+        nextPolaritySample = now.AddMilliseconds(500);
+        string markers = Core.Me.VfxContainer.IsValid
+            ? string.Join(",", Core.Me.VfxContainer.LockOns.Where(marker => marker != null && marker.IsValid).Select(marker => marker.Id))
+            : "invalid";
+        Logger.Information($"[BabilCapture] polarity player={Core.Me.Location} boss={boss.Location} heading={boss.Heading} cast={boss.CastingSpellId} markers=[{markers}] forced={MovementManager.GenerallyOutOfControl} escaping={AvoidanceManager.IsRunningOutOfAvoid}.");
+    }
+
     private static DateTime? animaLowerChaseStartTimestamp = null;
     private static DateTime? animaLowerChaseEndTimestamp = null;
 
@@ -32,7 +65,7 @@ public class TowerOfBabil : AbstractDungeon
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToMitigate{ get; } = [];
     /// <inheritdoc/>
-    protected override HashSet<uint> SpellsToFollowDodge { get; } = [EnemyAction.ShockingForce];
+    protected override HashSet<uint> SpellsToFollowDodge { get; } = [];
 
     /// <inheritdoc/>
     protected override HashSet<uint> SpellsToTankBust { get; } = [];
@@ -40,8 +73,6 @@ public class TowerOfBabil : AbstractDungeon
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
-        await FollowDodgeSpells();
-
         SubZoneId currentSubZoneId = (SubZoneId)WorldManager.SubZoneId;
 
         if (lastSubZoneId != currentSubZoneId)
@@ -71,6 +102,10 @@ public class TowerOfBabil : AbstractDungeon
     /// </summary>
     private Task<bool> HandleBarnabasAsync()
     {
+        activeBarnabas = this;
+        UpdateBarnabas();
+        // The encounter hook is a second observation opportunity when plugin pulses yield.
+        ObservePolarityCapture();
         // Override SideStep for this fight
         SidestepPlugin.Enabled = false;
 
@@ -107,21 +142,31 @@ public class TowerOfBabil : AbstractDungeon
                 objectSelector: bc => bc.CastingSpellId == EnemyAction.ElectromagneticReleaseCircle,
                 radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius));
 
-            // TODO: Update Positive/Negative logic when head markers are available.
-            // We can infer the boss's polarity by action ID, but can't figure out our own polarity without head markers.
-            // For now, always position outwards because the inner AOE is much more dangerous than the outside DOT.
+            // Same poles repel. Stage inside the arena so the nine-yalm line push
+            // or five-yalm radial push lands before the electrified boundary.
+            // Scrapline's initial eight-yalm circle hits before the push; the
+            // live capture at radius four took that hit, so keep its avoid active.
+            // Unknown markers keep the original conservative outward response.
+            AvoidanceHelpers.AddAvoidDonut(
+                () => Core.Player.InCombat && barnabasRepelLine,
+                () => ArenaCenter.Barnabas, outerRadius: 90f, innerRadius: 5f,
+                priority: AvoidancePriority.High);
+            AvoidanceHelpers.AddAvoidDonut(
+                () => Core.Player.InCombat && barnabasRepelCircle,
+                () => ArenaCenter.Barnabas, outerRadius: 90f, innerRadius: 9.3f,
+                priority: AvoidancePriority.High);
 
             // Dynamic Pound (Negative)
             AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
                 canRun: () => Core.Player.InCombat,
-                objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicPoundNegative,
+                objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicPoundNegative && !barnabasRepelLine,
                 width: 6.0f + 18.0f,
                 length: 60.0f);
 
             // Dynamic Pound (Positive)
             AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
                 canRun: () => Core.Player.InCombat,
-                objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicPoundPositive,
+                objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicPoundPositive && !barnabasRepelLine,
                 width: 6.0f + 18.0f,
                 length: 60.0f);
 
@@ -129,13 +174,13 @@ public class TowerOfBabil : AbstractDungeon
             AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
                 condition: () => Core.Player.InCombat,
                 objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicScraplineNegative,
-                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius + 5.0f));
+                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius + (barnabasRepelCircle ? 0f : 5f)));
 
             // Dynamic Scrapline (Positive)
             AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
                 condition: () => Core.Player.InCombat,
                 objectSelector: bc => bc.CastingSpellId == EnemyAction.DynamicScraplinePositive,
-                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius + 5.0f));
+                radiusProducer: bc => bc.SpellCastInfo.SpellData.Radius + (barnabasRepelCircle ? 0f : 5f)));
 
             // Rolling Scrapline
             AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
@@ -310,18 +355,21 @@ public class TowerOfBabil : AbstractDungeon
                 innerRadius: 3.0f,
                 priority: AvoidancePriority.High);
 
-            // Black Hole / Aetherial Pull
+            // Pater resolves before the orb pull. The orb's large radius previously
+            // drove the player through the line while the line avoid was suppressed;
+            // defer that escape until the line cast ends, then move far enough
+            // away that the later pull lands short of the orb.
             AvoidanceManager.AddAvoid(new AvoidObjectInfo<BattleCharacter>(
-                condition: () => Core.Player.InCombat,
+                condition: () => Core.Player.InCombat && !GameObjectManager.GetObjectsOfType<BattleCharacter>()
+                    .Any(bc => bc.CastingSpellId == EnemyAction.PaterPatriae),
                 objectSelector: bc => bc.CastingSpellId == EnemyAction.AetherialPull && bc.SpellCastInfo.TargetId == Core.Player.ObjectId,
                 radiusProducer: bc => 34.0f));
 
             // Pater Patriae
             AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
                 canRun: () => Core.Player.InCombat,
-                objectSelector: bc => bc.CastingSpellId == EnemyAction.PaterPatriae
-                    && !GameObjectManager.GetObjectsByNPCId(EnemyNpc.MegaGraviton).Any(obj => obj.IsVisible),
-                width: 7.0f,
+                objectSelector: bc => bc.CastingSpellId == EnemyAction.PaterPatriae,
+                width: 8.0f,
                 length: 60.0f,
                 priority: AvoidancePriority.High);
 
