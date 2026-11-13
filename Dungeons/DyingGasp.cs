@@ -64,7 +64,8 @@ public sealed class DyingGasp : AbstractDungeon
     /// <summary>Renews the encounter's leases on the existing bot-thread pulse.</summary>
     public static void CheckLifecycle()
     {
-        if (current == null) return;
+        if (current == null)
+            return;
         if (!TreeRoot.IsRunning || !DutyManager.InInstance || WorldManager.ZoneId != 847)
         {
             current.Release();
@@ -77,7 +78,8 @@ public sealed class DyingGasp : AbstractDungeon
             current.previousSideStep = SidestepPlugin.Enabled;
             current.borrowedSideStep = true;
         }
-        if (SidestepPlugin != null && SidestepPlugin.Enabled) SidestepPlugin.Enabled = false;
+        if (SidestepPlugin != null && SidestepPlugin.Enabled)
+            SidestepPlugin.Enabled = false;
 
         if (Core.Me != null && Core.Me.IsAlive && !CommonBehaviors.IsLoading)
         {
@@ -95,7 +97,8 @@ public sealed class DyingGasp : AbstractDungeon
                     current.movement = new ChrysalisMovement(Navigator.PlayerMover, canMoveOrdinary: OrdinarySegmentClear);
                     Navigator.PlayerMover = current.movement;
                 }
-                else current.unsupportedMover = true;
+                else
+                    current.unsupportedMover = true;
             }
             current.UpdateWail();
             current.movement?.Update();
@@ -116,6 +119,7 @@ public sealed class DyingGasp : AbstractDungeon
     private void UpdateWail()
     {
         var now = DateTime.UtcNow;
+        // The opposite Wail can push players off the east edge; it is not handled yet.
         var boss = GameObjectManager.GetObjectsOfType<BattleCharacter>(true, false)
             .FirstOrDefault(a => a.IsValid && a.BaseId == 0x294A && a.IsCasting && a.CastingSpellId == 16742);
         if (boss != null && !wailCastSeen)
@@ -126,7 +130,8 @@ public sealed class DyingGasp : AbstractDungeon
             // x=115 landed the party safely near x=85; the west-side player fell.
             wailUntil = now + boss.SpellCastInfo.RemainingCastTime + TimeSpan.FromSeconds(2.5);
         }
-        if (boss == null) wailCastSeen = false;
+        if (boss == null)
+            wailCastSeen = false;
         if (MovementManager.ForceMoved)
         {
             // Once the knockback owns input, do not reacquire staging after landing.
@@ -149,13 +154,15 @@ public sealed class DyingGasp : AbstractDungeon
         foreach (var flag in new[] { CapabilityFlags.Movement, CapabilityFlags.MoveBehind, CapabilityFlags.GapCloser })
             CapabilityManager.Update(wailHandle, flag, TimeSpan.FromMilliseconds(500), "Dying Gasp Wail staging");
         movement.Request(WailEast, 1.5f);
-        if (!wailOwned) Logger.Information("[DyingGasp] Wail staging from {0} to {1}", Core.Me.Location, WailEast);
+        if (!wailOwned)
+            Logger.Information("[DyingGasp] Wail staging from {0} to {1}", Core.Me.Location, WailEast);
         wailOwned = true;
     }
 
     private void ReleaseWail()
     {
-        if (!wailOwned) return;
+        if (!wailOwned)
+            return;
         movement?.Request(null, 0);
         CapabilityManager.Clear(wailHandle);
         Logger.Information("[DyingGasp] Wail staging released at {0}", Core.Me?.Location);
@@ -171,7 +178,8 @@ public sealed class DyingGasp : AbstractDungeon
         {
             float t = (float)i / steps;
             var point = new Vector3(start.X + dx * t, start.Y, start.Z + dz * t);
-            if (AvoidanceManager.Avoids.Any(a => !a.ShouldIgnore && a.IsPointInAvoid(point))) return false;
+            if (AvoidanceManager.Avoids.Any(a => !a.ShouldIgnore && a.IsPointInAvoid(point)))
+                return false;
         }
         return true;
     }
@@ -184,7 +192,8 @@ public sealed class DyingGasp : AbstractDungeon
         movement?.Detach();
         movement = null;
         unsupportedMover = false;
-        if (gapCloserLeased) CapabilityManager.Clear(CapabilityHandle, CapabilityFlags.GapCloser, "Dying Gasp ended");
+        if (gapCloserLeased)
+            CapabilityManager.Clear(CapabilityHandle, CapabilityFlags.GapCloser, "Dying Gasp ended");
         gapCloserLeased = false;
         if (borrowedSideStep && SidestepPlugin != null && !SidestepPlugin.Enabled)
             SidestepPlugin.Enabled = previousSideStep;
@@ -203,7 +212,8 @@ public sealed class DyingGasp : AbstractDungeon
     {
         // The shared exit hook enables SideStep before this callback, so restore
         // the captured value here even when that base hook changed it first.
-        if (borrowedSideStep && SidestepPlugin != null) SidestepPlugin.Enabled = previousSideStep;
+        if (borrowedSideStep && SidestepPlugin != null)
+            SidestepPlugin.Enabled = previousSideStep;
         borrowedSideStep = false;
         ResetActive();
         return Task.FromResult(false);

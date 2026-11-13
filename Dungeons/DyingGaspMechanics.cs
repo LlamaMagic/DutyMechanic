@@ -151,7 +151,7 @@ public static class DyingGaspMechanics
         // The normal arena is a 40y circle in both phases. The
         // 0.7y inset prevents the previous unrestricted Yawp escape reaching an edge.
         Avoids.Add(AvoidanceHelpers.AddAvoidDonut(Active, () => Center, 80, 19.3));
-        Avoids.Add(AvoidanceManager.AddAvoidObject<BattleCharacter>(canRun: () => Active() && DateTime.UtcNow < captivityUntil, objectSelector: a => a.IsValid && a.IsAlive && !a.IsMe && PartyManager.VisibleMembers.Any(p => p.ObjectId == a.ObjectId), radiusProducer: _ => 8.5f)); // Eight-yalm collateral prison plus0.5y clearance.
+        Avoids.Add(AvoidanceManager.AddAvoidObject<BattleCharacter>(canRun: () => Active() && DateTime.UtcNow < captivityUntil, objectSelector: a => a.IsValid && a.IsAlive && !a.IsMe && PartyManager.VisibleMembers.Any(p => p.ObjectId == a.ObjectId), radiusProducer: _ => 8.5f)); // Eight-yalm collateral prison plus 0.5y clearance.
     }
 
     private static Shape CreateShape(BattleCharacter actor, uint action)
@@ -163,7 +163,8 @@ public static class DyingGaspMechanics
             // Ground eruptions resolve at the cast location, not the helper's
             // position. Reject a missing location rather than inventing a hazard.
             origin = actor.SpellCastInfo.CastLocation;
-            if (origin.Distance2D(Center) > 26 || Math.Abs(origin.Y - Center.Y) > 5) return null;
+            if (origin.Distance2D(Center) > 26 || Math.Abs(origin.Y - Center.Y) > 5)
+                return null;
         }
         if (action is 16739 or 16740)
         {
@@ -180,7 +181,8 @@ public static class DyingGaspMechanics
                 // eight-yalm center overlap because the exact cone origin is unknown.
                 // Outside that observed pose, refuse to infer the orientation.
                 if (actor.BaseId != 0x294A || origin.Distance2D(new Vector3(100, 0, 80)) > 2 ||
-                    Math.Abs(Math.Sin(heading)) > 0.2 || Math.Cos(heading) < 0.98) return null;
+                    Math.Abs(Math.Sin(heading)) > 0.2 || Math.Cos(heading) < 0.98)
+                    return null;
                 return new Shape
                 {
                     Origin = new Vector3(action == 16739 ? 106 : 94, Center.Y, Center.Z),
@@ -199,14 +201,15 @@ public static class DyingGaspMechanics
             16715 or 16716 => Rectangle(21, 21, -.5f, heading),
             16732 => Rectangle(17, 101, -.5f, heading),
             // Both helpers occupy the boss origin in this client. Their authored
-            // side lanes leave an8y central corridor; do not stack both at X100.
+            // side lanes leave an 8y central corridor; do not stack both at X100.
             16753 => Rectangle(17, 101, -.5f, heading),
             16754 => Rectangle(17, 101, -.5f, heading),
             16722 => Circle(6.5f),
             17813 => Rectangle(9, 41, -.5f, heading),
             16739 or 16740 => Cone(101, 46, heading),
             16751 => Cone(101, 31, heading),
-            _ => Cone(41, 16, heading)};
+            _ => Cone(41, 16, heading)
+        };
         if (action == 16753)
         {
             origin.X -= 12;
@@ -224,8 +227,8 @@ public static class DyingGaspMechanics
         };
     }
 
-    // Polygons use world-axis offsets. Rectangles add0.5y to each edge. Cones
-    // expand by one degree and start0.7y behind the source for near-origin margin.
+    // Polygons use world-axis offsets. Rectangles add 0.5y to each edge. Cones
+    // expand by one degree and start 0.7y behind the source for near-origin margin.
     internal static Vector2[] Rectangle(float width, float length, float back, float heading) => new[]
     {
         Rotate(-width / 2, back, heading),
@@ -255,16 +258,24 @@ public static class DyingGaspMechanics
 
     private static void CaptureDiscStates(DateTime now)
     {
-        if (now < nextDiscSample) return;
+        if (now < nextDiscSample)
+            return;
         nextDiscSample = now.AddMilliseconds(100);
         DiscWindows.RemoveAll(d => now >= d.Expires);
         var discs = GameObjectManager.GameObjects.Where(o => o.IsValid && o.BaseId == 0x1EAD28).ToArray();
         foreach (var disc in discs)
         {
             int state;
-            try { state = Lua.GetReturnVal<int>("local o=_G['" + disc.LuaString + "']; if not o or not o.GetSharedGroupTimelineState then return -1 end; return o:GetSharedGroupTimelineState()"); }
-            catch (Exception) { state = -1; }
-            if (state < 0) continue;
+            try
+            {
+                state = Lua.GetReturnVal<int>("local o=_G['" + disc.LuaString + "']; if not o or not o.GetSharedGroupTimelineState then return -1 end; return o:GetSharedGroupTimelineState()");
+            }
+            catch (Exception)
+            {
+                state = -1;
+            }
+            if (state < 0)
+                continue;
             if (!DiscStates.TryGetValue(disc.ObjectId, out int previous) || previous != state)
             {
                 bool known = DiscStates.ContainsKey(disc.ObjectId);
@@ -277,9 +288,12 @@ public static class DyingGaspMechanics
                     // 9.6s before its 10y hit and object removal about 0.5s
                     // before damage. Leave 3.6s to escape and hold through the
                     // effect tail; a late attachment starts conservatively now.
-                    DiscWindows.Add(new Disc { Origin = disc.Location,
+                    DiscWindows.Add(new Disc
+                    {
+                        Origin = disc.Location,
                         Starts = known ? now.AddSeconds(6) : now,
-                        Expires = now.AddSeconds(10.2) });
+                        Expires = now.AddSeconds(10.2)
+                    });
                 }
             }
         }
