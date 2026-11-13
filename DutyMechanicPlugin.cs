@@ -109,6 +109,10 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.StoneVigil.CheckLifecycle();
         // Qitana's cast fences and input cleanup must survive yielding profile hooks.
         Dungeons.QitanaRavel.CheckLifecycle();
+        // Keep Mt. Gulg ownership and cleanup active while profile hooks yield.
+        Dungeons.MtGulg.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 822)
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         if (TreeRoot.IsRunning && WorldManager.ZoneId == 823)
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         // Keep Dohn's mechanic ownership and cleanup active through yielding hooks.
@@ -273,6 +277,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.BrayfloxsLongstop.ResetActive();
         Dungeons.StoneVigil.ResetActive();
         Dungeons.QitanaRavel.ResetActive();
+        Dungeons.MtGulg.ResetActive();
         Dungeons.DohnMheg.ResetActive();
         Dungeons.DomaCastle.ResetActive();
         // Release Gubal movement and SideStep ownership even when a stop bypasses dungeon exit.
