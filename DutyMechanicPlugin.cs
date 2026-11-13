@@ -119,6 +119,8 @@ public class DutyMechanicPlugin : BotPlugin
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
         // Keep Dohn's mechanic ownership and cleanup active through yielding hooks.
         Dungeons.DohnMheg.CheckLifecycle();
+        // Keep Zot cast snapshots and owned input current while profile hooks yield.
+        Dungeons.TowerOfZot.CheckLifecycle();
         // Keep Malikah's mechanic ownership and cleanup active through yielding hooks.
         Dungeons.MalikahsWell.CheckLifecycle();
         if (TreeRoot.IsRunning && WorldManager.ZoneId == 836)
@@ -292,6 +294,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.QitanaRavel.ResetActive();
         Dungeons.MtGulg.ResetActive();
         Dungeons.DohnMheg.ResetActive();
+        Dungeons.TowerOfZot.ResetActive();
         Dungeons.MalikahsWell.ResetActive();
         Dungeons.DomaCastle.ResetActive();
         // Release Gubal movement and SideStep ownership even when a stop bypasses dungeon exit.
