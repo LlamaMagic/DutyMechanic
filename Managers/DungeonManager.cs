@@ -117,6 +117,8 @@ internal static class DungeonManager
             // 5.0 - Shadowbringers
             // Story Titania uses a distinct territory from the Extreme trial.
             { (ZoneId)845, typeof(DancingPlague) },
+            // Innocence normal has its own territory; Extreme uses a different handler.
+            { (ZoneId)846, typeof(Immaculate) },
             { ZoneId.HolminsterSwitch, typeof(HolminsterSwitch) },
             { ZoneId.DohnMheg, typeof(DohnMheg) },
             { ZoneId.TheQitanaRavel, typeof(QitanaRavel) },

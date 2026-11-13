@@ -127,6 +127,12 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.CastrumFluminis.CheckLifecycle();
         // Keep Titania movement and SideStep cleanup alive through yielding trial hooks.
         Dungeons.DancingPlague.CheckLifecycle();
+        // Preserve Immaculate input and cleanup while its combat hook yields.
+        Dungeons.Immaculate.CheckLifecycle();
+        if (TreeRoot.IsRunning && WorldManager.ZoneId == 846)
+        {
+            LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+        }
         // Release Recollection's movement owner when its combat hook yields.
         Dungeons.Recollection.CheckLifecycle();
         // Release Pool of Tribute input even when a combat hook yields.
@@ -288,6 +294,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.Emanation.ResetActive();
         Dungeons.CastrumFluminis.ResetActive();
         Dungeons.DancingPlague.ResetActive();
+        Dungeons.Immaculate.ResetActive();
         Dungeons.Recollection.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
         // Release encounter-owned input even when a stop bypasses its combat hook.
