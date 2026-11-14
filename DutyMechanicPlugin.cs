@@ -121,6 +121,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.DohnMheg.CheckLifecycle();
         // Babil's stack positioning and native escape share one input owner.
         Dungeons.TowerOfBabil.CheckBarnabasLifecycle();
+        // Keep the Bury movement lease and SideStep cleanup active while hooks yield.
+        Dungeons.Ihuykatumu.CheckLifecycle();
         if (EnableMechanicDiagnostics && TreeRoot.IsRunning && WorldManager.ZoneId == 969)
         {
             // The profile can retain TreeStart; sample the marker on the bot pulse.
@@ -277,6 +279,7 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        Dungeons.Ihuykatumu.ResetActive();
         // The trial's movement owner must not outlive a stop or hook replacement.
         Dungeons.PoolOfTributeCoordinator.Reset();
         // Stop and hook replacement must release the trial movement lease.

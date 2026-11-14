@@ -211,6 +211,9 @@ internal static class DungeonManager
                 departingDoma.PrepareBoundary(leaving: true);
             if (_currentDungeon is DohnMheg departingDohn)
                 departingDohn.PrepareBoundary(leaving: true);
+            // Preserve Ihuykatumu's borrowed SideStep state across the base callback.
+            if (_currentDungeon is Ihuykatumu departingIhuykatumu)
+                departingIhuykatumu.PrepareBoundary(leaving: true);
             // Preserve Zot's SideStep lease across the inherited boundary callback.
             if (_currentDungeon is TowerOfZot departingZot)
                 departingZot.PrepareBoundary(leaving: true);
@@ -227,6 +230,8 @@ internal static class DungeonManager
                     enteringDoma.PrepareBoundary(leaving: false);
                 if (_currentDungeon is DohnMheg enteringDohn)
                     enteringDohn.PrepareBoundary(leaving: false);
+                if (_currentDungeon is Ihuykatumu enteringIhuykatumu)
+                    enteringIhuykatumu.PrepareBoundary(leaving: false);
                 if (_currentDungeon is TowerOfZot enteringZot)
                     enteringZot.PrepareBoundary(leaving: false);
                 if (_currentDungeon is MalikahsWell enteringMalikah)
