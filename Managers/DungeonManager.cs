@@ -91,6 +91,8 @@ internal static class DungeonManager
             { ZoneId.Xelphatol, typeof(Xelphatol) },
             { ZoneId.BaelsarsWall, typeof(BaelsarsWall) },
             { ZoneId.LimitlessBlue, typeof(LimitlessBlue) },
+            // Story Thordan has a separate territory from the Extreme trial.
+            { (ZoneId)437, typeof(SingularityReactor) },
             { ZoneId.ContainmentBayS1T7, typeof(ContainmentBayS1T7) },
             { ZoneId.ContainmentBayP1T6, typeof(ContainmentBayP1T6) },
             { ZoneId.ContainmentBayZ1T9, typeof(ContainmentBayZ1T9) },

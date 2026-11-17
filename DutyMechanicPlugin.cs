@@ -145,6 +145,8 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.DancingPlague.CheckLifecycle();
         // Preserve Immaculate input and cleanup while its combat hook yields.
         Dungeons.Immaculate.CheckLifecycle();
+        // Trial readiness and SideStep ownership survive yielding profile hooks.
+        Dungeons.SingularityReactor.CheckLifecycle();
         if (TreeRoot.IsRunning && WorldManager.ZoneId == 846)
         {
             LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
@@ -317,6 +319,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.CastrumFluminis.ResetActive();
         Dungeons.DancingPlague.ResetActive();
         Dungeons.Immaculate.ResetActive();
+        Dungeons.SingularityReactor.ResetActive();
         Dungeons.Recollection.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
         // Release encounter-owned input even when a stop bypasses its combat hook.
