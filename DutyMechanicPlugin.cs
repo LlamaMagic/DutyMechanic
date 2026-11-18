@@ -60,6 +60,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnEnabled()
     {
+        ProfileMechanics.SetRuntimeEnabled(true);
         TreeRoot.OnStart += OnBotStart;
         TreeRoot.OnStop += OnBotStop;
         TreeHooks.Instance.OnHooksCleared += OnHooksCleared;
@@ -72,6 +73,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnDisabled()
     {
+        ProfileMechanics.SetRuntimeEnabled(false);
         ResetEncounters();
         TreeRoot.OnStart -= OnBotStart;
         TreeRoot.OnStop -= OnBotStop;
@@ -89,6 +91,14 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override void OnPulse()
     {
+        ProfileMechanics.RetryRelease();
+        if (ProfileMechanics.HasRegistration)
+        {
+            if (CommonBehaviors.IsLoading) ProfileMechanics.SetSuspendedActive(true);
+            else ProfileMechanics.Validate(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path);
+        }
+        // Retry trial death recovery only when no other plugin owns the hooks.
+        Dungeons.TrialDeathRecovery.Update();
         // Encounter observations and movement must continue while an OrderBot hook yields.
         if (TreeRoot.IsRunning && WorldManager.ZoneId == 1199)
         {
@@ -207,13 +217,20 @@ public class DutyMechanicPlugin : BotPlugin
                 LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
             }
 
-            Dungeons.SeatOfSacrifice.Pulse();
+            // Only a registered profile supplies encounter mechanics. Observation
+            // runs on the bot thread and yields ownership during loading or death.
+            if (ProfileMechanics.HasRegistration)
+            {
+                bool paused = CommonBehaviors.IsLoading || Core.Me == null || !Core.Me.IsValid || !Core.Me.IsAlive;
+                if (CommonBehaviors.IsLoading) ProfileMechanics.SetSuspendedActive(true);
+                else ProfileMechanics.SetSuspended(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path, paused);
+                if (!paused) ProfileMechanics.Observe(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path);
+            }
         }
         else
         {
             Dungeons.DyingGasp.ResetActive();
             Dungeons.DyingGaspMechanics.Reset();
-            Dungeons.SeatOfSacrifice.Reset();
         }
 
         // One Royal Menagerie owner must tick even while AutoParty retains a yielding coroutine.
@@ -281,6 +298,8 @@ public class DutyMechanicPlugin : BotPlugin
     // Stop and hook replacement must release encounter leases before a new mover runs.
     private static void ResetEncounters()
     {
+        // Revoke profile callbacks before another profile or movement owner can take over.
+        ProfileMechanics.Clear();
         Dungeons.Ihuykatumu.ResetActive();
         // The trial's movement owner must not outlive a stop or hook replacement.
         Dungeons.PoolOfTributeCoordinator.Reset();
@@ -319,6 +338,7 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.CastrumFluminis.ResetActive();
         Dungeons.DancingPlague.ResetActive();
         Dungeons.Immaculate.ResetActive();
+        Dungeons.TrialDeathRecovery.Release();
         Dungeons.SingularityReactor.ResetActive();
         Dungeons.Recollection.ResetActive();
         Dungeons.KeeperOfTheLake.ResetActive();
@@ -332,7 +352,6 @@ public class DutyMechanicPlugin : BotPlugin
         Dungeons.TheRoyalMenagerie.ResetActive();
         Dungeons.DyingGasp.ResetActive();
         Dungeons.DyingGaspMechanics.Reset();
-        Dungeons.SeatOfSacrifice.Reset();
         Dungeons.Amaurot.ResetActive();
         Dungeons.MatoyasRelict.ResetActive();
         Dungeons.GrandCosmos.ResetActive();
@@ -368,10 +387,14 @@ public class DutyMechanicPlugin : BotPlugin
 
     private async Task<bool> RunTrust()
     {
-        // Seat consumes TreeStart only for travel, fire or QTE; routine healing resumes at safety.
-        if (Dungeons.SeatOfSacrifice.HoldsTree)
+        // A ready check can arrive before the profile enters combat.
+        if (WorldManager.ZoneId == 922 && ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
+            await UsefulTasks.HandleReadyCheck();
+
+        if (ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
         {
-            return true;
+            var profileResult = await ProfileMechanics.RunAsync(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path);
+            return profileResult.Registered && profileResult.Handled;
         }
 
         DisableConflictingPlugins();

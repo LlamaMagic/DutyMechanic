@@ -190,6 +190,9 @@ internal static class DungeonManager
     private static AbstractDungeon _currentDungeon = null;
     private static bool _clear = false;
 
+    // The prototype cannot override built-ins: their pulse owners remain unchanged.
+    internal static bool HasBuiltInHandler(ushort zoneId) => AvailableDungeons.ContainsKey((ZoneId)zoneId);
+
     internal static void ClearCurrent()
     {
         _clear = true;
@@ -204,6 +207,13 @@ internal static class DungeonManager
         await CommonTasks.HandleLoading();
 
         ZoneId currentZoneId = (ZoneId)WorldManager.ZoneId;
+
+        if (!AvailableDungeons.ContainsKey(currentZoneId) && _currentDungeon == null)
+        {
+            var profileResult = await ProfileMechanics.RunAsync((ushort)currentZoneId,
+                ff14bot.NeoProfiles.NeoProfileManager.CurrentProfile?.Path);
+            if (profileResult.Registered) return profileResult.Handled;
+        }
 
         if (_currentDungeon?.ZoneId != currentZoneId || _clear)
         {

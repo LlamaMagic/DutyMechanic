@@ -42,7 +42,7 @@ public static class LoggingHelpers
     /// bot thread. Encounter-local capture code uses this runtime state so expensive evidence
     /// gathering remains behind the same non-persisted switch and shared stop lifecycle.
     /// </summary>
-    internal static bool MechanicDiagnosticsEnabled => mechanicDiagnosticsWereEnabled;
+    public static bool MechanicDiagnosticsEnabled => mechanicDiagnosticsWereEnabled;
 
     /// <summary>
     /// Updates optional encounter diagnostics on the bot thread. The bounded cast history correlates

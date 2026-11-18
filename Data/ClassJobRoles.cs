@@ -1,4 +1,4 @@
-﻿using ff14bot.Enums;
+using ff14bot.Enums;
 using System.Collections.Generic;
 
 namespace DutyMechanic.Data;
@@ -6,7 +6,7 @@ namespace DutyMechanic.Data;
 /// <summary>
 /// Groupings of <see cref="ClassJobType"/>s into their roles.
 /// </summary>
-internal static class ClassJobRoles
+public static class ClassJobRoles
 {
     /// <summary>
     /// Gets all <see cref="ClassJobType"/>s in the Tank role.
@@ -80,7 +80,7 @@ internal static class ClassJobRoles
         ClassJobType.Gunbreaker,
     ];
 
-    internal static readonly Dictionary<ClassJobType, int> LimitBreak3 = new()
+    public static readonly Dictionary<ClassJobType, int> LimitBreak3 = new()
     {
         // Tank Limit Breaks
         { ClassJobType.Gladiator, 199 }, // Last Bastion

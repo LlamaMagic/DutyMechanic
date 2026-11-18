@@ -1,4 +1,4 @@
-﻿using Clio.Utilities;
+using Clio.Utilities;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -246,7 +246,13 @@ public static class AvoidanceHelpers
             priority: priority);
     }
 
-    private static Vector2[] GenerateRectangle(float width, float length, float xOffset, float yOffset)
+    /// <summary>Builds the existing actor-relative rectangle without registering an avoid or moving.</summary>
+    /// <param name="width">Total rectangle width.</param>
+    /// <param name="length">Forward length from its origin.</param>
+    /// <param name="xOffset">Lateral offset, using the existing helper's sign convention.</param>
+    /// <param name="yOffset">Forward offset of the rectangle origin.</param>
+    /// <returns>Four local polygon corners in the existing avoid helper's order.</returns>
+    public static Vector2[] GenerateRectangle(float width, float length, float xOffset, float yOffset)
     {
         float halfWidth = width / 2.0f;
 
