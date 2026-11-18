@@ -387,8 +387,8 @@ public class DutyMechanicPlugin : BotPlugin
 
     private async Task<bool> RunTrust()
     {
-        // A ready check can arrive before the profile enters combat.
-        if (WorldManager.ZoneId == 922 && ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
+        // Trial ready checks can arrive before the profile enters combat.
+        if ((WorldManager.ZoneId == 922 || WorldManager.ZoneId == 559) && ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
             await UsefulTasks.HandleReadyCheck();
 
         if (ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
