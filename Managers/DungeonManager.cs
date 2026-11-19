@@ -37,7 +37,7 @@ internal static class DungeonManager
             // Hard-mode clones/helpers share Ifrit's name row but use their own territory.
             { (ZoneId)292, typeof(IfritHard) },
             { ZoneId.Halatali, typeof(Halatali) },
-            { ZoneId.Halatali7_1, typeof(Halatali7_1) },
+            // Halatali 7.1 is registered by its protected profile for territory 1245.
             { ZoneId.SunkenTempleofQarn, typeof(SunkenTemplofQarn) },
             { ZoneId.DzemaelDarkhold, typeof(DzemaelDarkhold) },
             { ZoneId.TheThousandMawsOfTotoRak, typeof(ThousandMawsOfTotoRak) },

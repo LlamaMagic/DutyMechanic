@@ -41,7 +41,7 @@ public class DutyMechanicPlugin : BotPlugin
     /// <inheritdoc/>
     public override string Description => "Handles advanced duty and boss mechanics. Formerly known as RBTrust/Trust.";
     /// <inheritdoc/>
-    public override Version Version => new(7, 5, 04282015, 30);
+    public override Version Version => new(7, 5, 04282015, 31);
     /// <inheritdoc/>
     public override bool WantButton => false;
 
@@ -393,6 +393,16 @@ public class DutyMechanicPlugin : BotPlugin
 
         if (ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
         {
+            if (WorldManager.ZoneId == (ushort)ZoneId.Halatali7_1)
+            {
+                // Halatali now returns through profile dispatch. Keep the
+                // standard dungeon setup and diagnostics on its old tick path.
+                DisableConflictingPlugins();
+                await MovementHelpers.TryIncreaseMovementSpeedAsync();
+                LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
+                LoggingHelpers.LogZoneChanges();
+            }
+
             var profileResult = await ProfileMechanics.RunAsync(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path);
             return profileResult.Registered && profileResult.Handled;
         }
