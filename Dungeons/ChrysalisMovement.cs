@@ -15,11 +15,11 @@ using ff14bot.Pathing.Service_Navigation;
 namespace DutyMechanic.Dungeons;
 
 /// <summary>
-/// Arbitrates Chrysalis positioning, native avoidance and ordinary travel through one
+/// Arbitrates encounter positioning, native avoidance and ordinary travel through one
 /// borrowed mover. The encounter must validate a request's floor and approach before
 /// submitting it; this owner controls input lifetime, not geometry or route selection.
 /// </summary>
-internal sealed class ChrysalisMovement : IPlayerMover
+public sealed class ChrysalisMovement : IPlayerMover
 {
     private readonly IPlayerMover inner;
     private readonly NavigationGate navigation;
@@ -55,7 +55,18 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private string navigationRequest;
     private bool forwardingNavigation;
     private bool deferredNavigationEnd;
-    internal ChrysalisMovement(IPlayerMover inner,
+    /// <summary>Wraps the current mover and provider for an encounter that owns positioning.</summary>
+    /// <remarks>Optional callbacks let the encounter validate routes and arbitrate native escape while this adapter owns input.</remarks>
+    /// <param name="inner">Mover borrowed from the active bot.</param>
+    /// <param name="failedEscapeWaypoint">Supplies a validated replacement when native escape fails.</param>
+    /// <param name="canContinueNativeEscape">Allows a previously admitted native escape to keep ownership.</param>
+    /// <param name="canMoveOrdinary">Admits ordinary navigation destinations vetted by the encounter.</param>
+    /// <param name="validateNativeWaypoint">Returns a validated native waypoint, or null to deny travel.</param>
+    /// <param name="gateUnsafeNativeRecovery">Gates native recovery that could bypass waypoint validation.</param>
+    /// <param name="prioritizeRequestedHazardExit">Allows a validated encounter escape to preempt native avoidance.</param>
+    /// <param name="fenceNativeNavigationWhileOwned">Blocks native navigation while the encounter request owns input.</param>
+    /// <param name="retireBlockedOrdinaryNavigation">Retires blocked path coroutines before their input can reach a successor.</param>
+    public ChrysalisMovement(IPlayerMover inner,
         Func<Vector3, Vector3?> failedEscapeWaypoint = null, Func<bool> canContinueNativeEscape = null,
         Func<Vector3, bool> canMoveOrdinary = null, Func<Vector3, Vector3?> validateNativeWaypoint = null,
         bool gateUnsafeNativeRecovery = false, Func<bool> prioritizeRequestedHazardExit = null,
@@ -80,12 +91,14 @@ internal sealed class ChrysalisMovement : IPlayerMover
     private bool EncounterEscapeOwnsInput => destination.HasValue && leavingHazard &&
         prioritizeRequestedHazardExit?.Invoke() == true;
 
-    internal bool IsCurrent => !detached && ReferenceEquals(Navigator.PlayerMover, this) && navigation.OwnsProvider;
+    /// <summary>Whether this adapter still owns both navigation channels.</summary>
+    public bool IsCurrent => !detached && ReferenceEquals(Navigator.PlayerMover, this) && navigation.OwnsProvider;
 
     // Native escape owns scheduling even when service navigation finds a path.
     // Target acquisition can otherwise stop that path every tick. Input may already
     // have been stopped when queried, so use the planner's lifetime, not held keys.
-    internal bool IsEscaping => IsCurrent &&
+    /// <summary>Whether native avoidance currently owns movement through this adapter.</summary>
+    public bool IsEscaping => IsCurrent &&
         AvoidanceManager.IsRunningOutOfAvoid && !MovementManager.GenerallyOutOfControl;
 
     // Interactions need a mesh route rather than an unvalidated straight crossing.
@@ -131,7 +144,10 @@ internal sealed class ChrysalisMovement : IPlayerMover
         navigation.EndSemanticNavigation();
     }
 
-    internal void Request(Vector3? point, float arrivalTolerance)
+    /// <summary>Sets or releases the encounter destination with its arrival tolerance.</summary>
+    /// <param name="point">Validated destination, or null to release the request.</param>
+    /// <param name="arrivalTolerance">Distance in yalms at which the request is satisfied.</param>
+    public void Request(Vector3? point, float arrivalTolerance)
     {
         acquiring |= point.HasValue && !destination.HasValue;
         destination = point;
@@ -146,7 +162,7 @@ internal sealed class ChrysalisMovement : IPlayerMover
     /// </summary>
     /// <param name="point">Safe endpoint of the validated departure segment.</param>
     /// <param name="arrivalTolerance">Distance at which this owner's input is released.</param>
-    internal void RequestHazardExit(Vector3 point, float arrivalTolerance)
+    public void RequestHazardExit(Vector3 point, float arrivalTolerance)
     {
         Request(point, arrivalTolerance);
         leavingHazard = true;
@@ -248,7 +264,8 @@ internal sealed class ChrysalisMovement : IPlayerMover
         StopInput();
     }
 
-    internal void Update()
+    /// <summary>Reconciles input and ownership on the bot thread.</summary>
+    public void Update()
     {
         if (ReleaseDeferredForeignProvider()) return;
         if (retireBlockedOrdinaryNavigation && IsCurrent)
@@ -399,7 +416,9 @@ internal sealed class ChrysalisMovement : IPlayerMover
         return true;
     }
 
-    internal void Detach(bool preserveCurrentInput = false)
+    /// <summary>Retires owned navigation and restores the borrowed mover and provider.</summary>
+    /// <param name="preserveCurrentInput">Keeps held movement input during the handoff.</param>
+    public void Detach(bool preserveCurrentInput = false)
     {
         if (retireBlockedOrdinaryNavigation && IsCurrent)
         {

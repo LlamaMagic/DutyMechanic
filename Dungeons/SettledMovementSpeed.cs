@@ -9,7 +9,7 @@ namespace DutyMechanic.Dungeons;
 /// settled for 200 ms. Sustained slowdowns and external boosts update the estimate;
 /// standing still preserves the last settled speed.
 /// </remarks>
-internal sealed class InterphosMovementSpeed
+public sealed class SettledMovementSpeed
 {
     private const double SettlementSeconds = 0.2;
     private float candidate;
@@ -17,7 +17,12 @@ internal sealed class InterphosMovementSpeed
     private bool sampling;
     internal float Value { get; private set; } = 6;
 
-    internal float Observe(double now, float velocity, bool moving)
+    /// <summary>Updates the speed estimate after the latest sample has settled.</summary>
+    /// <param name="now">Monotonic time in seconds.</param>
+    /// <param name="velocity">Observed speed in yalms per second.</param>
+    /// <param name="moving">Whether the actor is moving.</param>
+    /// <returns>The last settled speed, or normal running speed before the first settled sample.</returns>
+    public float Observe(double now, float velocity, bool moving)
     {
         if (!moving || !double.IsFinite(now) || !float.IsFinite(velocity) || velocity <= 0)
         {
@@ -39,7 +44,8 @@ internal sealed class InterphosMovementSpeed
         return Value;
     }
 
-    internal void Reset()
+    /// <summary>Restores the default running-speed estimate for the next encounter.</summary>
+    public void Reset()
     {
         sampling = false;
         candidate = 0;

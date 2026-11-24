@@ -121,7 +121,7 @@ public static class LoggingHelpers
     /// </remarks>
     /// <param name="scope">Stable encounter-specific label used to deduplicate this actor watch.</param>
     /// <param name="actorSelector">Selects the current-frame actors whose mechanic state should be captured.</param>
-    internal static void LogActorSignalChanges(string scope, Func<BattleCharacter, bool> actorSelector)
+    public static void LogActorSignalChanges(string scope, Func<BattleCharacter, bool> actorSelector)
     {
         if (!mechanicDiagnosticsWereEnabled || Core.Player == null || !Core.Player.IsValid)
         {
@@ -166,7 +166,7 @@ public static class LoggingHelpers
     /// Clears one reusable actor watch when its encounter-specific observation window closes.
     /// </summary>
     /// <param name="scope">The same stable label passed to <see cref="LogActorSignalChanges"/>.</param>
-    internal static void ClearActorSignalWatch(string scope)
+    public static void ClearActorSignalWatch(string scope)
     {
         TrackedActorSignalSignatures.Remove(scope);
     }

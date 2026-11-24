@@ -53,7 +53,7 @@ public class Recollection : AbstractDungeon
         internal DateTime ExpiresAt;
     }
     private readonly Dictionary<ulong, TimedSnapshot> timedHazards = [];
-    private readonly InterphosMovementSpeed timedMovementSpeed = new();
+    private readonly SettledMovementSpeed timedMovementSpeed = new();
     private bool timedMoveOwned;
     private NVector2 timedFirst, timedFinal;
     private DateTime timedReleaseFirstAt, nextTimedSearchUtc, nextTimedEmergencyUtc;
