@@ -212,7 +212,7 @@ public class DutyMechanicPlugin : BotPlugin
 
             Dungeons.DyingGasp.CheckLifecycle();
             Dungeons.DyingGaspMechanics.Pulse();
-            if (WorldManager.ZoneId == 922)
+            if (WorldManager.ZoneId is 922 or 992)
             {
                 LoggingHelpers.UpdateMechanicDiagnostics(EnableMechanicDiagnostics);
             }
@@ -388,7 +388,7 @@ public class DutyMechanicPlugin : BotPlugin
     private async Task<bool> RunTrust()
     {
         // Trial ready checks can arrive before the profile enters combat.
-        if ((WorldManager.ZoneId == 922 || WorldManager.ZoneId == 559) && ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
+        if ((WorldManager.ZoneId is 922 or 559 or 992) && ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))
             await UsefulTasks.HandleReadyCheck();
 
         if (ProfileMechanics.Owns(WorldManager.ZoneId, NeoProfileManager.CurrentProfile?.Path))

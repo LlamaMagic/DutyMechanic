@@ -23,9 +23,14 @@ internal static class TrialDeathRecovery
     private static DateTime nextAttempt;
     private static bool installed, deathRecorded;
 
+    // These profile trials use in-place raises rather than dungeon return travel.
+    private static bool IsProfileTrial() =>
+        (WorldManager.ZoneId is 922 or 559 or 992) &&
+        ProfileMechanics.Owns(WorldManager.ZoneId, ff14bot.NeoProfiles.NeoProfileManager.CurrentProfile?.Path);
+
     internal static void Update()
     {
-        bool inTrial = TreeRoot.IsRunning && DutyManager.InInstance && (WorldManager.ZoneId == 922 || WorldManager.ZoneId == 559) && ProfileMechanics.Owns(WorldManager.ZoneId, ff14bot.NeoProfiles.NeoProfileManager.CurrentProfile?.Path);
+        bool inTrial = TreeRoot.IsRunning && DutyManager.InInstance && IsProfileTrial();
         if (!inTrial) { Release(); return; }
         if (Core.Me is { IsAlive: true }) deathRecorded = false;
         var hooks = TreeHooks.Instance.Hooks;
@@ -46,7 +51,7 @@ internal static class TrialDeathRecovery
     private static Task<bool> HandleRevive()
     {
         if (!TreeRoot.IsRunning || CommonBehaviors.IsLoading || QuestLogManager.InCutscene ||
-            !DutyManager.InInstance || ((WorldManager.ZoneId != 922 && WorldManager.ZoneId != 559) || !ProfileMechanics.Owns(WorldManager.ZoneId, ff14bot.NeoProfiles.NeoProfileManager.CurrentProfile?.Path)) ||
+            !DutyManager.InInstance || !IsProfileTrial() ||
             Core.Me == null || !Core.Me.IsValid || Core.Me.IsAlive) return Task.FromResult(true);
         // RB's default task increments this statistic once per death. Retain
         // that accounting when its built-in retry loop is bypassed.
@@ -69,7 +74,7 @@ internal static class TrialDeathRecovery
     private static Task<bool> HandleReturn()
     {
         if (TreeRoot.IsRunning && !CommonBehaviors.IsLoading && DutyManager.InInstance &&
-            (WorldManager.ZoneId == 922 || WorldManager.ZoneId == 559) && ProfileMechanics.Owns(WorldManager.ZoneId, ff14bot.NeoProfiles.NeoProfileManager.CurrentProfile?.Path) && Core.Me is { IsAlive: true } && Poi.Current.Type == PoiType.Death)
+            IsProfileTrial() && Core.Me is { IsAlive: true } && Poi.Current.Type == PoiType.Death)
         {
             // The trial profile owns the next target; never teleport to a stale
             // pre-death point after an in-place raise or arena restart.
