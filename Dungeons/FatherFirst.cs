@@ -1,6 +1,8 @@
-﻿using DutyMechanic.Data;
+﻿using Clio.Utilities;
+using DutyMechanic.Data;
 using DutyMechanic.Extensions;
 using DutyMechanic.Helpers;
+using DutyMechanic.Logging;
 using ff14bot;
 using ff14bot.Managers;
 using ff14bot.Objects;
@@ -17,10 +19,15 @@ namespace DutyMechanic.Dungeons;
 /// </summary>
 public class FatherFirst : AbstractDungeon
 {
+    private const uint Surecast = 7559;
+    private const uint ArmsLength = 7548;
+    private readonly CapabilityManagerHandle brawlFacing = CapabilityManager.CreateNewHandle();
+    private bool usedBrawlResistance;
+    private bool reportedBrawlFacing;
+    private DateTime nextTowerCastCancel;
+
     private static readonly HashSet<uint> CircleAoeCastIds =
     [
-        EnemyAction.MorningStarsZigZag,
-        EnemyAction.MorningStarsAimed,
         EnemyAction.BurningSunPersistent,
         EnemyAction.BurningSunPersistentHit,
         EnemyAction.BurningSunSmall,
@@ -31,11 +38,6 @@ public class FatherFirst : AbstractDungeon
     [
         EnemyAction.DualBlowsLeftFirst,
         EnemyAction.DualBlowsRightFirst,
-    ];
-
-    private static readonly HashSet<uint> ShadeTowerCastIds =
-    [
-        EnemyAction.TheThrillShade,
     ];
 
     /// <inheritdoc/>
@@ -51,20 +53,14 @@ public class FatherFirst : AbstractDungeon
     {
         
 
-        // Donut AOEs for towers. The Shade's tower always goes off first
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat,
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.TheThrill && !ShadeTowerCastIds.IsCasting(),
-            locationProducer: bc => bc.SpellCastInfo.CastLocation,
+        // The finale has three overlapping casts at different towers. Only the next
+        // impact owns the route. A preceding cross can still be resolving as they spawn.
+        AvoidanceHelpers.AddAvoidDonut(
+            canRun: () => Core.Player.InCombat && !GameObjectManager.GetObjectsOfType<BattleCharacter>()
+                .Any(actor => actor.CastingSpellId is EnemyAction.SteeledStrike or EnemyAction.SteeledStrikeShade),
+            collectionProducer: NextThrillTower,
             outerRadius: 90f,
-            innerRadius: 2.5f);
-
-        AvoidanceHelpers.AddAvoidDonut<BattleCharacter>(
-            canRun: () => Core.Player.InCombat,
-            objectSelector: bc => bc.CastingSpellId == EnemyAction.TheThrillShade,
-            locationProducer: bc => bc.SpellCastInfo.CastLocation,
-            outerRadius: 90f,
-            innerRadius: 2.5f);
+            innerRadius: 1.25f);
 
         // Circle AOEs targeting characters or ground
         AvoidanceManager.AddAvoidLocation(
@@ -73,6 +69,22 @@ public class FatherFirst : AbstractDungeon
             locationProducer: bc => bc.SpellCastInfo?.CastLocation ?? bc.TargetGameObject.Location,
             collectionProducer: () => GameObjectManager.GetObjectsOfType<BattleCharacter>()
                 .Where(bc => CircleAoeCastIds.Contains(bc.CastingSpellId)));
+
+        // The chase continually re-baits at the player's position. Preserve its escape when
+        // overlapping zigzag circles temporarily block the avoidance solver.
+        AvoidanceManager.AddAvoidLocation<BattleCharacter>(
+            canRun: () => Core.Player.InCombat,
+            radiusProducer: cast => cast.SpellCastInfo.SpellData.Radius * 1.05f,
+            locationProducer: cast => cast.SpellCastInfo.CastLocation,
+            collectionProducer: () => GameObjectManager.GetObjectsOfType<BattleCharacter>()
+                .Where(cast => cast.CastingSpellId == EnemyAction.MorningStarsAimed));
+        AvoidanceManager.AddAvoidLocation<BattleCharacter>(
+            canRun: () => Core.Player.InCombat,
+            radiusProducer: cast => cast.SpellCastInfo.SpellData.Radius * 1.05f,
+            locationProducer: cast => cast.SpellCastInfo.CastLocation,
+            collectionProducer: () => GameObjectManager.GetObjectsOfType<BattleCharacter>()
+                .Where(cast => cast.CastingSpellId == EnemyAction.MorningStarsZigZag),
+            ignoreIfBlocking: true);
 
         // Persistent circle AOE
         AvoidanceManager.AddAvoidObject<GameObject>(
@@ -102,14 +114,16 @@ public class FatherFirst : AbstractDungeon
             width: 8f,
             length: 60f);
 
-        // Cross AOEs
+        // The damage helper holds the real center and angle through impact,
+        // including the gap after the boss's visual cast. The shade hits first.
         AvoidanceHelpers.AddAvoidCross<BattleCharacter>(
             canRun: () => Core.Player.InCombat,
-            objectSelector: bc => bc.CastingSpellId is EnemyAction.SteeledStrike or EnemyAction.SteeledStrikeShade,
-            locationProducer: bc => bc.SpellCastInfo.CastLocation,
-            rotationProducer: bc => -bc.Heading + (float)(1.0 / 4.0 * Math.PI),
-            thickness: 12.0f,
-            length: 60.0f);
+            objectSelector: actor => actor.CastingSpellId == EnemyAction.SteeledStrikeShade ||
+                actor.CastingSpellId == EnemyAction.SteeledStrike &&
+                !GameObjectManager.GetObjectsOfType<BattleCharacter>()
+                    .Any(other => other.CastingSpellId == EnemyAction.SteeledStrikeShade),
+            thickness: 9f,
+            length: 30f);
 
         // Left/right cleaves
         AvoidanceHelpers.AddAvoidRectangle<BattleCharacter>(
@@ -155,6 +169,7 @@ public class FatherFirst : AbstractDungeon
         if (WorldManager.ZoneId == (uint)ZoneId.AFatherFirst)
         {
             SidestepPlugin.Enabled = false;
+            return HandleBrawlEnder() || HoldOffenseForThrillTowers();
         }
         else
         {
@@ -162,6 +177,124 @@ public class FatherFirst : AbstractDungeon
         }
 
         return false;
+    }
+
+    private static Vector3[] NextThrillTower()
+    {
+        var pending = GameObjectManager.GetObjectsOfType<BattleCharacter>()
+            .Where(IsThrillTower)
+            .OrderBy(actor => actor.SpellCastInfo.RemainingCastTime)
+            .ThenBy(actor => actor.ObjectId)
+            .Take(2)
+            .ToArray();
+        if (pending.Length == 0)
+            return [];
+
+        var target = pending[0].Location;
+        if (pending.Length == 2)
+        {
+            // Stage on the side of this tower nearest the next one. The 1.25-yalm
+            // offset and safe radius both fit inside the server's three-yalm tower.
+            var next = pending[1].Location;
+            var distance = target.Distance2D(next);
+            if (distance > 1.25f)
+                target += (next - target) * (1.25f / distance);
+        }
+        return [target];
+    }
+
+    private static bool IsThrillTower(BattleCharacter actor) =>
+        actor.CastingSpellId is EnemyAction.TheThrillShade or EnemyAction.TheThrill;
+
+    private bool HoldOffenseForThrillTowers()
+    {
+        if (!Core.Me.IsAlive || !GameObjectManager.GetObjectsOfType<BattleCharacter>().Any(IsThrillTower))
+            return false;
+
+        // The final towers resolve about two seconds apart. A full Verstone
+        // delayed native avoidance until the second soak was already lost.
+        var now = DateTime.UtcNow;
+        if (Core.Me.IsCasting && now >= nextTowerCastCancel)
+        {
+            ActionManager.StopCasting();
+            nextTowerCastCancel = now.AddMilliseconds(250);
+        }
+        return true;
+    }
+
+    private bool HandleBrawlEnder()
+    {
+        var cast = GameObjectManager.GetObjectsOfType<BattleCharacter>()
+            .FirstOrDefault(actor => actor.NpcId == EnemyNpc.GuloolJaJa &&
+                actor.CastingSpellId == EnemyAction.BrawlEnder)?.SpellCastInfo;
+        if (cast == null || !cast.IsValid)
+        {
+            usedBrawlResistance = false;
+            reportedBrawlFacing = false;
+            return false;
+        }
+
+        // The bind starts when the five-second cast ends. The actual push follows
+        // about 2.6 seconds later, so apply the six-second role buff during the cast.
+        var remaining = cast.RemainingCastTime.TotalSeconds;
+        if (usedBrawlResistance || remaining > 2.1 || !Core.Me.IsAlive)
+            return false;
+        var action = ActionManager.CanCast(Surecast, Core.Me) ? Surecast :
+            ActionManager.CanCast(ArmsLength, Core.Me) ? ArmsLength : 0;
+        if (action != 0 && ActionManager.DoAction(action, Core.Me))
+        {
+            usedBrawlResistance = true;
+            Logger.Information($"[A Father First] Used knockback resistance ({action}) for Brawl Ender.");
+            return true;
+        }
+
+        // Brawl Ender can repeat in about 90 seconds, before either role action
+        // has recovered. Aim the player-facing push outside the current puddles.
+        // Native escape owns movement and facing whenever it is actively dodging.
+        if (remaining > 1.5 || MovementManager.GenerallyOutOfControl ||
+            AvoidanceManager.IsRunningOutOfAvoid)
+            return false;
+
+        var player = Core.Me.Location;
+        var hazards = AvoidanceManager.Avoids.Where(avoid => avoid.IsValid && !avoid.ShouldIgnore).ToArray();
+        if (hazards.Length == 0 || hazards.Any(avoid => avoid.IsPointInAvoid(player)))
+            return false;
+
+        foreach (var step in Enumerable.Range(-7, 16).OrderBy(offset => Math.Abs(offset)))
+        {
+            var angle = Core.Me.Heading + step * MathF.PI / 8;
+            var direction = new Vector3(MathF.Sin(angle), 0, MathF.Cos(angle));
+            var landing = PredictBrawlLanding(player, direction);
+            if (hazards.Any(avoid => avoid.IsPointInAvoid(landing)))
+                continue;
+
+            // Finish turning before the bind. An in-flight spell can auto-face the
+            // boss at resolution, undoing the heading during that brief window.
+            CapabilityManager.Update(brawlFacing, CapabilityFlags.Facing, 350, "Brawl Ender safe facing");
+            if (Core.Me.IsCasting)
+                ActionManager.StopCasting();
+            Core.Me.SetFacing(angle);
+            if (!reportedBrawlFacing)
+            {
+                reportedBrawlFacing = true;
+                Logger.Information($"[A Father First] Aiming Brawl Ender from {player} toward {landing}.");
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private static Vector3 PredictBrawlLanding(Vector3 player, Vector3 direction)
+    {
+        // The 20-yalm push stops at Sunperch's arena wall. Use a half-yalm inset
+        // of the 30-by-40-yalm platform centered at (0, 49).
+        var distance = 20f;
+        if (MathF.Abs(direction.X) > 0.001f)
+            distance = MathF.Min(distance, ((direction.X > 0 ? 14.5f : -14.5f) - player.X) / direction.X);
+        if (MathF.Abs(direction.Z) > 0.001f)
+            distance = MathF.Min(distance, ((direction.Z > 0 ? 68.5f : 29.5f) - player.Z) / direction.Z);
+        return player + direction * MathF.Max(0, distance);
     }
 
     private static class EnemyNpc
@@ -273,6 +406,11 @@ public class FatherFirst : AbstractDungeon
         public const uint GloryBlaze = 36417;  // 0x8E41
 
         /// <summary>
+        /// Five-second cast before the delayed forced movement through Burning Sun puddles.
+        /// </summary>
+        public const uint BrawlEnder = 36397;
+
+        /// <summary>
         /// <see cref="EnemyNpc.GuloolJaJa"/>'s left half-room cleave.
         /// </summary>
         public const uint DualBlowsLeftSecond = 35423;  // 0x8A5F
@@ -305,21 +443,21 @@ public class FatherFirst : AbstractDungeon
         /// <summary>
         /// <see cref="EnemyNpc.ShadeGuloolJaJa"/>'s stand-in tower. Ground Target.
         /// </summary>
-        public const uint TheThrillShade = 38815;  // 0x979F
+        public const uint TheThrillShade = 38817;
 
         /// <summary>
         /// <see cref="EnemyNpc.GuloolJaJa"/>'s stand-in tower. Ground Target.
         /// </summary>
-        public const uint TheThrill = 36418;  // 0x8E42
+        public const uint TheThrill = 36420;
 
         /// <summary>
         /// <see cref="EnemyNpc.ShadeGuloolJaJa"/>'s Cross AOE. Ground Target.
         /// </summary>
-        public const uint SteeledStrikeShade = 36391;  // 0x8E27
+        public const uint SteeledStrikeShade = 36392;
 
         /// <summary>
         /// <see cref="EnemyNpc.GuloolJaJa"/>'s Cross AOE. Ground Target.
         /// </summary>
-        public const uint SteeledStrike = 36389; // 0x8E25
+        public const uint SteeledStrike = 36390;
     }
 }

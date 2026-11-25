@@ -456,9 +456,10 @@ public enum ZoneId : ushort
     Ihuykatumu = 1167,
 
     /// <summary>
-    /// Lv. 92: A Father First
+    /// Lv. 92: A Father First. QuestBattle 5068 uses the instanced territory linked by
+    /// ContentFinderCondition 828. The shared arena scene also has a separate territory row.
     /// </summary>
-    AFatherFirst = 1170,
+    AFatherFirst = 1210,
 
     /// <summary>
     /// Yak T'el, including quest instances that retain the open-world territory ID such as
