@@ -6,6 +6,7 @@ using ff14bot;
 using ff14bot.Behavior;
 using ff14bot.Managers;
 using ff14bot.Objects;
+using LlamaLibrary.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,7 @@ public partial class Aery : AbstractDungeon
     private DateTime stackUntil;
     private BattleCharacter currentBoss;
     private Vector3? stackDestination;
+    private bool servicingRoutine;
 
     // October 14/20 captures distinguish real bosses from same-name 1144/233C helpers.
     // Nidhogg retains ownership during airborne and add phases while still alive.
@@ -171,7 +173,7 @@ public partial class Aery : AbstractDungeon
     /// <inheritdoc/>
     public override async Task<bool> RunAsync()
     {
-        if (!ReferenceEquals(active, this))
+        if (servicingRoutine || !ReferenceEquals(active, this))
             return false;
         Pulse();
         if (!OwnsHazards())
@@ -179,6 +181,20 @@ public partial class Aery : AbstractDungeon
         await TankBusterSpells();
         await DamageMitigationSpells();
         bool positioning = PositionForMechanic();
+        // Mitigation can yield through a lifecycle change. Recheck ownership
+        // before reading the target or invoking the routine on the bot thread.
+        if (encounter == Nidhogg && !positioning && OwnsHazards() && !IsImprisoned() &&
+            inputOwner?.HasNativeEscapePriority != true && !AvoidanceManager.IsRunningOutOfAvoid &&
+            !MovementManager.GenerallyOutOfControl &&
+            Core.Me.CurrentTarget is not { IsValid: true, CanAttack: true, IsTargetable: true })
+        {
+            // OrderBot may skip the routine while Nidhogg is airborne. Give it
+            // a tick for healing and raising while encounter movement is idle.
+            servicingRoutine = true;
+            try { await CommonTasks.ExecuteCoroutine(BrainBehavior.CombatLogic); }
+            finally { servicingRoutine = false; }
+            Pulse();
+        }
         // October 29 traces identify both MoveAndStop in-range branches canceling
         // native escape: first during Cauterize, then during Wing/Roar after Massacre.
         // The current input owner therefore retains scheduling priority for the
