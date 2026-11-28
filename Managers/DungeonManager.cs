@@ -145,7 +145,7 @@ internal static class DungeonManager
             { ZoneId.Vanaspati, typeof(Vanaspati) },
             { ZoneId.KtisisHyperboreia, typeof(KtisisHyperboreia) },
             { ZoneId.TheAitiascope, typeof(Aitiascope) },
-            { ZoneId.TheMothercrystal, typeof(Mothercrystal) },
+            // The standalone Mothercrystal profile registers territory 995 through ProfileMechanics.
             { ZoneId.TheDeadEnds, typeof(DeadEnds) },
             { ZoneId.AlzadaalsLegacy, typeof(AlzadaalsLegacy) },
             { ZoneId.TheFellCourtOfTroia, typeof(FellCourtOfTroia) },
